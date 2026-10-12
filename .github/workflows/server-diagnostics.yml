@@ -1,0 +1,76 @@
+name: Server Diagnostics
+
+# Manual, read-only: prints recent application errors, the jobs log, email settings status
+# (never values other than host, port and sender) and an SMTP sign-in check. Sends nothing
+# and changes nothing on the server.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 5
+    steps:
+      - name: Collect diagnostics
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p ~/.ssh
+          trap 'rm -f ~/.ssh/numerlife_deploy_key ~/.ssh/known_hosts' EXIT
+          printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > ~/.ssh/numerlife_deploy_key
+          chmod 600 ~/.ssh/numerlife_deploy_key
+          printf '%s\n' '[server2.tapnet.com]:21098 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE/D6L7nbgrtTZPh1FN/DY9qGjX/TA20EgYrsLx3S/A5' > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/numerlife_deploy_key -p 21098 \
+            -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o ConnectTimeout=12 \
+            numerlife1@server2.tapnet.com 'bash -s' <<'REMOTE'
+          cd /home/numerlife1/numerlife
+          echo "== Deployed commit: $(git rev-parse --short HEAD)"
+          echo "== Application errors (logs/app-errors.log, last 80 lines)"
+          tail -n 80 logs/app-errors.log 2>/dev/null || echo "(none recorded yet)"
+          echo "== Jobs log (last 25 lines)"
+          tail -n 25 logs/jobs.log 2>/dev/null || echo "(no jobs log)"
+          echo "== Email check"
+          timeout 90 .venv/bin/python - <<'PY'
+          import traceback
+          import passenger_wsgi  # noqa: F401  (loads .env)
+          import app
+          import emails
+          import mailer
+          s = mailer.settings()
+          print("configured:", mailer.configured(), "| host:", s["host"] or "(missing)", "| port:", s["port"],
+                "| user set:", bool(s["user"]), "| password set:", bool(s["password"]), "| sender:", s["sender"] or "(missing)")
+          with app.app.test_request_context("/"):
+              try:
+                  lead, practitioner = emails.sample_lead(), emails.sample_practitioner()
+                  for build in (lambda: emails.report_email(lead, practitioner, report_url="x"),
+                                lambda: emails.lead_alert_email(lead, practitioner, lead_url="x"),
+                                lambda: emails.practitioner_nudge_email(practitioner, []),
+                                lambda: emails.client_nudge_email({**lead, "email": "a@b.co"}, practitioner)):
+                      build()
+                  print("sample emails build: ok")
+              except Exception:
+                  print("sample emails build FAILED:")
+                  traceback.print_exc()
+          if mailer.configured():
+              try:
+                  server = mailer.connect()
+                  server.noop()
+                  server.quit()
+                  print("SMTP sign-in: ok")
+              except Exception as exc:
+                  print("SMTP sign-in FAILED:", mailer.describe_error(exc))
+          with app.open_db() as connection:
+              for row in connection.execute("SELECT id, kind, created_at, sent_at, attempts, last_error"
+                                            " FROM email_outbox ORDER BY id DESC LIMIT 10"):
+                  print(dict(row))
+          PY
+          REMOTE
