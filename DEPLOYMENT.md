@@ -106,6 +106,19 @@ Create the admin account (cPanel → Terminal as `numerlife1`):
 cd ~/numerlife && set -a && . ./.env && set +a && .venv/bin/flask --app app create-owner
 ```
 
+## Practitioner accounts (until invitations arrive)
+
+Create a practitioner with a personal link (cPanel → Terminal as `numerlife1`):
+
+```bash
+cd ~/numerlife && set -a && . ./.env && set +a
+.venv/bin/flask --app app add-practitioner          # prompts: email, name, link name, password
+.venv/bin/flask --app app set-slug                  # change someone's link name later
+```
+
+Link names are 2-40 lowercase letters, numbers or dashes; reserved words (admin, login, privacy…)
+are refused.
+
 ## Rolling back
 
 **Code:** revert the bad commit on `main` in GitHub and deploy again.

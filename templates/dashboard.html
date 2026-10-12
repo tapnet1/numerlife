@@ -4,6 +4,10 @@
 <section class="card">
   <h1>Welcome{% if user.display_name %}, {{ user.display_name }}{% endif %}</h1>
   <p>You're signed in as {{ user.email }} ({{ user.role }}).</p>
+  {% if my_slug %}
+    <p>Your personal link: <a href="{{ url_for('practitioner_link', slug=my_slug) }}"><strong>{{ base_url.split('://')[-1] }}/{{ my_slug }}</strong></a></p>
+    <p class="muted small">Share it anywhere. Everyone who requests a report through it becomes your lead.</p>
+  {% endif %}
   <p class="muted">Your leads, profile and report settings will appear here.</p>
 </section>
 {% endblock %}
