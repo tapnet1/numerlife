@@ -1,0 +1,14 @@
+Hi{% if first_name %} {{ first_name }}{% endif %},
+
+{{ inviter_name }} has invited you to join {{ site_name }}, a home for numerology practitioners:
+
+- Your own link where people get a free numerology report with your name on it
+- Every visitor who unlocks their report becomes your lead, with instant alerts
+- A public profile page, QR code and share kit, and a simple leads dashboard
+
+Accept the invitation: {{ invite_link }}
+
+This personal invitation works once and expires {{ expires }}.
+
+--
+You're receiving this one-time email because {{ inviter_name }} invited you. Reply to reach them directly.

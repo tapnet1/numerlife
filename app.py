@@ -225,6 +225,7 @@ ADDED_COLUMNS = (
     ("users", "email_nudges", "INTEGER NOT NULL DEFAULT 1"),  # reminder emails about waiting leads
     ("users", "nudged_at", "TEXT"),
     ("leads", "nudged_at", "TEXT"),                          # follow-up email sent to the visitor
+    ("invites", "emailed_at", "TEXT"),                       # invitation last emailed by numer.life
     ("users", "plan", "TEXT NOT NULL DEFAULT 'none'"),       # none | complimentary | active | past_due | cancelled
     ("users", "paid_through", "TEXT"),                       # subscription paid up to this date (YYYY-MM-DD)
     ("leads", "source", "TEXT NOT NULL DEFAULT 'link'"),     # link | round_robin | none

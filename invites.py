@@ -18,6 +18,7 @@ from intake import EMAIL_RE, reserve_attempt, validate_slug
 INVITE_DAYS = 14
 MAX_OPEN_INVITES = 25
 JOIN_LIMIT_PER_HOUR = 10
+INVITE_EMAILS_PER_HOUR = 20
 
 
 def invite_url(token: str) -> str:
@@ -46,7 +47,7 @@ def referral_summary(user_id: int) -> dict:
         " WHERE invited_by = ? ORDER BY created_at DESC", (user_id,)
     ).fetchall()
     pending = connection.execute(
-        "SELECT id, token, name, email, created_at, expires_at FROM invites"
+        "SELECT id, token, name, email, created_at, expires_at, emailed_at FROM invites"
         " WHERE inviter_id = ? AND used_by IS NULL AND revoked_at IS NULL AND expires_at > ?"
         " ORDER BY created_at DESC", (user_id, iso(now_utc()))
     ).fetchall()
@@ -61,6 +62,7 @@ def referral_summary(user_id: int) -> dict:
 def invite_practitioner():
     user = current_user()
     new_link = None
+    emailed_to = None
     errors = []
     form = {"name": "", "email": ""}
     if request.method == "POST":
@@ -85,10 +87,57 @@ def invite_practitioner():
             )
             connection.commit()
             new_link = invite_url(token)
+            if form["email"]:
+                invite_id = connection.execute("SELECT id FROM invites WHERE token = ?", (token,)).fetchone()[0]
+                if reserve_attempt("invite-email", INVITE_EMAILS_PER_HOUR):
+                    emailed_to = form["email"] if _email_invite(user["id"], invite_id) else None
             form = {"name": "", "email": ""}
     summary = referral_summary(user["id"])
-    return render_template("invite.html", new_link=new_link, errors=errors, form=form,
+    return render_template("invite.html", new_link=new_link, emailed_to=emailed_to, errors=errors, form=form,
+                           can_email=_can_email(),
                            invite_url=invite_url, invite_days=INVITE_DAYS, **summary), (400 if errors else 200)
+
+
+def _can_email() -> bool:
+    import mailer
+    return mailer.configured()
+
+
+def _email_invite(inviter_id: int, invite_id: int) -> bool:
+    import emails  # loaded after this module
+    try:
+        return emails.queue_invite(inviter_id, invite_id)
+    except Exception:  # an email problem must never lose the invite itself
+        app.logger.exception("Could not queue the invitation email")
+        return False
+
+
+@app.post("/invite/<int:invite_id>/email")
+@login_required
+def email_invite(invite_id):
+    """Email (or re-email) an open invite, optionally adding the address first."""
+    user = current_user()
+    connection = db()
+    invite = connection.execute(
+        "SELECT * FROM invites WHERE id = ? AND inviter_id = ? AND used_by IS NULL AND revoked_at IS NULL",
+        (invite_id, user["id"])).fetchone()
+    if invite is None:
+        abort(404)
+    email = (request.form.get("email") or invite["email"] or "").strip()[:254]
+    if not EMAIL_RE.match(email):
+        flash("Enter a valid email address to send the invitation to.", "error")
+        return redirect(url_for("invite_practitioner"))
+    if not reserve_attempt("invite-email", INVITE_EMAILS_PER_HOUR):
+        flash("You've sent a lot of invitations in the last hour. Please try again a little later.", "error")
+        return redirect(url_for("invite_practitioner"))
+    if email != invite["email"]:
+        connection.execute("UPDATE invites SET email = ? WHERE id = ?", (email, invite_id))
+        connection.commit()
+    if _email_invite(user["id"], invite_id):
+        flash(f"Invitation emailed to {email}.", "info")
+    else:
+        flash("Email isn't available right now. Copy the link and send it yourself.", "error")
+    return redirect(url_for("invite_practitioner"))
 
 
 @app.post("/invite/<int:invite_id>/revoke")
@@ -100,6 +149,10 @@ def revoke_invite(invite_id):
         "UPDATE invites SET revoked_at = ? WHERE id = ? AND inviter_id = ? AND used_by IS NULL AND revoked_at IS NULL",
         (iso(now_utc()), invite_id, user["id"]),
     ).rowcount
+    if changed:
+        import emails  # loaded after this module
+        emails.cancel_invite_mail(connection, connection.execute(
+            "SELECT inviter_id, email FROM invites WHERE id = ?", (invite_id,)).fetchone())
     connection.commit()
     if not changed:
         abort(404)
@@ -160,6 +213,8 @@ def join(token):
                     connection.execute("DELETE FROM users WHERE id = ?", (user_id,))
                     connection.commit()
                     return render_template("join_invalid.html"), 404
+                import emails  # loaded after this module
+                emails.cancel_invite_mail(connection, invite)
                 connection.commit()
                 session.clear()
                 session.permanent = True
