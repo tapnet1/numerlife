@@ -1,6 +1,7 @@
 """Background jobs, run by cron (installed by the deploy in the numerlife-jobs block).
 
     .venv/bin/python jobs.py purge-attempts
+    .venv/bin/python jobs.py send-push
 
 Jobs load .env through passenger_wsgi.py, like the deploy, and never print secrets.
 """
@@ -24,7 +25,14 @@ def purge_attempts() -> int:
     return removed
 
 
-JOBS = {"purge-attempts": purge_attempts}
+def send_push() -> dict:
+    """Send queued push notifications (new leads); retries anything the request didn't send."""
+    import notify
+
+    return notify.send_pending()
+
+
+JOBS = {"purge-attempts": purge_attempts, "send-push": send_push}
 
 
 def main(argv: list[str]) -> int:

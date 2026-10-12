@@ -132,6 +132,31 @@ CREATE TABLE IF NOT EXISTS invites (
 );
 CREATE INDEX IF NOT EXISTS idx_invites_inviter ON invites (inviter_id, created_at);
 
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id              INTEGER PRIMARY KEY,
+    user_id         INTEGER NOT NULL REFERENCES users(id),
+    endpoint        TEXT NOT NULL UNIQUE,
+    p256dh          TEXT NOT NULL,
+    auth            TEXT NOT NULL,
+    device          TEXT NOT NULL DEFAULT '',
+    created_at      TEXT NOT NULL,
+    last_success_at TEXT,
+    failures        INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON push_subscriptions (user_id);
+
+CREATE TABLE IF NOT EXISTS push_outbox (
+    id         INTEGER PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users(id),
+    payload    TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    claimed_at TEXT,
+    sent_at    TEXT,
+    attempts   INTEGER NOT NULL DEFAULT 0,
+    last_error TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_push_outbox_pending ON push_outbox (sent_at, created_at);
+
 CREATE TABLE IF NOT EXISTS form_attempts (
     id         INTEGER PRIMARY KEY,
     ip_hash    TEXT NOT NULL,
@@ -152,7 +177,8 @@ ADDED_COLUMNS = (
     ("leads", "updated_at", "TEXT"),
 )
 
-REQUIRED_TABLES = {"users", "login_attempts", "leads", "form_attempts", "invites"}
+REQUIRED_TABLES = {"users", "login_attempts", "leads", "form_attempts", "invites",
+                   "push_subscriptions", "push_outbox"}
 
 
 def now_utc() -> dt.datetime:
@@ -322,7 +348,7 @@ def _security_headers(response):
     response.headers.setdefault(
         "Content-Security-Policy",
         "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; "
-        "form-action 'self'; frame-ancestors 'none'; base-uri 'self'",
+        "form-action 'self'; frame-ancestors 'none'; base-uri 'self'; manifest-src 'self'; worker-src 'self'",
     )
     if app.config["SESSION_COOKIE_SECURE"]:
         response.headers.setdefault("Strict-Transport-Security", "max-age=86400")
@@ -565,3 +591,4 @@ import intake  # noqa: E402,F401
 import workspace  # noqa: E402,F401  (dashboard and leads for signed-in practitioners)
 import practitioner_profile  # noqa: E402,F401  (profile, password, QR share kit)
 import invites  # noqa: E402,F401  (practitioner invitations and referrals)
+import notify  # noqa: E402,F401  (PWA manifest, service worker, push notifications)
