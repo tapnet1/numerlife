@@ -131,6 +131,10 @@ CREATE INDEX IF NOT EXISTS idx_form_attempts ON form_attempts (ip_hash, kind, cr
 # initialize() adds any that are missing, so existing databases upgrade in place.
 ADDED_COLUMNS = (
     ("users", "slug", "TEXT"),
+    ("leads", "stage", "TEXT NOT NULL DEFAULT 'new'"),   # practitioner's pipeline: new/contacted/client/archived
+    ("leads", "notes", "TEXT NOT NULL DEFAULT ''"),       # practitioner's private notes
+    ("leads", "viewed_at", "TEXT"),                       # first opened by the practitioner
+    ("leads", "updated_at", "TEXT"),
 )
 
 REQUIRED_TABLES = {"users", "login_attempts", "leads", "form_attempts"}
@@ -433,12 +437,6 @@ def logout():
     return redirect(url_for("login"))
 
 
-@app.get("/dashboard")
-@login_required
-def dashboard():
-    return render_template("dashboard.html")
-
-
 @app.get("/admin")
 @role_required("admin")
 def admin():
@@ -549,3 +547,4 @@ def create_owner_command(email, display_name, password):
 # Public report form and practitioner links. Imported last: it uses the helpers above,
 # and its catch-all /<slug> route must not shadow anything defined here.
 import intake  # noqa: E402,F401
+import workspace  # noqa: E402,F401  (dashboard and leads for signed-in practitioners)

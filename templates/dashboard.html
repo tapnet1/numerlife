@@ -1,13 +1,67 @@
 {% extends "base.html" %}
-{% block title %}Dashboard — {{ site_name }}{% endblock %}
+{% from "_share.html" import share_bar %}
+{% block title %}Dashboard | {{ site_name }}{% endblock %}
+{% block body_class %}app-page{% endblock %}
 {% block content %}
-<section class="card">
-  <h1>Welcome{% if user.display_name %}, {{ user.display_name }}{% endif %}</h1>
-  <p>You're signed in as {{ user.email }} ({{ user.role }}).</p>
-  {% if my_slug %}
-    <p>Your personal link: <a href="{{ url_for('practitioner_link', slug=my_slug) }}"><strong>{{ base_url.split('://')[-1] }}/{{ my_slug }}</strong></a></p>
-    <p class="muted small">Share it anywhere. Everyone who requests a report through it becomes your lead.</p>
-  {% endif %}
-  <p class="muted">Your leads, profile and report settings will appear here.</p>
+<header class="app-head">
+  <div>
+    <p class="eyebrow">{{ 'Admin' if user.role == 'admin' else 'Practitioner' }} dashboard</p>
+    <h1>Welcome back{% if user.display_name %}, {{ user.display_name }}{% endif %}</h1>
+  </div>
+  <a class="btn-secondary" href="{{ url_for('leads_list') }}">All leads →</a>
+</header>
+
+<section class="stats" aria-label="Your numbers">
+  <a class="stat" href="{{ url_for('leads_list') }}">
+    <span class="stat-n">{{ total }}</span><span class="stat-l">Total leads</span>
+  </a>
+  <a class="stat" href="{{ url_for('leads_list') }}">
+    <span class="stat-n">{{ stats.this_week or 0 }}</span><span class="stat-l">This week</span>
+  </a>
+  <a class="stat" href="{{ url_for('leads_list', unlocked='yes') }}">
+    <span class="stat-n">{{ unlock_rate }}%</span><span class="stat-l">Unlocked full report</span>
+  </a>
+  <a class="stat" href="{{ url_for('leads_list', stage='client') }}">
+    <span class="stat-n">{{ stats.clients or 0 }}</span><span class="stat-l">Became clients</span>
+  </a>
 </section>
+
+{% if stats.unread %}
+  <p class="notice"><strong>{{ stats.unread }} new {{ 'lead' if stats.unread == 1 else 'leads' }}</strong> waiting for you. <a href="{{ url_for('leads_list', unlocked='yes') }}">Open them →</a></p>
+{% endif %}
+
+<div class="app-grid">
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Latest leads</h2>
+      <a href="{{ url_for('leads_list') }}">View all</a>
+    </div>
+    {% if recent %}
+      <ul class="lead-rows">
+        {% for lead in recent %}
+          {% include "_lead_row.html" %}
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty">
+        <p class="empty-n" aria-hidden="true">✦</p>
+        <p><strong>No leads yet.</strong></p>
+        <p class="muted">Share your link below. Everyone who requests a report through it appears here, with their numbers.</p>
+      </div>
+    {% endif %}
+  </section>
+
+  <aside class="panel">
+    {% if share_url %}
+      <h2>Your personal link</h2>
+      <p class="link-box"><a href="{{ share_url }}" target="_blank" rel="noopener">{{ share_url.split('://')[-1] }}</a></p>
+      <p class="muted small">Put it in your bio, newsletter and messages. Every report requested through it becomes your lead, and the report shows your name.</p>
+      {{ share_bar(share_url, "Share it") }}
+    {% else %}
+      <h2>Your personal link</h2>
+      <p class="muted">You don't have a personal link yet. {% if user.role == 'admin' %}Admins see every lead; practitioners get their own link.{% endif %}</p>
+    {% endif %}
+  </aside>
+</div>
 {% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/share.js') }}" defer></script>{% endblock %}
