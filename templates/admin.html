@@ -16,6 +16,48 @@
     {% endfor %}
     </tbody>
   </table>
-  <p class="muted">Settings (default lead recipient, sender, invitations) arrive in later updates.</p>
+</section>
+
+{% set mail = email_status() %}
+<section class="card" id="email">
+  <h2>Email</h2>
+  {% if mail.configured %}
+    <p>Sending as <strong>{{ mail.sender }}</strong> via {{ mail.host }}:{{ mail.port }}.</p>
+  {% else %}
+    <p class="flash flash-error">Email isn't set up yet. Add the NUMER_SMTP_* settings to .env on the server; queued emails wait (up to 3 days) until it is.</p>
+  {% endif %}
+
+  <h3>Send test emails</h3>
+  <form method="post" action="{{ url_for('admin_email_test') }}" class="stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="test-to">Send to</label>
+    <input id="test-to" name="to" type="email" value="{{ user.email }}" maxlength="254">
+    {% for key, label in email_kinds.items() %}
+      <label class="check"><input type="checkbox" name="kinds" value="{{ key }}" checked><span>{{ label }}</span></label>
+    {% endfor %}
+    <p class="hint">Uses a sample visitor (Alex Jordan Rivera, 15 July 1990) and your first practitioner's profile. Subjects start with [Test].</p>
+    <button type="submit" class="primary">Send test emails</button>
+  </form>
+
+  <h3 class="mt">Automatic nudges</h3>
+  <form method="post" action="{{ url_for('admin_email_settings') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="check"><input type="checkbox" name="auto_nudges" value="on"{% if mail.nudges_on %} checked{% endif %}>
+      <span>Send reminder emails once a day: practitioners with leads still "New" after 48 hours (at most every 3 days), and visitors who opted in, 2 days after their report, when their practitioner has a booking link.</span></label>
+    <button type="submit">Save</button>
+  </form>
+
+  <h3 class="mt">Recent emails</h3>
+  {% if mail.recent %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>When</th><th>Type</th><th>To</th><th>Subject</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for m in mail.recent %}
+      <tr><td>{{ m.created_at | friendly_time }}</td><td>{{ m.kind }}</td><td>{{ m.to_addr }}</td><td>{{ m.subject }}</td>
+        <td>{% if m.sent_at and not m.last_error %}Sent{% elif m.sent_at %}{{ m.last_error }}{% elif m.last_error %}Retrying ({{ m.last_error }}){% else %}Queued{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="muted">No emails yet.</p>{% endif %}
 </section>
 {% endblock %}

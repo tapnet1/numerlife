@@ -1,0 +1,13 @@
+{% extends "email/_layout.html" %}
+{% block preheader %}{{ first_name }} just unlocked their full report.{% endblock %}
+{% block body %}
+<p style="margin:0 0 14px;">Hi {{ recipient_name or 'there' }},</p>
+<p style="margin:0 0 18px;"><strong>{{ full_name }}</strong> just unlocked their full numerology report through your link.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 20px;"><tr>
+  <td style="width:64px;height:64px;border-radius:50%;background:#2b1a57;color:#f3dfa2;text-align:center;font-family:Georgia,serif;font-size:30px;">{{ life_path }}</td>
+  <td style="padding-left:14px;"><p style="margin:0;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#7a7290;">Life Path</p><p style="margin:0;color:#4a4360;">Born {{ birth_date }}</p></td>
+</tr></table>
+<p style="margin:0 0 22px;">A quick, personal hello within a day makes a big difference.</p>
+<p style="margin:0;text-align:center;"><a href="{{ lead_url }}" style="display:inline-block;background:#d4af5a;color:#1b1038;font-weight:600;text-decoration:none;padding:13px 26px;border-radius:999px;">Open lead</a></p>
+{% endblock %}
+{% block footer %}<p style="margin:0;">New-lead emails can be turned off in <a href="{{ settings_url }}" style="color:#7a7290;">your profile settings</a>.</p>{% endblock %}

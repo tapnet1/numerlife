@@ -2,6 +2,8 @@
 
     .venv/bin/python jobs.py purge-attempts
     .venv/bin/python jobs.py send-push
+    .venv/bin/python jobs.py send-email
+    .venv/bin/python jobs.py send-nudges
 
 Jobs load .env through passenger_wsgi.py, like the deploy, and never print secrets.
 """
@@ -32,7 +34,23 @@ def send_push() -> dict:
     return notify.send_pending()
 
 
-JOBS = {"purge-attempts": purge_attempts, "send-push": send_push}
+def send_email() -> dict:
+    """Send queued email (reports, lead alerts, nudges); retries anything not yet sent."""
+    import emails
+
+    return emails.send_pending()
+
+
+def send_nudges() -> dict:
+    """Queue reminder emails, if an admin has turned automatic nudges on."""
+    import emails
+
+    result = emails.run_nudges()
+    return result
+
+
+JOBS = {"purge-attempts": purge_attempts, "send-push": send_push, "send-email": send_email,
+        "send-nudges": send_nudges}
 
 
 def main(argv: list[str]) -> int:

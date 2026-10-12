@@ -76,6 +76,12 @@
         <span>Also send me visitors who arrive without a practitioner's link. They're shared fairly, in turn, among practitioners who opt in.</span></label>
     {% endif %}
 
+    <h2 class="mt">Email</h2>
+    <label class="check"><input type="checkbox" name="email_alerts" value="yes"{% if form.email_alerts %} checked{% endif %}>
+      <span>Email me when someone unlocks their report through my link.</span></label>
+    <label class="check"><input type="checkbox" name="email_nudges" value="yes"{% if form.email_nudges %} checked{% endif %}>
+      <span>Remind me about leads I haven't contacted yet (at most every 3 days).</span></label>
+
     <h2 class="mt">Social links</h2>
     <p class="hint">Paste a link or just your handle.</p>
     <div class="grid-2">

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Email preferences | {{ site_name }}{% endblock %}
+{% block content %}
+<section class="card narrow">
+  {% if done %}
+    <h1>You're unsubscribed</h1>
+    <p>{% if kind == 'practitioner' %}We won't send you reminder emails about waiting leads. New-lead alerts can be changed in your profile settings.{% else %}We won't send you follow-up emails. Your report link keeps working.{% endif %}</p>
+  {% else %}
+    <h1>Unsubscribe?</h1>
+    <p>{% if kind == 'practitioner' %}Stop reminder emails about leads waiting to hear from you.{% else %}Stop follow-up emails about your numerology report.{% endif %}</p>
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="primary">Unsubscribe</button>
+    </form>
+  {% endif %}
+</section>
+{% endblock %}
