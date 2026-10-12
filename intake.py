@@ -320,6 +320,11 @@ def unlock_report(token):
             notify.queue_new_lead(lead["id"])
         except Exception:  # a notification problem must never break the visitor's report
             app.logger.exception("Could not queue the new-lead notification")
+        import emails  # loaded after this module
+        try:
+            emails.queue_unlock_emails(lead["id"])
+        except Exception:  # an email problem must never break the visitor's report
+            app.logger.exception("Could not queue the report emails")
     return redirect(url_for("report", token=token))
 
 

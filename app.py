@@ -164,6 +164,29 @@ CREATE TABLE IF NOT EXISTS avatars (
     updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS email_outbox (
+    id         INTEGER PRIMARY KEY,
+    kind       TEXT NOT NULL,
+    to_addr    TEXT NOT NULL,
+    subject    TEXT NOT NULL,
+    body_text  TEXT NOT NULL,
+    body_html  TEXT NOT NULL,
+    headers    TEXT NOT NULL DEFAULT '{}',
+    lead_id    INTEGER,
+    user_id    INTEGER,
+    created_at TEXT NOT NULL,
+    claimed_at TEXT,
+    sent_at    TEXT,
+    attempts   INTEGER NOT NULL DEFAULT 0,
+    last_error TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_email_outbox_pending ON email_outbox (sent_at, created_at);
+
+CREATE TABLE IF NOT EXISTS settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS form_attempts (
     id         INTEGER PRIMARY KEY,
     ip_hash    TEXT NOT NULL,
@@ -180,6 +203,10 @@ ADDED_COLUMNS = (
     ("users", "profile", "TEXT NOT NULL DEFAULT '{}'"),  # practitioner contact card (JSON)
     ("users", "round_robin", "INTEGER NOT NULL DEFAULT 1"),  # receives visitors without a link
     ("users", "round_robin_at", "TEXT"),                     # last time one was assigned
+    ("users", "email_alerts", "INTEGER NOT NULL DEFAULT 1"),  # email me when a lead unlocks
+    ("users", "email_nudges", "INTEGER NOT NULL DEFAULT 1"),  # reminder emails about waiting leads
+    ("users", "nudged_at", "TEXT"),
+    ("leads", "nudged_at", "TEXT"),                          # follow-up email sent to the visitor
     ("leads", "source", "TEXT NOT NULL DEFAULT 'link'"),     # link | round_robin | none
     ("leads", "stage", "TEXT NOT NULL DEFAULT 'new'"),   # practitioner's pipeline: new/contacted/client/archived
     ("leads", "notes", "TEXT NOT NULL DEFAULT ''"),       # practitioner's private notes
@@ -188,7 +215,7 @@ ADDED_COLUMNS = (
 )
 
 REQUIRED_TABLES = {"users", "login_attempts", "leads", "form_attempts", "invites",
-                   "push_subscriptions", "push_outbox", "avatars"}
+                   "push_subscriptions", "push_outbox", "avatars", "email_outbox", "settings"}
 
 
 def now_utc() -> dt.datetime:
@@ -362,7 +389,7 @@ def _security_headers(response):
     )
     if app.config["SESSION_COOKIE_SECURE"]:
         response.headers.setdefault("Strict-Transport-Security", "max-age=86400")
-    if NOINDEX or request.endpoint in ("report", "unlock_report", "start_report"):
+    if NOINDEX or request.endpoint in ("report", "unlock_report", "start_report", "unsubscribe"):
         # Personal report pages are never indexed, even after launch.
         response.headers["X-Robots-Tag"] = "noindex, nofollow"
     if (session.get("user_id") and request.endpoint not in ("avatar", "static")) or request.endpoint in ("login", "report", "unlock_report", "start_report"):
@@ -603,3 +630,4 @@ import practitioner_profile  # noqa: E402,F401  (profile, password, QR share kit
 import invites  # noqa: E402,F401  (practitioner invitations and referrals)
 import notify  # noqa: E402,F401  (PWA manifest, service worker, push notifications)
 import public_profiles  # noqa: E402,F401  (profile photos, public practitioner pages)
+import emails  # noqa: E402,F401  (report emails, lead alerts, nudges, unsubscribe)

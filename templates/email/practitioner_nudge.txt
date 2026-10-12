@@ -1,0 +1,12 @@
+Hi {{ recipient_name or 'there' }},
+
+{{ count }} {{ 'person' if count == 1 else 'people' }} unlocked their report through your link and {{ 'is' if count == 1 else 'are' }} still marked New:
+{% for lead in waiting[:8] %}
+- {{ lead.first_name }}, Life Path {{ lead.life_path }}: {{ lead.url }}{% endfor %}
+
+See your leads: {{ leads_url }}
+
+Tip: after you reach out, set the lead's stage to Contacted and we'll stop reminding you about them.
+
+--
+Stop these reminders: {{ unsubscribe_url }}

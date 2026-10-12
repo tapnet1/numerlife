@@ -1,0 +1,9 @@
+{% extends "email/_layout.html" %}
+{% block preheader %}Your numbers are the start. A personal reading shows how they work together.{% endblock %}
+{% block body %}
+<p style="margin:0 0 14px;">Hi {{ first_name }},</p>
+<p style="margin:0 0 14px;">A few days ago you discovered your <strong>Life Path {{ life_path }}</strong>. Your report shows each number on its own. In a personal reading, {{ card.name.split(' ')[0] if card else 'a numerologist' }} looks at how your numbers work together: where they support each other, where they pull in different directions, and what that means for the choices in front of you right now.</p>
+<p style="margin:0 0 6px;"><a href="{{ report_url }}" style="color:#4b2d8f;">Revisit your report</a></p>
+{% include "email/_card.html" %}
+{% endblock %}
+{% block footer %}<p style="margin:0;">You're receiving this because you agreed to hear from us when you requested your report. <a href="{{ unsubscribe_url }}" style="color:#7a7290;">Unsubscribe</a></p>{% endblock %}

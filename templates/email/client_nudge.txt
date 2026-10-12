@@ -1,0 +1,11 @@
+Hi {{ first_name }},
+
+A few days ago you discovered your Life Path {{ life_path }}. Your report shows each number on its own. In a personal reading, {{ card.name.split(' ')[0] if card else 'a numerologist' }} looks at how your numbers work together and what that means for the choices in front of you right now.
+{% if card and card.booking_url %}
+Book a reading with {{ card.name }}: {{ card.booking_url }}
+{% endif %}
+Revisit your report: {{ report_url }}
+
+--
+You're receiving this because you agreed to hear from us when you requested your report.
+Unsubscribe: {{ unsubscribe_url }}

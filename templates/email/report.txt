@@ -1,0 +1,17 @@
+Hi {{ first_name }},
+
+Here are the numbers in your name and birth date.
+{% for item in items %}
+{{ item.label | upper }} NUMBER: {{ item.number if item.number else '-' }} ({{ item.title }})
+{{ item.text }}
+{% endfor %}
+View your full report: {{ report_url }}
+{% if card %}
+Your numerologist: {{ card.name }}{% if card.headline %}, {{ card.headline }}{% endif %}
+{% if card.booking_url %}Book a reading: {{ card.booking_url }}
+{% endif %}{% if card.email %}Email: {{ card.email }}
+{% endif %}{% if card.phone %}Phone: {{ card.phone }}
+{% endif %}{% endif %}
+--
+You're receiving this because you asked for your report at {{ base_url.split('://')[-1] }}.
+{{ site_name }} is operated by TAPNET.

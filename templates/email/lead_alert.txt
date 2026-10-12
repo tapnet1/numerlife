@@ -1,0 +1,11 @@
+Hi {{ recipient_name or 'there' }},
+
+{{ full_name }} just unlocked their full numerology report through your link.
+Life Path {{ life_path }} · born {{ birth_date }}
+
+Open the lead: {{ lead_url }}
+
+A quick, personal hello within a day makes a big difference.
+
+--
+New-lead emails can be turned off in your profile settings: {{ settings_url }}
