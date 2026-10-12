@@ -280,7 +280,8 @@ class ErrorLogTest(AppTestCase):
     def test_unhandled_errors_are_recorded(self):
         log_path = os.path.join(_TMP.name, "errors.log")
         numer.ERROR_LOG = numer.Path(log_path)
-        with numer.app.test_request_context("/admin/email/test", method="POST"):
+        with numer.app.test_request_context("/r/secret-token-123", method="GET") as ctx:
+            ctx.request.url_rule = numer.app.url_map.bind("localhost").match("/r/secret-token-123", return_rule=True)[0]
             try:
                 raise RuntimeError("kaboom")
             except RuntimeError as exc:
@@ -288,5 +289,6 @@ class ErrorLogTest(AppTestCase):
         self.assertEqual(status, 500)
         with open(log_path, encoding="utf-8") as handle:
             text = handle.read()
-        self.assertIn("POST /admin/email/test", text)
+        self.assertIn("GET /r/<token>", text)
+        self.assertNotIn("secret-token-123", text)
         self.assertIn("RuntimeError: kaboom", text)

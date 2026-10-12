@@ -581,7 +581,10 @@ def _record_error(error) -> None:
     try:
         ERROR_LOG.parent.mkdir(parents=True, exist_ok=True)
         with ERROR_LOG.open("a", encoding="utf-8") as handle:
-            handle.write(f"--- {iso(now_utc())} {request.method} {request.path}\n")
+            # The route pattern (e.g. /r/<token>), never the real path: report, invite and
+            # unsubscribe links carry secret tokens.
+            route = request.url_rule.rule if request.url_rule is not None else "(no matching route)"
+            handle.write(f"--- {iso(now_utc())} {request.method} {route}\n")
             handle.write("".join(traceback.format_exception(type(original), original, original.__traceback__)))
     except Exception:
         log.exception("Could not write the error log")
