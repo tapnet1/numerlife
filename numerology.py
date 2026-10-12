@@ -27,11 +27,19 @@ def letter_value(letter: str) -> int:
     return (ord(letter) - ord("A")) % 9 + 1
 
 
+# Latin letters that Unicode normalization does not reduce to A-Z.
+_LATIN_EXTRA = str.maketrans({
+    "ß": "SS", "ẞ": "SS", "Æ": "AE", "æ": "AE", "Œ": "OE", "œ": "OE", "Ø": "O", "ø": "O",
+    "Ł": "L", "ł": "L", "Đ": "D", "đ": "D", "Ð": "D", "ð": "D", "Þ": "TH", "þ": "TH",
+    "Ħ": "H", "ħ": "H", "ı": "I", "Ŋ": "NG", "ŋ": "NG", "Ŧ": "T", "ŧ": "T", "Ŀ": "L", "ŀ": "L",
+})
+
+
 def letters_of(name: str) -> str:
     """Upper-case A-Z letters of a name, with accents removed."""
     decomposed = unicodedata.normalize("NFKD", name)
     plain = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
-    plain = plain.replace("ß", "SS").replace("Æ", "AE").replace("æ", "AE").replace("Ø", "O").replace("ø", "O")
+    plain = plain.translate(_LATIN_EXTRA)
     return "".join(ch for ch in plain.upper() if "A" <= ch <= "Z")
 
 

@@ -309,7 +309,7 @@ def _security_headers(response):
     if NOINDEX or request.endpoint in ("report", "unlock_report", "start_report"):
         # Personal report pages are never indexed, even after launch.
         response.headers["X-Robots-Tag"] = "noindex, nofollow"
-    if session.get("user_id") or request.endpoint in ("login", "report", "unlock_report"):
+    if session.get("user_id") or request.endpoint in ("login", "report", "unlock_report", "start_report"):
         response.headers["Cache-Control"] = "no-store"  # signed-in pages never cached
     return response
 

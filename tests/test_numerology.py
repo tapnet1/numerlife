@@ -55,6 +55,13 @@ if __name__ == "__main__":
 
 
 class NameEdgeCasesTest(unittest.TestCase):
+    def test_latin_letters_that_do_not_decompose_are_kept(self):
+        self.assertEqual(n.letters_of("Łukasz"), "LUKASZ")
+        self.assertEqual(n.letters_of("Œdipe"), "OEDIPE")
+        self.assertEqual(n.letters_of("Đorđe"), "DORDE")
+        self.assertEqual(n.letters_of("Þór"), "THOR")
+        self.assertEqual(n.letters_of("Straße"), "STRASSE")
+
     def test_y_is_the_vowel_in_a_part_without_other_vowels(self):
         # LYNN: Y is the vowel (7); L3 N5 N5 = 13 -> 4
         numbers = n.core_numbers("Lynn", dt.date(1990, 1, 1))

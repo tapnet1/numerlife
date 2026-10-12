@@ -77,6 +77,11 @@ class FormTest(IntakeTestCase):
             self.assertIn(message, html)
         self.assertEqual(self.leads(), [])
 
+    def test_rejected_submission_is_not_cached(self):
+        response = self.submit(birth_country="")
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.headers["Cache-Control"], "no-store")
+
     def test_region_is_optional(self):
         self.assertEqual(self.submit(birth_region="").status_code, 302)
 
