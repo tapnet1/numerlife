@@ -1,0 +1,22 @@
+{# Share bar. share_url is always a public page (home or a practitioner link), never a report. #}
+{% macro share_bar(share_url, heading="Share with a friend") %}
+{% set text = "Get your free numerology report: discover your Life Path number and what it says about you." %}
+<section class="share" aria-labelledby="share-heading">
+  <h2 id="share-heading" class="share-title">{{ heading }}</h2>
+  <p class="share-sub">Curious what their numbers say? Send them the link.</p>
+  <div class="share-buttons" data-share-url="{{ share_url }}" data-share-text="{{ text }}">
+    <button type="button" class="share-btn share-native" hidden>
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>Share
+    </button>
+    <button type="button" class="share-btn share-copy" hidden>
+      <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><span>Copy link</span>
+    </button>
+    <a class="share-btn" href="https://wa.me/?text={{ (text ~ ' ' ~ share_url) | urlencode }}" target="_blank" rel="noopener">WhatsApp</a>
+    <a class="share-btn" href="https://www.facebook.com/sharer/sharer.php?u={{ share_url | urlencode }}" target="_blank" rel="noopener">Facebook</a>
+    <a class="share-btn" href="https://x.com/intent/post?text={{ text | urlencode }}&amp;url={{ share_url | urlencode }}" target="_blank" rel="noopener">X</a>
+    <a class="share-btn" href="mailto:?subject={{ 'Your free numerology report' | urlencode }}&amp;body={{ (text ~ '\n\n' ~ share_url) | urlencode }}">Email</a>
+    <a class="share-btn" href="sms:?&amp;body={{ (text ~ ' ' ~ share_url) | urlencode }}">Text</a>
+  </div>
+  <p class="share-status" role="status" aria-live="polite"></p>
+</section>
+{% endmacro %}

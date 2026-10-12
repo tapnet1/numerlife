@@ -44,8 +44,8 @@ BASE_URL = (os.environ.get("NUMER_BASE_URL") or "http://localhost:5000").rstrip(
 NOINDEX = os.environ.get("NUMER_NOINDEX", "1") != "0"
 SITE_NAME = "numer.life"
 SITE_DESCRIPTION = (
-    "Get your free personal numerology report: enter your name and birth "
-    "details and receive your numbers and what they mean."
+    "Get your free numerology report. Enter your birth name and date of birth to reveal your "
+    "Life Path, Expression, Soul Urge, Personality and Birthday numbers and what they mean."
 )
 
 ROLES = ("admin", "practitioner")
@@ -454,7 +454,8 @@ def robots():
     if NOINDEX:
         body = "User-agent: *\nDisallow: /\n"
     else:
-        body = "User-agent: *\nDisallow: /admin\nDisallow: /dashboard\nDisallow: /login\n"
+        body = ("User-agent: *\nDisallow: /admin\nDisallow: /dashboard\nDisallow: /login\n"
+                "Disallow: /r/\n" f"Sitemap: {BASE_URL}/sitemap.xml\n")
     return body, 200, {"Content-Type": "text/plain; charset=utf-8"}
 
 
