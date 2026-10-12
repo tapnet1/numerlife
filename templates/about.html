@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% set canonical_path = "/" ~ slug ~ "/about" %}
+{% block body_class %}page-about{% endblock %}
+{% block title %}{{ card.name | truncate(30, True, "", 0) | trim }}, Numerologist | {{ site_name }}{% endblock %}
+{% block description %}{{ ((card.headline ~ '. ' if card.headline else '') ~ (card.bio or ('Get a free numerology report from ' ~ card.name ~ ' and book a personal reading.'))) | replace('\n', ' ') | replace('\r', '') | truncate(138, True, '…', 0) }}{% endblock %}
+{% block og_title %}{{ card.name }}, Numerologist{% endblock %}
+{% block structured_data %}<script type="application/ld+json">{{ person_ld | safe }}</script>{% endblock %}
+
+{% block hero %}
+<section class="hero-band about-hero">
+  <div class="hero-inner">
+    {% if photo %}<img class="about-photo" src="{{ photo }}" alt="{{ card.name }}" width="168" height="168">{% else %}<span class="about-photo pc-initial" aria-hidden="true">{{ card.name[:1] | upper }}</span>{% endif %}
+    <p class="eyebrow">Numerologist</p>
+    <h1>{{ card.name }}</h1>
+    {% if card.headline %}<p class="lead">{{ card.headline }}</p>{% endif %}
+    <div class="about-cta">
+      <a class="cta-btn" href="{{ url_for('practitioner_link', slug=slug) }}" target="_blank" rel="noopener">Get your free report</a>
+      {% if card.booking_url %}<a class="btn-ghost" href="{{ card.booking_url }}" target="_blank" rel="noopener">Book a reading</a>{% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block content %}
+<div class="about-body">
+  <article class="panel about-main">
+    <h2>About {{ card.name.split(' ')[0] }}</h2>
+    {% if card.bio %}
+      {% for para in card.bio.split('\n') if para.strip() %}<p>{{ para }}</p>{% endfor %}
+    {% else %}
+      <p>{{ card.name }} offers personal numerology readings. Start with a free report: your Life Path, Expression, Soul Urge, Personality and Birthday numbers, and what they mean for you.</p>
+    {% endif %}
+    <div class="about-free">
+      <h3>Start with your free numerology report</h3>
+      <p>Enter your birth name and date of birth to reveal your Life Path number instantly. {{ card.name.split(' ')[0] }} will see your numbers and can take your reading deeper.</p>
+      <a class="btn" href="{{ url_for('practitioner_link', slug=slug) }}" target="_blank" rel="noopener">Reveal my numbers ↗</a>
+    </div>
+  </article>
+
+  <aside class="panel about-contact">
+    <h2>Connect</h2>
+    <ul class="about-links">
+      {% if card.booking_url %}<li><a href="{{ card.booking_url }}" target="_blank" rel="noopener">Book a reading ↗</a></li>{% endif %}
+      {% if card.email %}<li><a href="mailto:{{ card.email }}" target="_blank" rel="noopener">{{ card.email }}</a></li>{% endif %}
+      {% if card.phone %}<li><a href="tel:{{ card.phone | replace(' ', '') }}">{{ card.phone }}</a></li>{% endif %}
+      {% if card.website %}<li><a href="{{ card.website }}" target="_blank" rel="noopener">{{ card.website.split('://')[-1].rstrip('/') }} ↗</a></li>{% endif %}
+      {% for s in card.socials %}<li><a href="{{ s.url }}" target="_blank" rel="noopener">{{ s.label }} ↗</a></li>{% endfor %}
+    </ul>
+    <p class="muted small">Personal link: <a href="{{ url_for('practitioner_link', slug=slug) }}" target="_blank" rel="noopener">{{ base_url.split('://')[-1] }}/{{ slug }}</a></p>
+  </aside>
+</div>
+{% endblock %}

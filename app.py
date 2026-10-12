@@ -157,6 +157,13 @@ CREATE TABLE IF NOT EXISTS push_outbox (
 );
 CREATE INDEX IF NOT EXISTS idx_push_outbox_pending ON push_outbox (sent_at, created_at);
 
+CREATE TABLE IF NOT EXISTS avatars (
+    user_id    INTEGER PRIMARY KEY REFERENCES users(id),
+    image      BLOB NOT NULL,
+    version    TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS form_attempts (
     id         INTEGER PRIMARY KEY,
     ip_hash    TEXT NOT NULL,
@@ -181,7 +188,7 @@ ADDED_COLUMNS = (
 )
 
 REQUIRED_TABLES = {"users", "login_attempts", "leads", "form_attempts", "invites",
-                   "push_subscriptions", "push_outbox"}
+                   "push_subscriptions", "push_outbox", "avatars"}
 
 
 def now_utc() -> dt.datetime:
@@ -358,7 +365,7 @@ def _security_headers(response):
     if NOINDEX or request.endpoint in ("report", "unlock_report", "start_report"):
         # Personal report pages are never indexed, even after launch.
         response.headers["X-Robots-Tag"] = "noindex, nofollow"
-    if session.get("user_id") or request.endpoint in ("login", "report", "unlock_report", "start_report"):
+    if (session.get("user_id") and request.endpoint not in ("avatar", "static")) or request.endpoint in ("login", "report", "unlock_report", "start_report"):
         response.headers["Cache-Control"] = "no-store"  # signed-in pages never cached
     return response
 
@@ -595,3 +602,4 @@ import workspace  # noqa: E402,F401  (dashboard and leads for signed-in practiti
 import practitioner_profile  # noqa: E402,F401  (profile, password, QR share kit)
 import invites  # noqa: E402,F401  (practitioner invitations and referrals)
 import notify  # noqa: E402,F401  (PWA manifest, service worker, push notifications)
+import public_profiles  # noqa: E402,F401  (profile photos, public practitioner pages)
