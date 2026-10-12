@@ -189,13 +189,21 @@ def invite_email(inviter, invite, invite_link: str, expires: str) -> tuple[str, 
     return (subject, *_render_pair("invite", **context), headers)
 
 
+def cancel_invite_mail(connection, invite) -> None:
+    """Drop an invitation still waiting in the outbox once its invite is revoked or used."""
+    if invite["email"]:
+        connection.execute("UPDATE email_outbox SET sent_at = ?, last_error = 'cancelled: invite closed'"
+                           " WHERE sent_at IS NULL AND kind = 'invite' AND user_id = ? AND lower(to_addr) = lower(?)",
+                           (iso(now_utc()), invite["inviter_id"], invite["email"]))
+
+
 def queue_invite(inviter_id: int, invite_id: int) -> bool:
     """Email an open invitation to the address on it. Returns False if there's nothing to send."""
     import invites  # loaded after this module
     with open_db() as connection:
         invite = connection.execute(
-            "SELECT * FROM invites WHERE id = ? AND inviter_id = ? AND used_by IS NULL AND revoked_at IS NULL",
-            (invite_id, inviter_id)).fetchone()
+            "SELECT * FROM invites WHERE id = ? AND inviter_id = ? AND used_by IS NULL AND revoked_at IS NULL"
+            " AND expires_at > ?", (invite_id, inviter_id, iso(now_utc()))).fetchone()
         inviter = connection.execute("SELECT * FROM users WHERE id = ?", (inviter_id,)).fetchone()
         if invite is None or inviter is None or not invite["email"] or not mailer.configured():
             return False

@@ -346,3 +346,33 @@ class InviteEmailTest(EmailTestCase):
         self.assertNotIn("emailed the invitation", html)
         self.assertIn("Send them the link yourself", html)
         self.assertEqual(self.outbox(), [])
+
+
+class InviteEmailReviewTest(InviteEmailTest):
+    def test_initial_send_is_rate_limited(self):
+        self.login("liliana@example.com")
+        import invites
+        with mock.patch.object(invites, "INVITE_EMAILS_PER_HOUR", 1):
+            self.create_invite(name="A", email="a@example.com")
+            html = self.create_invite(name="B", email="b@example.com").get_data(as_text=True)
+        self.assertNotIn("emailed the invitation to <strong>b@example.com", html)
+        self.assertEqual([r["to_addr"] for r in self.outbox()], ["a@example.com"])
+
+    def test_expired_invite_is_not_emailed(self):
+        self.login("liliana@example.com")
+        self.create_invite(name="Frank")
+        with numer.open_db() as connection:
+            connection.execute("UPDATE invites SET expires_at = ?", (numer.iso(numer.now_utc() - dt.timedelta(days=1)),))
+            invite_id = connection.execute("SELECT id FROM invites").fetchone()[0]
+        self.assertFalse(emails.queue_invite(self.practitioner_id, invite_id))
+
+    def test_revoking_cancels_a_queued_invitation(self):
+        self.login("liliana@example.com")
+        self.create_invite(name="Frank", email="frank@example.com")
+        with numer.open_db() as connection:
+            invite_id = connection.execute("SELECT id FROM invites").fetchone()[0]
+        page = self.client.get("/invite").get_data(as_text=True)
+        self.client.post(f"/invite/{invite_id}/revoke", data={"csrf_token": token_from(page)})
+        emails.send_pending(smtp_factory=self.smtp)
+        self.assertEqual(self.smtp.sent, [])
+        self.assertEqual(self.outbox()[0]["last_error"], "cancelled: invite closed")

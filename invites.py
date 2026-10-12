@@ -89,7 +89,8 @@ def invite_practitioner():
             new_link = invite_url(token)
             if form["email"]:
                 invite_id = connection.execute("SELECT id FROM invites WHERE token = ?", (token,)).fetchone()[0]
-                emailed_to = form["email"] if _email_invite(user["id"], invite_id) else None
+                if reserve_attempt("invite-email", INVITE_EMAILS_PER_HOUR):
+                    emailed_to = form["email"] if _email_invite(user["id"], invite_id) else None
             form = {"name": "", "email": ""}
     summary = referral_summary(user["id"])
     return render_template("invite.html", new_link=new_link, emailed_to=emailed_to, errors=errors, form=form,
@@ -148,6 +149,10 @@ def revoke_invite(invite_id):
         "UPDATE invites SET revoked_at = ? WHERE id = ? AND inviter_id = ? AND used_by IS NULL AND revoked_at IS NULL",
         (iso(now_utc()), invite_id, user["id"]),
     ).rowcount
+    if changed:
+        import emails  # loaded after this module
+        emails.cancel_invite_mail(connection, connection.execute(
+            "SELECT inviter_id, email FROM invites WHERE id = ?", (invite_id,)).fetchone())
     connection.commit()
     if not changed:
         abort(404)
@@ -208,6 +213,8 @@ def join(token):
                     connection.execute("DELETE FROM users WHERE id = ?", (user_id,))
                     connection.commit()
                     return render_template("join_invalid.html"), 404
+                import emails  # loaded after this module
+                emails.cancel_invite_mail(connection, invite)
                 connection.commit()
                 session.clear()
                 session.permanent = True
