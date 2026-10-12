@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Sign in — {{ site_name }}{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1>Practitioner sign in</h1>
+  <form method="post" action="{{ url_for('login') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" autocomplete="username" required value="{{ email or '' }}">
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required>
+    <button type="submit">Sign in</button>
+  </form>
+  <p class="muted small">Registration is by invitation from another practitioner.</p>
+</section>
+{% endblock %}
