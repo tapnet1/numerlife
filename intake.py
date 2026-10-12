@@ -159,6 +159,7 @@ def practitioner_link(slug):
     practitioner = practitioner_by_slug(slug)
     if practitioner is None:
         # Unknown or inactive link: still offer the report, without attribution.
+        session.pop("ref_id", None)
         return redirect(url_for("home"))
     session["ref_id"] = practitioner["id"]
     return render_form(practitioner)
@@ -292,9 +293,7 @@ def add_practitioner_command(email, display_name, slug, password):
     initialize()
     try:
         slug = validate_slug(slug)
-        user_id = create_user(email, password, "practitioner", display_name)
-        with open_db() as connection:
-            connection.execute("UPDATE users SET slug = ? WHERE id = ?", (slug, user_id))
+        create_user(email, password, "practitioner", display_name, slug=slug)
     except ValueError as exc:
         raise click.ClickException(str(exc))
     except sqlite3.IntegrityError:

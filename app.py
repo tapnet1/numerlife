@@ -15,6 +15,7 @@ import secrets
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import click
 from flask import (
@@ -63,7 +64,7 @@ app.config.update(
     SECRET_KEY=_secret,
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
-    SESSION_COOKIE_SECURE=BASE_URL.startswith("https://"),
+    SESSION_COOKIE_SECURE=urlsplit(BASE_URL).scheme == "https" and bool(urlsplit(BASE_URL).hostname),
     SESSION_COOKIE_NAME="numer_session",
     PERMANENT_SESSION_LIFETIME=dt.timedelta(hours=12),
     MAX_CONTENT_LENGTH=100 * 1024,  # uploads over ~120 KB hang at Passenger on this server
@@ -198,7 +199,8 @@ def _close_db(_exc):
 # Users
 # --------------------------------------------------------------------------
 def create_user(email: str, password: str, role: str, display_name: str = "",
-                invited_by: int | None = None, path: str | None = None) -> int:
+                invited_by: int | None = None, path: str | None = None,
+                slug: str | None = None) -> int:
     email = email.strip()
     if role not in ROLES:
         raise ValueError("Unknown role")
@@ -208,10 +210,10 @@ def create_user(email: str, password: str, role: str, display_name: str = "",
         raise ValueError(f"Password must be at least {MIN_PASSWORD_LENGTH} characters")
     with open_db(path) as connection:
         cursor = connection.execute(
-            "INSERT INTO users (email, password_hash, role, display_name, invited_by, created_at)"
-            " VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO users (email, password_hash, role, display_name, invited_by, slug, created_at)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?)",
             (email, generate_password_hash(password), role, display_name.strip(),
-             invited_by, iso(now_utc())),
+             invited_by, slug, iso(now_utc())),
         )
         return cursor.lastrowid
 
@@ -304,7 +306,8 @@ def _security_headers(response):
     )
     if app.config["SESSION_COOKIE_SECURE"]:
         response.headers.setdefault("Strict-Transport-Security", "max-age=86400")
-    if NOINDEX:
+    if NOINDEX or request.endpoint in ("report", "unlock_report", "start_report"):
+        # Personal report pages are never indexed, even after launch.
         response.headers["X-Robots-Tag"] = "noindex, nofollow"
     if session.get("user_id") or request.endpoint in ("login", "report", "unlock_report"):
         response.headers["Cache-Control"] = "no-store"  # signed-in pages never cached

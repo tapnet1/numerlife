@@ -80,7 +80,7 @@ jobs:
           fi
           unset secret
           case "$(env_value NUMER_BASE_URL)" in
-            https://*) ;;
+            https://[A-Za-z0-9]*.[A-Za-z]*) ;;
             *) echo "::error::NUMER_BASE_URL must be set to the site's https:// address"; exit 1 ;;
           esac
           for key in NUMER_CREDENTIAL_KEY NUMER_NOINDEX; do

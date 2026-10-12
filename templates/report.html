@@ -23,7 +23,7 @@
   <div class="numbers">
     {% for item in items[1:] %}
       <section class="number-card">
-        <div class="big-number small-number">{{ item.number }}</div>
+        <div class="big-number small-number">{{ item.number or "–" }}</div>
         <div>
           <p class="eyebrow">{{ item.label }}: {{ item.purpose }}</p>
           <h3>{{ item.title }}</h3>

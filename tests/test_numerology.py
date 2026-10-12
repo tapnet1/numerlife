@@ -52,3 +52,21 @@ class CoreNumbersTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NameEdgeCasesTest(unittest.TestCase):
+    def test_y_is_the_vowel_in_a_part_without_other_vowels(self):
+        # LYNN: Y is the vowel (7); L3 N5 N5 = 13 -> 4
+        numbers = n.core_numbers("Lynn", dt.date(1990, 1, 1))
+        self.assertEqual((numbers.soul_urge, numbers.personality), (7, 4))
+
+    def test_y_stays_a_consonant_next_to_other_vowels(self):
+        vowels, consonants = n.split_vowels("Mary Lynn")
+        self.assertEqual((vowels, consonants), ("AY", "MRYLNN"))
+
+    def test_empty_group_is_not_active_not_blank(self):
+        numbers = n.core_numbers("Aia Eo", dt.date(1990, 1, 1))
+        self.assertEqual(numbers.personality, 0)
+        title, text = n.meaning(0)
+        self.assertEqual(title, "Not active")
+        self.assertTrue(text)

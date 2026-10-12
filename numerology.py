@@ -7,7 +7,10 @@ Rules used (the common Pythagorean method; other systems arrive with report styl
   numbers 11, 22 and 33, which are kept.
 - Life Path: month, day and year are each reduced first, then added and reduced.
 - Expression: every letter of the full birth name.
-- Soul Urge: vowels (A, E, I, O, U). Personality: all other letters. Y counts as a consonant.
+- Soul Urge: vowels (A, E, I, O, U). Personality: all other letters. Y counts as a consonant,
+  except in a name part with no other vowel (Lynn, Glynn), where Y is that part's vowel.
+- If a name has no letters in a group (e.g. no consonants at all), that number is 0: it is
+  shown as "not active" rather than given a meaning.
 - Birthday: the day of the month, reduced (11 and 22 kept).
 """
 from __future__ import annotations
@@ -30,6 +33,20 @@ def letters_of(name: str) -> str:
     plain = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
     plain = plain.replace("ß", "SS").replace("Æ", "AE").replace("æ", "AE").replace("Ø", "O").replace("ø", "O")
     return "".join(ch for ch in plain.upper() if "A" <= ch <= "Z")
+
+
+def split_vowels(full_name: str) -> tuple[str, str]:
+    """Vowel and consonant letters; Y is a vowel only in a name part with no other vowel."""
+    vowels, consonants = [], []
+    for part in full_name.split():
+        letters = letters_of(part)
+        y_is_vowel = not any(ch in VOWELS for ch in letters)
+        for ch in letters:
+            if ch in VOWELS or (ch == "Y" and y_is_vowel):
+                vowels.append(ch)
+            else:
+                consonants.append(ch)
+    return "".join(vowels), "".join(consonants)
 
 
 def reduce(number: int, keep_master: bool = True) -> int:
@@ -77,12 +94,13 @@ def core_numbers(full_name: str, birth_date: dt.date) -> CoreNumbers:
     letters = letters_of(full_name)
     if not letters:
         raise ValueError("The name must contain letters")
+    vowels, consonants = split_vowels(full_name)
     life_path = reduce(reduce(birth_date.month) + reduce(birth_date.day) + reduce(birth_date.year))
     return CoreNumbers(
         life_path=life_path,
         expression=_name_number(letters),
-        soul_urge=_name_number("".join(ch for ch in letters if ch in VOWELS)),
-        personality=_name_number("".join(ch for ch in letters if ch not in VOWELS)),
+        soul_urge=_name_number(vowels),
+        personality=_name_number(consonants),
         birthday=reduce(birth_date.day),
     )
 
@@ -116,5 +134,11 @@ MEANINGS = {
 }
 
 
+NOT_ACTIVE = ("Not active", "Your birth name has no letters in this group, so this number isn't "
+              "active for you. Its qualities come through your other numbers instead.")
+
+
 def meaning(number: int) -> tuple[str, str]:
+    if number == 0:
+        return NOT_ACTIVE
     return MEANINGS.get(number, ("", ""))

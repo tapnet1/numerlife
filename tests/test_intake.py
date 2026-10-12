@@ -120,6 +120,12 @@ class AttributionTest(IntakeTestCase):
         self.submit()
         self.assertIsNone(self.leads()[0]["practitioner_id"])
 
+    def test_unknown_link_clears_an_earlier_attribution(self):
+        self.client.get("/liliana")
+        self.client.get("/someone-else")
+        self.submit()
+        self.assertIsNone(self.leads()[0]["practitioner_id"])
+
     def test_inactive_practitioner_link_is_not_attributed(self):
         self.client.get("/liliana")
         with numer.open_db() as connection:
@@ -190,6 +196,19 @@ class UnlockTest(IntakeTestCase):
             connection.execute("UPDATE leads SET created_at = ?", (old,))
         self.assertEqual(self.client.get(f"/r/{token}").status_code, 404)
 
+    def test_report_pages_are_never_indexed_even_after_launch(self):
+        from unittest import mock
+        token = self.token()
+        with mock.patch.object(numer, "NOINDEX", False):
+            self.assertNotIn("X-Robots-Tag", self.client.get("/").headers)
+            self.assertEqual(self.client.get(f"/r/{token}").headers["X-Robots-Tag"], "noindex, nofollow")
+
+    def test_not_active_number_is_explained(self):
+        token = self.submit(full_name="Aia Eo").headers["Location"].rsplit("/", 1)[-1]
+        self.unlock(token)
+        html = self.client.get(f"/r/{token}").get_data(as_text=True)
+        self.assertIn("Not active", html)
+
     def test_tokens_are_unguessable(self):
         token = self.token()
         self.assertGreaterEqual(len(token), 30)
@@ -239,6 +258,18 @@ class CommandsTest(IntakeTestCase):
         self.assertIn("reserved", reserved.output)
         ok = runner.invoke(args=["set-slug", "--email", "maria@example.com", "--slug", "maria"])
         self.assertEqual(ok.exit_code, 0, ok.output)
+
+    def test_failed_add_practitioner_leaves_no_account(self):
+        runner = numer.app.test_cli_runner()
+        taken = runner.invoke(args=["add-practitioner", "--email", "new@example.com", "--name", "New",
+                                    "--slug", "liliana", "--password", PASSWORD])
+        self.assertIn("already in use", taken.output)
+        with numer.open_db() as connection:
+            self.assertIsNone(connection.execute(
+                "SELECT id FROM users WHERE email = 'new@example.com'").fetchone())
+        retry = runner.invoke(args=["add-practitioner", "--email", "new@example.com", "--name", "New",
+                                    "--slug", "new-one", "--password", PASSWORD])
+        self.assertEqual(retry.exit_code, 0, retry.output)
 
     def test_dashboard_shows_share_link(self):
         self.login("liliana@example.com")
