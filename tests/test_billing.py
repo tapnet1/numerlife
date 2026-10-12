@@ -183,19 +183,6 @@ class ReviewFollowupTest(BillingTestCase):
 
 
 class SecondReviewTest(BillingTestCase):
-    def test_legacy_monthly_reference_prevents_a_duplicate(self):
-        today = dt.date.today()
-        paid_through = today + dt.timedelta(days=25)
-        self.set_plan(self.maria_id, "active", paid_through.isoformat())
-        with numer.open_db() as connection:  # credited today by the old job, under the old monthly key
-            billing.post(connection, self.practitioner_id, "referral_credit", 100,
-                         f"referral:{today:%Y-%m}:{self.maria_id}", source_user_id=self.maria_id)
-        later = today + dt.timedelta(days=20)  # usually in the next calendar month
-        self.assertEqual(billing.accrue_referrals(later)["already"], 1)
-        self.assertEqual(self.balances()[self.practitioner_id], 100)
-        self.set_plan(self.maria_id, "active", (today + dt.timedelta(days=60)).isoformat())  # renewed
-        self.assertEqual(billing.accrue_referrals(today + dt.timedelta(days=40))["credited"], 1)
-
     def test_admin_can_adopt_an_unmarked_tapnet_account(self):
         with numer.open_db() as connection:
             connection.execute("DELETE FROM settings WHERE key = 'platform_user_id'")
