@@ -78,18 +78,19 @@ added by Marco through the GitHub web editor.
 
 ### What a deploy does
 
-1. Runs the tests on `main`.
+1. Runs the tests on `main` and records the exact commit tested.
 2. SSHes in as `numerlife1` with the pinned host key.
 3. Checks the server is on `main` with a clean tree, `passenger_wsgi.py` and `.env` present.
-4. `git fetch origin main` + `git merge --ff-only origin/main`.
+4. `git fetch origin main`, then fast-forwards to **the tested commit only**. If `main` moved
+   after the tests ran, the deploy stops; run it again so the newer commit is tested first.
 5. `pip install -r requirements.txt` into `.venv`, then verifies the imports.
 6. Checks required `.env` keys (names only).
 7. Backs up the database with SQLite's online backup API (timestamped, chmod 600).
 8. Runs `initialize()` (creates missing tables only) and verifies the required tables.
 9. Checks `NUMER_CREDENTIAL_KEY` is a valid 32-byte base64 key (warning if not).
 10. Touches `tmp/restart.txt`.
-11. From GitHub: `/health`, `/login`, `/static/css/app.css` and `/` must return 200, and
-    `/admin` must return 302 when signed out.
+11. From GitHub: `/health`, `/login`, `/static/css/app.css` and `/` must return exactly 200
+    (a redirect counts as a failure), and `/admin` must return 302 when signed out.
 12. Always deletes the temporary SSH key.
 
 No cron jobs yet. When `jobs.py` arrives, the deploy installs them in a marked crontab block
@@ -105,13 +106,18 @@ cd ~/numerlife && set -a && . ./.env && set +a && .venv/bin/flask --app app crea
 
 ## Rolling back
 
-Code: revert the bad commit on `main` in GitHub and deploy again.
-Database: stop and restore the most recent backup:
+**Code:** revert the bad commit on `main` in GitHub and deploy again.
+
+**Database:** restore one of the timestamped backups with the app's own command. It copies
+through SQLite's backup API, so it is safe while the app is running and with WAL files present,
+and it saves the current database first (`numerlife.db.before-restore.<stamp>.bak`). Never copy
+files over the live database by hand.
 
 ```bash
-cd ~/data && ls -t numerlife.db.*.bak | head -3       # pick one
-cp numerlife.db numerlife.db.before-restore && cp numerlife.db.<STAMP>.bak numerlife.db
-touch ~/numerlife/tmp/restart.txt
+cd ~/numerlife && set -a && . ./.env && set +a
+ls -t ~/data/numerlife.db.*.bak | head -5                    # pick one; use only the file name
+.venv/bin/flask --app app restore-db numerlife.db.<STAMP>.bak
+touch tmp/restart.txt
 ```
 
 ## Moving to another domain later

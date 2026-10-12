@@ -231,6 +231,35 @@ class CommandsTest(AppTestCase):
         self.assertNotEqual(result.exit_code, 0)
         self.assertIn("already exists", result.output)
 
+    def test_restore_db_while_a_connection_is_open(self):
+        backup_name = os.path.basename(numer.DB) + ".20260101T000000Z.bak"
+        backup_path = os.path.join(os.path.dirname(numer.DB), backup_name)
+        live = sqlite3.connect(numer.DB)
+        snapshot = sqlite3.connect(backup_path)
+        live.backup(snapshot)
+        snapshot.close()
+        numer.create_user("later@example.com", PASSWORD, "practitioner")
+        worker = sqlite3.connect(numer.DB)  # like a running Passenger worker
+        try:
+            result = numer.app.test_cli_runner().invoke(args=["restore-db", backup_name])
+            self.assertEqual(result.exit_code, 0, result.output)
+            emails = {row[0] for row in worker.execute("SELECT email FROM users")}
+            self.assertNotIn("later@example.com", emails)
+            self.assertIn("owner@example.com", emails)
+            saved = [n for n in os.listdir(os.path.dirname(numer.DB)) if ".before-restore." in n]
+            self.assertEqual(len(saved), 1)
+        finally:
+            worker.close()
+            live.close()
+            for name in os.listdir(os.path.dirname(numer.DB)):
+                if name.endswith(".bak"):
+                    os.remove(os.path.join(os.path.dirname(numer.DB), name))
+
+    def test_restore_db_refuses_other_files(self):
+        for name in ("../etc/passwd", "other.db", os.path.basename(numer.DB) + ".missing.bak"):
+            result = numer.app.test_cli_runner().invoke(args=["restore-db", name])
+            self.assertNotEqual(result.exit_code, 0, name)
+
     def test_init_db_command(self):
         result = numer.app.test_cli_runner().invoke(args=["init-db"])
         self.assertEqual(result.exit_code, 0, result.output)

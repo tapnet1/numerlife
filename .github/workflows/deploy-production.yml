@@ -14,6 +14,8 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      sha: ${{ steps.tested.outputs.sha }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -25,6 +27,9 @@ jobs:
           cache: pip
       - run: python -m pip install -r requirements.txt
       - run: python -m unittest discover -s tests -v
+      - name: Record the tested commit
+        id: tested
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
   deploy:
     needs: tests
@@ -47,22 +52,33 @@ jobs:
           printf '%s\n' '[server2.tapnet.com]:21098 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE/D6L7nbgrtTZPh1FN/DY9qGjX/TA20EgYrsLx3S/A5' > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
-      - name: Deploy latest main, back up and initialize database, restart Passenger
+      - name: Deploy the tested commit, back up and initialize database, restart Passenger
         shell: bash
+        env:
+          TESTED_SHA: ${{ needs.tests.outputs.sha }}
         run: |
           set -euo pipefail
+          [[ "$TESTED_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Missing tested commit"; exit 1; }
           ssh -i ~/.ssh/numerlife_deploy_key -p 21098 \
             -o BatchMode=yes -o IdentitiesOnly=yes \
             -o StrictHostKeyChecking=yes -o ConnectTimeout=15 \
-            numerlife1@server2.tapnet.com 'bash -se' <<'REMOTE'
+            numerlife1@server2.tapnet.com "bash -s -- $TESTED_SHA" <<'REMOTE'
           set -euo pipefail
+          tested_sha="$1"
           cd /home/numerlife1/numerlife
           test "$(git branch --show-current)" = "main"
           test -f passenger_wsgi.py
           test -f .env
           test -z "$(git status --porcelain --untracked-files=no)"
           git fetch origin main
-          git merge --ff-only origin/main
+          # Deploy exactly the commit that passed the tests. If main moved on since,
+          # stop: run the workflow again so the newer commit is tested first.
+          if [ "$(git rev-parse origin/main)" != "$tested_sha" ]; then
+            echo "::error::main changed after the tests ran; re-run the deploy"
+            exit 1
+          fi
+          git merge --ff-only "$tested_sha"
+          echo "Deployed commit: $tested_sha"
           # Install/upgrade dependencies before any application module is imported.
           test -x .venv/bin/python
           .venv/bin/python -m pip install --disable-pip-version-check --quiet -r requirements.txt
@@ -127,14 +143,15 @@ jobs:
           for endpoint in health login static/css/app.css ""; do
             passed=0
             for attempt in 1 2 3 4 5; do
-              code="$(curl --fail --silent --show-error --max-time 15 --output /dev/null --write-out '%{http_code}' "https://numer.life/$endpoint")" && {
-                echo "/$endpoint: HTTP $code"
+              code="$(curl --silent --show-error --max-time 15 --output /dev/null --write-out '%{http_code}' "https://numer.life/$endpoint" || true)"
+              echo "/$endpoint: HTTP $code (attempt $attempt)"
+              if [ "$code" = "200" ]; then
                 passed=1
                 break
-              }
+              fi
               sleep 5
             done
-            test "$passed" -eq 1
+            test "$passed" -eq 1 || { echo "::error::/$endpoint did not return HTTP 200"; exit 1; }
           done
           # Unauthenticated admin access must redirect to sign in, not error.
           admin_code="$(curl --silent --show-error --max-time 15 --output /dev/null --write-out '%{http_code}' https://numer.life/admin)"

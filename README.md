@@ -34,7 +34,7 @@ Open http://localhost:5000. Sign in at `/login`; admins also see `/admin`.
 
 | Path | What it is |
 |---|---|
-| `app.py` | Settings, database (`initialize()`), security, auth and roles, routes, `init-db` / `create-owner` commands |
+| `app.py` | Settings, database (`initialize()`), security, auth and roles, routes, `init-db` / `create-owner` / `restore-db` commands |
 | `secretbox.py` | AES-GCM encryption for stored third-party credentials (`NUMER_CREDENTIAL_KEY`) |
 | `templates/` | Jinja pages (`base.html` holds the top bar and SEO / Open Graph tags) |
 | `static/` | `css/app.css`, `favicon.svg` |

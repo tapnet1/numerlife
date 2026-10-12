@@ -447,6 +447,46 @@ def init_db_command():
     click.echo("Database initialized.")
 
 
+def restore_database(backup_name: str) -> str:
+    """Restore the live database from one of its timestamped backups, online.
+
+    Uses SQLite's backup API in both directions, so it is safe while Passenger
+    workers hold connections and while WAL files exist. The current database is
+    saved first as <db>.before-restore.<stamp>.bak.
+    """
+    live = Path(DB)
+    backup = live.with_name(Path(backup_name).name)  # only files next to the database
+    if not (backup.name.startswith(live.name + ".") and backup.name.endswith(".bak")) or not backup.is_file():
+        raise ValueError("Pick a backup file listed next to the database (name ends in .bak)")
+    stamp = now_utc().strftime("%Y%m%dT%H%M%SZ")
+    safety = live.with_name(f"{live.name}.before-restore.{stamp}.bak")
+    for source_path, target_path in ((live, safety), (backup, live)):
+        source, target = sqlite3.connect(str(source_path)), sqlite3.connect(str(target_path))
+        try:
+            source.backup(target)
+            if target_path == live:
+                target.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                if target.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
+                    raise RuntimeError("Integrity check failed after restore")
+        finally:
+            target.close()
+            source.close()
+    safety.chmod(0o600)
+    return safety.name
+
+
+@app.cli.command("restore-db")
+@click.argument("backup_name")
+def restore_db_command(backup_name):
+    """Restore the database from a backup file name (e.g. numerlife.db.20261012T160000Z.bak)."""
+    try:
+        saved = restore_database(backup_name)
+    except ValueError as exc:
+        raise click.ClickException(str(exc))
+    click.echo(f"Database restored. The previous version was saved as {saved}.")
+    click.echo("Now restart the app: touch tmp/restart.txt")
+
+
 @app.cli.command("create-owner")
 @click.option("--email", prompt=True)
 @click.option("--name", "display_name", prompt="Display name", default="")
