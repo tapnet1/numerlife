@@ -51,6 +51,24 @@ h1, h2, h3, .big-number, .meaning-n, .wheel-n, .letter-chart, .brand { font-vari
 .topbar a, .topbar .link { color: var(--cream); text-decoration: none; }
 .topbar nav { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; font-size: .95rem; }
 .topbar nav a:hover, .topbar .link:hover { color: var(--gold); }
+.topbar { position: relative; }
+.menu-toggle { display: none; margin: 0; padding: .55rem; background: transparent; border: 1px solid rgba(246,240,225,.25); border-radius: 10px; }
+.menu-bars, .menu-bars::before, .menu-bars::after { display: block; width: 20px; height: 2px; background: var(--cream); border-radius: 2px; position: relative; transition: transform .2s, opacity .2s; }
+.menu-bars::before, .menu-bars::after { content: ""; position: absolute; left: 0; }
+.menu-bars::before { top: -6px; }
+.menu-bars::after { top: 6px; }
+.menu-toggle[aria-expanded="true"] .menu-bars { background: transparent; }
+.menu-toggle[aria-expanded="true"] .menu-bars::before { transform: translateY(6px) rotate(45deg); }
+.menu-toggle[aria-expanded="true"] .menu-bars::after { transform: translateY(-6px) rotate(-45deg); }
+@media (max-width: 760px) {
+  .menu-toggle { display: inline-flex; align-items: center; justify-content: center; }
+  .topbar nav { display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 20; flex-direction: column; align-items: stretch;
+    gap: 0; padding: .4rem 1rem 1rem; background: var(--night); border-top: 1px solid rgba(246,240,225,.12); box-shadow: 0 18px 30px rgba(0,0,0,.25); }
+  .topbar nav.is-open { display: flex; }
+  .topbar nav a, .topbar nav form { padding: .85rem .25rem; border-bottom: 1px solid rgba(246,240,225,.1); font-size: 1.05rem; }
+  .topbar nav form { border-bottom: 0; }
+  .topbar nav .link { font-size: 1.05rem; }
+}
 .brand { display: flex; align-items: center; gap: .55rem; font-family: var(--serif); font-weight: 600; font-size: 1.55rem; letter-spacing: .005em; }
 
 .container { max-width: 980px; margin: 0 auto; padding: 2rem clamp(1rem, 4vw, 1.5rem); }
