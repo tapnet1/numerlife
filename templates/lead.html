@@ -5,7 +5,7 @@
 <p class="crumb"><a href="{{ url_for('leads_list') }}">← All leads</a></p>
 <header class="app-head">
   <div>
-    <p class="eyebrow">Lead · {{ lead.created_at | friendly_time }}{% if user.role == 'admin' %} · {{ lead.practitioner_name or 'No practitioner' }}{% endif %}</p>
+    <p class="eyebrow">Lead · {{ lead.created_at | friendly_time }} · {{ 'via your link' if lead.source == 'link' else ('shared visitor (no link)' if lead.source == 'round_robin' else 'no practitioner') }}{% if user.role == 'admin' %} · {{ lead.practitioner_name or 'No practitioner' }}{% endif %}</p>
     <h1>{{ lead.full_name }}</h1>
   </div>
   <span class="badge badge-{{ lead.stage }} badge-lg">{{ stages[lead.stage] }}</span>

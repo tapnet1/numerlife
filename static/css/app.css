@@ -320,6 +320,8 @@ button.link.revoke { color: var(--error); font-size: .88rem; }
 .notify-panel button.link { color: var(--muted); font-size: .88rem; }
 .notify-panel button[hidden], .notify-panel p[hidden] { display: none; }
 
+.rr { color: #9b7a2a; }
+
 /* ---- Footer ---- */
 .footer { text-align: center; color: #b9b0cc; font-size: .87rem; padding: 2.5rem 1rem; background: var(--night); margin-top: 3rem; }
 .footer p { margin: .3rem 0; }

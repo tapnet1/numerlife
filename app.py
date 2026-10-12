@@ -171,6 +171,9 @@ CREATE INDEX IF NOT EXISTS idx_form_attempts ON form_attempts (ip_hash, kind, cr
 ADDED_COLUMNS = (
     ("users", "slug", "TEXT"),
     ("users", "profile", "TEXT NOT NULL DEFAULT '{}'"),  # practitioner contact card (JSON)
+    ("users", "round_robin", "INTEGER NOT NULL DEFAULT 1"),  # receives visitors without a link
+    ("users", "round_robin_at", "TEXT"),                     # last time one was assigned
+    ("leads", "source", "TEXT NOT NULL DEFAULT 'link'"),     # link | round_robin | none
     ("leads", "stage", "TEXT NOT NULL DEFAULT 'new'"),   # practitioner's pipeline: new/contacted/client/archived
     ("leads", "notes", "TEXT NOT NULL DEFAULT ''"),       # practitioner's private notes
     ("leads", "viewed_at", "TEXT"),                       # first opened by the practitioner

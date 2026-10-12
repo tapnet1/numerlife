@@ -198,16 +198,50 @@ def start_report():
                                                 "Please try again in an hour."], 429)
     numbers = numerology.core_numbers(data["full_name"], dt.date.fromisoformat(data["birth_date"]))
     token = secrets.token_urlsafe(24)
+    source = "link"
+    if practitioner is None:
+        practitioner = next_round_robin_practitioner()
+        source = "round_robin" if practitioner else "none"
+        if practitioner:
+            session["ref_id"] = practitioner["id"]  # later reports and shares stay with them
     connection = db()
     connection.execute(
-        "INSERT INTO leads (practitioner_id, ref_slug, token, full_name, birth_date, birth_city,"
-        " birth_region, birth_country, numbers, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (practitioner["id"] if practitioner else None, practitioner["slug"] if practitioner else None,
+        "INSERT INTO leads (practitioner_id, ref_slug, source, token, full_name, birth_date, birth_city,"
+        " birth_region, birth_country, numbers, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (practitioner["id"] if practitioner else None,
+         practitioner["slug"] if practitioner and source == "link" else None, source,
          token, data["full_name"], data["birth_date"], data["birth_city"], data["birth_region"],
          data["birth_country"], json.dumps(numbers.as_dict()), iso(now_utc())),
     )
     connection.commit()
     return redirect(url_for("report", token=token))
+
+
+def next_round_robin_practitioner():
+    """Fairly pick the next practitioner for a visitor who arrived without a link.
+
+    Eligible: active practitioners with a personal link who haven't opted out. The one who
+    waited longest since their last assignment goes next (never-assigned first). Picking and
+    stamping happen in one write transaction, so parallel visitors can't get the same turn.
+    """
+    connection = db()
+    connection.commit()
+    connection.execute("BEGIN IMMEDIATE")
+    try:
+        row = connection.execute(
+            "SELECT id, display_name, slug FROM users WHERE role = 'practitioner' AND is_active = 1"
+            " AND round_robin = 1 AND slug IS NOT NULL"
+            " ORDER BY round_robin_at IS NOT NULL, round_robin_at, id LIMIT 1"
+        ).fetchone()
+        if row is not None:
+            # microsecond precision: several visitors in the same second must still rotate
+            connection.execute("UPDATE users SET round_robin_at = ? WHERE id = ?",
+                               (now_utc().isoformat(timespec="microseconds"), row["id"]))
+        connection.commit()
+        return row
+    except BaseException:
+        connection.rollback()
+        raise
 
 
 def lead_for_token(token: str):
@@ -236,8 +270,8 @@ def report_context(lead):
                                     (lead["practitioner_id"],)).fetchone()
     first_name = lead["full_name"].split(" ")[0]
     share_from = None
-    if lead["practitioner_id"] and lead["ref_slug"]:
-        share_from = practitioner_by_slug(lead["ref_slug"])
+    if practitioner is not None and practitioner["slug"] and practitioner["is_active"]:
+        share_from = practitioner  # shares carry the practitioner's link, however the visitor arrived
     return {"lead": lead, "items": items, "practitioner": practitioner, "first_name": first_name,
             "share_url": share_url_for(share_from)}
 

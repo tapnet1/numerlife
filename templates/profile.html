@@ -42,6 +42,12 @@
     <label for="website">Website <span class="optional">(optional)</span></label>
     <input id="website" name="website" type="url" value="{{ form.website }}" placeholder="https://">
 
+    {% if user.role == 'practitioner' %}
+      <h2 class="mt">Shared visitors</h2>
+      <label class="check"><input type="checkbox" name="round_robin" value="yes"{% if form.round_robin %} checked{% endif %}>
+        <span>Also send me visitors who arrive without a practitioner's link. They're shared fairly, in turn, among practitioners who opt in.</span></label>
+    {% endif %}
+
     <h2 class="mt">Social links</h2>
     <p class="hint">Paste a link or just your handle.</p>
     <div class="grid-2">
