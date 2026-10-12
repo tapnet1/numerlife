@@ -44,8 +44,8 @@ BASE_URL = (os.environ.get("NUMER_BASE_URL") or "http://localhost:5000").rstrip(
 NOINDEX = os.environ.get("NUMER_NOINDEX", "1") != "0"
 SITE_NAME = "numer.life"
 SITE_DESCRIPTION = (
-    "Get your free numerology report. Enter your birth name and date of birth to reveal your "
-    "Life Path, Expression, Soul Urge, Personality and Birthday numbers and what they mean."
+    "Reveal your Life Path, Expression, Soul Urge and Birthday numbers free. "
+    "Enter your birth name and date for your personal numerology report."
 )
 
 ROLES = ("admin", "practitioner")

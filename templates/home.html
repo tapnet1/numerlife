@@ -2,9 +2,9 @@
 {% from "_share.html" import share_bar %}
 {% set canonical_path = "/" %}
 {% block body_class %}page-home{% endblock %}
-{% block title %}{% if practitioner %}Free Numerology Report from {{ practitioner.display_name }} | {{ site_name }}{% else %}Free Numerology Report: Life Path, Expression &amp; Soul Urge Numbers | {{ site_name }}{% endif %}{% endblock %}
-{% block description %}Get your free numerology report. Enter your birth name and date of birth to reveal your Life Path, Expression, Soul Urge, Personality and Birthday numbers and what they mean.{% endblock %}
-{% block og_title %}Discover what your numbers say about you: free numerology report{% endblock %}
+{% block title %}{% if practitioner %}Free Numerology Report from {{ practitioner.display_name | truncate(19, True, "", 0) | trim }} | {{ site_name }}{% else %}Free Numerology Report: Your Life Path Number | {{ site_name }}{% endif %}{% endblock %}
+{% block description %}Reveal your Life Path, Expression, Soul Urge and Birthday numbers free. Enter your birth name and date for your personal numerology report.{% endblock %}
+{% block og_title %}Discover what your numbers say about you{% endblock %}
 
 {% block structured_data %}
 <script type="application/ld+json">
@@ -40,7 +40,7 @@
 <section class="hero-band">
   <div class="hero-inner">
     <p class="eyebrow">Free personal numerology report</p>
-    <h1>Discover what your numbers say about you</h1>
+    <h1>Discover what your <em>numbers</em> say about you</h1>
     <p class="lead">Your birth name and birth date hold a personal set of numbers: your Life Path, Expression, Soul Urge and more. Reveal yours in under a minute.</p>
     {% if practitioner %}
       <p class="offered">Your report is offered by <strong>{{ practitioner.display_name }}</strong></p>
