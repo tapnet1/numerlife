@@ -274,3 +274,19 @@ class CommandsTest(AppTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ErrorLogTest(AppTestCase):
+    def test_unhandled_errors_are_recorded(self):
+        log_path = os.path.join(_TMP.name, "errors.log")
+        numer.ERROR_LOG = numer.Path(log_path)
+        with numer.app.test_request_context("/admin/email/test", method="POST"):
+            try:
+                raise RuntimeError("kaboom")
+            except RuntimeError as exc:
+                body, status = numer._server_error(exc)
+        self.assertEqual(status, 500)
+        with open(log_path, encoding="utf-8") as handle:
+            text = handle.read()
+        self.assertIn("POST /admin/email/test", text)
+        self.assertIn("RuntimeError: kaboom", text)

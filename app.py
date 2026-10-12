@@ -570,8 +570,26 @@ def _client_error(error):
                            message=getattr(error, "description", "")), error.code
 
 
+ERROR_LOG = Path(os.environ.get("NUMER_ERROR_LOG") or Path(__file__).resolve().parent / "logs" / "app-errors.log")
+
+
+def _record_error(error) -> None:
+    """Append the traceback (code lines only; never request data or settings) to logs/app-errors.log."""
+    import traceback
+
+    original = getattr(error, "original_exception", None) or error
+    try:
+        ERROR_LOG.parent.mkdir(parents=True, exist_ok=True)
+        with ERROR_LOG.open("a", encoding="utf-8") as handle:
+            handle.write(f"--- {iso(now_utc())} {request.method} {request.path}\n")
+            handle.write("".join(traceback.format_exception(type(original), original, original.__traceback__)))
+    except Exception:
+        log.exception("Could not write the error log")
+
+
 @app.errorhandler(500)
-def _server_error(_error):
+def _server_error(error):
+    _record_error(error)
     return render_template("error.html", code=500,
                            message="Something went wrong on our side."), 500
 
