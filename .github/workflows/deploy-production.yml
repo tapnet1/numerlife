@@ -80,7 +80,7 @@ jobs:
           fi
           unset secret
           case "$(env_value NUMER_BASE_URL)" in
-            https://*) ;;
+            https://[A-Za-z0-9]*.[A-Za-z]*) ;;
             *) echo "::error::NUMER_BASE_URL must be set to the site's https:// address"; exit 1 ;;
           esac
           for key in NUMER_CREDENTIAL_KEY NUMER_NOINDEX; do
@@ -143,9 +143,17 @@ jobs:
           except secretbox.CredentialKeyError as exc:
               print(f"::warning::{exc}; saving third-party credentials will fail until it is fixed")
           PY
-          # Background jobs: none yet. When jobs.py arrives, install them here in a
-          # marked block (# numerlife-jobs begin/end) so re-running stays idempotent.
+          # Background jobs, installed in a marked crontab block so re-running stays idempotent.
           mkdir -p tmp logs && chmod 700 logs
+          purge_job='23 * * * * cd /home/numerlife1/numerlife && .venv/bin/python jobs.py purge-attempts >> logs/jobs.log 2>&1'
+          if command -v crontab >/dev/null; then
+            { crontab -l 2>/dev/null | sed '/# numerlife-jobs begin/,/# numerlife-jobs end/d'
+              printf '%s\n' '# numerlife-jobs begin' "$purge_job" '# numerlife-jobs end'
+            } | crontab - && echo "Scheduled jobs installed" \
+              || echo "::warning::Could not install cron jobs; add them in cPanel > Cron Jobs"
+          else
+            echo "::warning::crontab not available; add the jobs in cPanel > Cron Jobs"
+          fi
           touch tmp/restart.txt
           echo "Passenger restart requested"
           REMOTE

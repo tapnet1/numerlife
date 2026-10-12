@@ -183,6 +183,13 @@ class RateLimitTest(AppTestCase):
         # Other accounts are unaffected.
         self.assertEqual(self.login("liliana@example.com", ip="10.0.0.4").status_code, 302)
 
+    def test_login_addresses_are_stored_hashed(self):
+        self.login("owner@example.com", "bad password!!", ip="198.51.100.23")
+        with numer.open_db() as connection:
+            stored = [row[0] for row in connection.execute("SELECT ip FROM login_attempts")]
+        self.assertTrue(stored)
+        self.assertNotIn("198.51.100.23", "".join(stored))
+
     def test_ip_locks_after_many_failures(self):
         for i in range(numer.LOGIN_MAX_FAILURES_PER_IP):
             self.login(f"user{i}@example.com", "bad password!!", ip="10.0.0.9")

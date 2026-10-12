@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Your numerology report — {{ site_name }}{% endblock %}
+{% block content %}
+{% set life = items[0] %}
+<section class="hero compact">
+  <p class="eyebrow">Numerology report for</p>
+  <h1>{{ lead.full_name }}</h1>
+  <p class="muted">Born {{ lead.birth_date }} in {{ lead.birth_city }}{% if lead.birth_region %}, {{ lead.birth_region }}{% endif %}, {{ lead.birth_country }}</p>
+</section>
+
+<section class="number-card featured">
+  <div class="big-number">{{ life.number }}</div>
+  <div>
+    <p class="eyebrow">Your {{ life.label }} number</p>
+    <h2>{{ life.title }}</h2>
+    <p>{{ life.text }}</p>
+    <p class="muted small">Your {{ life.label }} shows {{ life.purpose }}.</p>
+  </div>
+</section>
+
+{% if lead.status == 'captured' %}
+  <p class="flash flash-info" role="status">Here's your full report, {{ first_name }}.</p>
+  <div class="numbers">
+    {% for item in items[1:] %}
+      <section class="number-card">
+        <div class="big-number small-number">{{ item.number or "–" }}</div>
+        <div>
+          <p class="eyebrow">{{ item.label }}: {{ item.purpose }}</p>
+          <h3>{{ item.title }}</h3>
+          <p>{{ item.text }}</p>
+        </div>
+      </section>
+    {% endfor %}
+  </div>
+{% else %}
+  <h2 class="section-title">Unlock the rest of your report</h2>
+  <div class="numbers locked">
+    {% for item in items[1:] %}
+      <section class="number-card">
+        <div class="big-number small-number" aria-label="hidden">?</div>
+        <div>
+          <p class="eyebrow">{{ item.label }}</p>
+          <p class="muted">{{ item.purpose|capitalize }}.</p>
+        </div>
+      </section>
+    {% endfor %}
+  </div>
+
+  <section class="card form-card">
+    {% if errors %}
+      <div class="flash flash-error" role="alert">
+        {% for error in errors %}<p>{{ error }}</p>{% endfor %}
+      </div>
+    {% endif %}
+    <form method="post" action="{{ url_for('unlock_report', token=lead.token) }}" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="hp" aria-hidden="true">
+        <label for="website">Leave this empty</label>
+        <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">
+      </div>
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" required autocomplete="email" value="{{ form.email or '' }}">
+      <label for="phone">Phone <span class="optional">(optional)</span></label>
+      <input id="phone" name="phone" type="tel" autocomplete="tel" maxlength="25" value="{{ form.phone or '' }}">
+
+      <label class="check">
+        <input type="checkbox" name="consent_report" value="yes" {% if form.consent_report %}checked{% endif %}>
+        <span>Email me my full report{% if practitioner %}, and share my details and report with {{ practitioner.display_name }}, who will be in touch{% endif %}.
+          See our <a href="{{ url_for('privacy') }}">privacy policy</a>.</span>
+      </label>
+      <label class="check">
+        <input type="checkbox" name="marketing_opt_in" value="yes" {% if form.marketing_opt_in %}checked{% endif %}>
+        <span>Yes, send me occasional numerology insights and offers. You can unsubscribe at any time. <span class="optional">(optional)</span></span>
+      </label>
+      <button type="submit" class="primary">Unlock my full report</button>
+    </form>
+  </section>
+{% endif %}
+
+{% if practitioner %}
+  <section class="card practitioner">
+    <p class="eyebrow">Your numerologist</p>
+    <h3>{{ practitioner.display_name }}</h3>
+    <p><a href="mailto:{{ practitioner.email }}">{{ practitioner.email }}</a></p>
+  </section>
+{% endif %}
+{% endblock %}

@@ -1,8 +1,54 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="hero">
+  <p class="eyebrow">Free personal numerology report</p>
   <h1>Discover what your numbers say about you</h1>
-  <p class="lead">Your name and birth date hold a personal set of numbers: your Life Path, Expression, Soul Urge and more. Get your free numerology report.</p>
-  <p class="muted">The report form is coming soon.</p>
+  <p class="lead">Your birth name and birth date hold a personal set of numbers: your Life Path, Expression, Soul Urge and more.</p>
+  {% if practitioner %}
+    <p class="offered">Your report is offered by <strong>{{ practitioner.display_name }}</strong></p>
+  {% endif %}
+</section>
+
+<section class="card form-card">
+  {% if errors %}
+    <div class="flash flash-error" role="alert">
+      {% for error in errors %}<p>{{ error }}</p>{% endfor %}
+    </div>
+  {% endif %}
+  <form method="post" action="{{ url_for('start_report') }}" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="hp" aria-hidden="true">
+      <label for="website">Leave this empty</label>
+      <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">
+    </div>
+
+    <label for="full_name">Full name at birth</label>
+    <input id="full_name" name="full_name" type="text" required maxlength="100" autocomplete="name"
+           value="{{ form.full_name or '' }}" placeholder="First, middle and last name">
+    <p class="hint">Use the full name on your birth certificate, including middle names.</p>
+
+    <label for="birth_date">Date of birth</label>
+    <input id="birth_date" name="birth_date" type="date" required min="1900-01-01" value="{{ form.birth_date or '' }}">
+
+    <fieldset>
+      <legend>Place of birth</legend>
+      <div class="grid-3">
+        <div>
+          <label for="birth_city">City</label>
+          <input id="birth_city" name="birth_city" type="text" required maxlength="80" value="{{ form.birth_city or '' }}">
+        </div>
+        <div>
+          <label for="birth_region">State / province <span class="optional">(optional)</span></label>
+          <input id="birth_region" name="birth_region" type="text" maxlength="80" value="{{ form.birth_region or '' }}">
+        </div>
+        <div>
+          <label for="birth_country">Country</label>
+          <input id="birth_country" name="birth_country" type="text" required maxlength="80" value="{{ form.birth_country or '' }}">
+        </div>
+      </div>
+    </fieldset>
+
+    <button type="submit" class="primary">Reveal my numbers</button>
+  </form>
 </section>
 {% endblock %}

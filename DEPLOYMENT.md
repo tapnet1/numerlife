@@ -95,8 +95,14 @@ added by Marco through the GitHub web editor.
     (a redirect counts as a failure), and `/admin` must return 302 when signed out.
 12. Always deletes the temporary SSH key.
 
-No cron jobs yet. When `jobs.py` arrives, the deploy installs them in a marked crontab block
-(`# numerlife-jobs begin` / `# numerlife-jobs end`) so re-runs stay idempotent.
+Cron jobs live in a marked crontab block (`# numerlife-jobs begin` / `# numerlife-jobs end`) that
+each deploy rewrites, so re-runs stay idempotent:
+
+| Schedule | Job | What it does |
+|---|---|---|
+| hourly at :23 | `jobs.py purge-attempts` | deletes hashed sign-in/form attempt records older than a day |
+
+Output goes to `logs/jobs.log`.
 
 ## One-time steps after the first deploy
 
@@ -105,6 +111,19 @@ Create the admin account (cPanel → Terminal as `numerlife1`):
 ```bash
 cd ~/numerlife && set -a && . ./.env && set +a && .venv/bin/flask --app app create-owner
 ```
+
+## Practitioner accounts (until invitations arrive)
+
+Create a practitioner with a personal link (cPanel → Terminal as `numerlife1`):
+
+```bash
+cd ~/numerlife && set -a && . ./.env && set +a
+.venv/bin/flask --app app add-practitioner          # prompts: email, name, link name, password
+.venv/bin/flask --app app set-slug                  # change someone's link name later
+```
+
+Link names are 2-40 lowercase letters, numbers or dashes; reserved words (admin, login, privacy…)
+are refused.
 
 ## Rolling back
 

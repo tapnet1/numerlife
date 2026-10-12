@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import datetime as dt
 import functools
+import hashlib
 import hmac
 import logging
 import os
@@ -15,6 +16,7 @@ import secrets
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import click
 from flask import (
@@ -63,7 +65,7 @@ app.config.update(
     SECRET_KEY=_secret,
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
-    SESSION_COOKIE_SECURE=BASE_URL.startswith("https://"),
+    SESSION_COOKIE_SECURE=urlsplit(BASE_URL).scheme == "https" and bool(urlsplit(BASE_URL).hostname),
     SESSION_COOKIE_NAME="numer_session",
     PERMANENT_SESSION_LIFETIME=dt.timedelta(hours=12),
     MAX_CONTENT_LENGTH=100 * 1024,  # uploads over ~120 KB hang at Passenger on this server
@@ -94,9 +96,44 @@ CREATE TABLE IF NOT EXISTS login_attempts (
 );
 CREATE INDEX IF NOT EXISTS idx_login_attempts_ip ON login_attempts (ip, created_at);
 CREATE INDEX IF NOT EXISTS idx_login_attempts_email ON login_attempts (email, created_at);
+
+CREATE TABLE IF NOT EXISTS leads (
+    id               INTEGER PRIMARY KEY,
+    practitioner_id  INTEGER REFERENCES users(id),
+    ref_slug         TEXT,
+    token            TEXT NOT NULL UNIQUE,
+    full_name        TEXT NOT NULL,
+    birth_date       TEXT NOT NULL,
+    birth_city       TEXT NOT NULL,
+    birth_region     TEXT NOT NULL DEFAULT '',
+    birth_country    TEXT NOT NULL,
+    numbers          TEXT NOT NULL,
+    email            TEXT,
+    phone            TEXT NOT NULL DEFAULT '',
+    consent_report   INTEGER NOT NULL DEFAULT 0,
+    marketing_opt_in INTEGER NOT NULL DEFAULT 0,
+    status           TEXT NOT NULL DEFAULT 'started' CHECK (status IN ('started', 'captured')),
+    created_at       TEXT NOT NULL,
+    captured_at      TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_leads_practitioner ON leads (practitioner_id, created_at);
+
+CREATE TABLE IF NOT EXISTS form_attempts (
+    id         INTEGER PRIMARY KEY,
+    ip_hash    TEXT NOT NULL,
+    kind       TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_form_attempts ON form_attempts (ip_hash, kind, created_at);
 """
 
-REQUIRED_TABLES = {"users", "login_attempts"}
+# Columns added after a table first shipped: (table, column, definition).
+# initialize() adds any that are missing, so existing databases upgrade in place.
+ADDED_COLUMNS = (
+    ("users", "slug", "TEXT"),
+)
+
+REQUIRED_TABLES = {"users", "login_attempts", "leads", "form_attempts"}
 
 
 def now_utc() -> dt.datetime:
@@ -135,6 +172,11 @@ def initialize(path: str | None = None) -> None:
     with open_db(str(db_path)) as connection:
         connection.execute("PRAGMA journal_mode = WAL")
         connection.executescript(SCHEMA)
+        for table, column, definition in ADDED_COLUMNS:
+            existing = {row[1] for row in connection.execute(f"PRAGMA table_info({table})")}
+            if column not in existing:
+                connection.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+        connection.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_slug ON users (slug)")
     try:
         db_path.chmod(0o600)
     except OSError:
@@ -158,7 +200,8 @@ def _close_db(_exc):
 # Users
 # --------------------------------------------------------------------------
 def create_user(email: str, password: str, role: str, display_name: str = "",
-                invited_by: int | None = None, path: str | None = None) -> int:
+                invited_by: int | None = None, path: str | None = None,
+                slug: str | None = None) -> int:
     email = email.strip()
     if role not in ROLES:
         raise ValueError("Unknown role")
@@ -168,10 +211,10 @@ def create_user(email: str, password: str, role: str, display_name: str = "",
         raise ValueError(f"Password must be at least {MIN_PASSWORD_LENGTH} characters")
     with open_db(path) as connection:
         cursor = connection.execute(
-            "INSERT INTO users (email, password_hash, role, display_name, invited_by, created_at)"
-            " VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO users (email, password_hash, role, display_name, invited_by, slug, created_at)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?)",
             (email, generate_password_hash(password), role, display_name.strip(),
-             invited_by, iso(now_utc())),
+             invited_by, slug, iso(now_utc())),
         )
         return cursor.lastrowid
 
@@ -264,9 +307,10 @@ def _security_headers(response):
     )
     if app.config["SESSION_COOKIE_SECURE"]:
         response.headers.setdefault("Strict-Transport-Security", "max-age=86400")
-    if NOINDEX:
+    if NOINDEX or request.endpoint in ("report", "unlock_report", "start_report"):
+        # Personal report pages are never indexed, even after launch.
         response.headers["X-Robots-Tag"] = "noindex, nofollow"
-    if session.get("user_id") or request.endpoint == "login":
+    if session.get("user_id") or request.endpoint in ("login", "report", "unlock_report", "start_report"):
         response.headers["Cache-Control"] = "no-store"  # signed-in pages never cached
     return response
 
@@ -287,7 +331,10 @@ def _template_globals():
 # Login rate limiting
 # --------------------------------------------------------------------------
 def client_ip() -> str:
-    return request.remote_addr or "unknown"
+    """The visitor's address as a keyed hash: enough to rate-limit, never stored in the clear."""
+    key = app.config["SECRET_KEY"].encode()
+    address = (request.remote_addr or "unknown").encode()
+    return hmac.new(key, address, hashlib.sha256).hexdigest()[:32]
 
 
 def login_blocked(ip: str, email: str) -> bool:
@@ -344,11 +391,6 @@ def health():
     return {"status": "ok"}
 
 
-@app.get("/")
-def home():
-    return render_template("home.html")
-
-
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "GET":
@@ -401,7 +443,7 @@ def dashboard():
 @role_required("admin")
 def admin():
     users = db().execute(
-        "SELECT id, email, role, display_name, is_active, created_at, last_login_at"
+        "SELECT id, email, role, display_name, slug, is_active, created_at, last_login_at"
         " FROM users ORDER BY created_at"
     ).fetchall()
     return render_template("admin.html", users=users)
@@ -501,3 +543,8 @@ def create_owner_command(email, display_name, password):
     except sqlite3.IntegrityError:
         raise click.ClickException("An account with that email already exists.")
     click.echo("Admin account created.")
+
+
+# Public report form and practitioner links. Imported last: it uses the helpers above,
+# and its catch-all /<slug> route must not shadow anything defined here.
+import intake  # noqa: E402,F401
