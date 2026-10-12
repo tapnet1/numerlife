@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ site_name }} — Free numerology report{% endblock %}</title>
+  <meta name="description" content="{% block description %}{{ site_description }}{% endblock %}">
+  {% if noindex %}<meta name="robots" content="noindex, nofollow">{% endif %}
+  <link rel="canonical" href="{{ base_url }}{{ request.path }}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ site_name }}">
+  <meta property="og:title" content="{{ self.title() }}">
+  <meta property="og:description" content="{{ self.description() }}">
+  <meta property="og:url" content="{{ base_url }}{{ request.path }}">
+  <meta name="twitter:card" content="summary">
+  <meta name="theme-color" content="#3b2a6b">
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="{{ url_for('home') }}">
+      <img src="{{ url_for('static', filename='favicon.svg') }}" alt="" width="28" height="28">
+      <span>{{ site_name }}</span>
+    </a>
+    <nav>
+      {% if user %}
+        <a href="{{ url_for('dashboard') }}">Dashboard</a>
+        {% if user.role == 'admin' %}<a href="{{ url_for('admin') }}">Admin</a>{% endif %}
+        <form method="post" action="{{ url_for('logout') }}" class="inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="link">Sign out</button>
+        </form>
+      {% else %}
+        <a href="{{ url_for('login') }}">Practitioner sign in</a>
+      {% endif %}
+    </nav>
+  </header>
+
+  <main class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <p class="flash flash-{{ category }}" role="status">{{ message }}</p>
+      {% endfor %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer">
+    <p>&copy; {{ year }} {{ site_name }}</p>
+  </footer>
+</body>
+</html>

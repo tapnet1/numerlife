@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}{{ code }} — {{ site_name }}{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1>{% if code == 404 %}Page not found{% elif code == 403 %}Not allowed{% elif code == 429 %}Too many requests{% else %}Something went wrong{% endif %}</h1>
+  {% if message %}<p>{{ message }}</p>{% endif %}
+  <p><a href="{{ url_for('home') }}">Back to the home page</a></p>
+</section>
+{% endblock %}

@@ -6,7 +6,10 @@ tmp/
 logs/
 
 # Local data
+instance/
 *.db
+*.db-wal
+*.db-shm
 *.db.*.bak
 
 # Python
