@@ -6,10 +6,17 @@ from test_app import PASSWORD, AppTestCase, numer, token_from
 import billing
 
 
+def _in_app(fn, *args):
+    with numer.app.test_request_context("/"):
+        return fn(*args)
+
+
 class BillingTestCase(AppTestCase):
     def setUp(self):
         super().setUp()
         self.tapnet_id = numer.create_user("tapnet@example.com", PASSWORD, "practitioner", "TAPNET", slug="tapnet")
+        with numer.open_db() as connection:
+            connection.execute("INSERT INTO settings (key, value) VALUES ('platform_user_id', ?)", (str(self.tapnet_id),))
         self.maria_id = numer.create_user("maria@example.com", PASSWORD, "practitioner", "Maria",
                                           invited_by=self.practitioner_id, slug="maria")
 
@@ -117,6 +124,7 @@ class AdminBillingTest(BillingTestCase):
 
     def test_create_platform_account(self):
         with numer.open_db() as connection:
+            connection.execute("DELETE FROM settings WHERE key = 'platform_user_id'")
             connection.execute("DELETE FROM users WHERE id = ?", (self.tapnet_id,))
         self.login("owner@example.com")
         self.assertIn("Create numer.life/tapnet", self.client.get("/admin").get_data(as_text=True))
@@ -128,6 +136,50 @@ class AdminBillingTest(BillingTestCase):
                          ("TAPNET", "complimentary", 0))
         self.assertEqual(self.client.get("/tapnet").status_code, 200)  # link works for visitors
         self.assertIn("TAPNET", self.client.get("/tapnet").get_data(as_text=True))
+
+
+class ReviewFollowupTest(BillingTestCase):
+    def test_one_reward_per_paid_period_even_across_months(self):
+        self.set_plan(self.maria_id, "active", "2026-12-01")  # activated Oct 31 for 31 days
+        billing.accrue_referrals(dt.date(2026, 10, 31))
+        billing.accrue_referrals(dt.date(2026, 11, 1))
+        self.assertEqual(self.balances()[self.practitioner_id], 100)
+        self.set_plan(self.maria_id, "active", "2027-01-01")  # renewed
+        billing.accrue_referrals(dt.date(2026, 12, 2))
+        self.assertEqual(self.balances()[self.practitioner_id], 200)
+
+    def test_platform_is_an_explicit_marker_not_a_slug(self):
+        with numer.open_db() as connection:
+            connection.execute("DELETE FROM settings WHERE key = 'platform_user_id'")
+        self.assertIsNone(billing.platform_account(numer.connect()))  # a legacy "tapnet" owner isn't TAPNET
+        self.login("owner@example.com")
+        page = self.client.get("/admin")
+        html = self.client.post("/admin/billing/platform", follow_redirects=True, data={
+            "csrf_token": token_from(page.get_data(as_text=True)), "email": "new@example.com",
+            "password": PASSWORD}).get_data(as_text=True)
+        self.assertIn("already used by TAPNET", html)
+        self.assertIsNone(billing.platform_account(numer.connect()))
+
+    def test_expired_paid_plans_are_not_counted_as_paying(self):
+        self.set_plan(self.maria_id, "active", "2020-01-31")
+        self.assertEqual(_in_app(billing.earnings_summary, self.practitioner_id)["paying"], 0)
+        self.assertEqual(_in_app(billing.billing_overview)["paying"], 0)
+        self.set_plan(self.maria_id, "active", "2999-01-31")
+        self.assertEqual(_in_app(billing.earnings_summary, self.practitioner_id)["paying"], 1)
+        self.assertEqual(_in_app(billing.billing_overview)["mrr"], 500)
+
+    def test_cli_activation_sets_paid_through(self):
+        runner = numer.app.test_cli_runner()
+        result = runner.invoke(args=["set-plan", "--email", "maria@example.com", "--plan", "active"])
+        self.assertIn("Plan updated.", result.output)
+        with numer.open_db() as connection:
+            paid_through = connection.execute("SELECT paid_through FROM users WHERE id = ?",
+                                              (self.maria_id,)).fetchone()[0]
+        self.assertGreater(paid_through, dt.date.today().isoformat())
+        runner.invoke(args=["set-plan", "--email", "maria@example.com", "--plan", "complimentary"])
+        with numer.open_db() as connection:
+            self.assertIsNone(connection.execute("SELECT paid_through FROM users WHERE id = ?",
+                                                 (self.maria_id,)).fetchone()[0])
 
 
 class DashboardEarningsTest(BillingTestCase):

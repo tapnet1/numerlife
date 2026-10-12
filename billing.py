@@ -58,8 +58,17 @@ app.jinja_env.filters["money"] = money
 # Tree
 # --------------------------------------------------------------------------
 def platform_account(connection=None):
+    """The TAPNET account, identified by an explicit marker (never by its link name alone)."""
     connection = connection or db()
-    return connection.execute("SELECT * FROM users WHERE slug = ?", (PLATFORM_SLUG,)).fetchone()
+    return connection.execute(
+        "SELECT users.* FROM settings JOIN users ON users.id = CAST(settings.value AS INTEGER)"
+        " WHERE settings.key = 'platform_user_id'").fetchone()
+
+
+def is_paying(user, today: dt.date | None = None) -> bool:
+    today = today or now_utc().date()
+    return bool(user["is_active"] and user["plan"] in PAID_PLANS and user["paid_through"]
+                and user["paid_through"] >= today.isoformat())
 
 
 def referrer_id(connection, user) -> int | None:
@@ -131,14 +140,10 @@ def record_sale(connection, practitioner_id: int, gross_cents: int, reference: s
     return added
 
 
-def month_key(day: dt.date) -> str:
-    return f"{day.year:04d}-{day.month:02d}"
-
-
 def accrue_referrals(today: dt.date | None = None) -> dict:
-    """Credit this month's referral rewards. Safe to run daily: one entry per practitioner per month."""
+    """Credit referral rewards: one per paid billing period (each new paid-through date), so a
+    period that spans two calendar months still earns once. Safe to run daily."""
     today = today or now_utc().date()
-    month = month_key(today)
     stats = {"credited": 0, "already": 0, "no_referrer": 0}
     with open_db() as connection:
         paying = connection.execute(
@@ -149,8 +154,9 @@ def accrue_referrals(today: dt.date | None = None) -> dict:
             if earner is None:
                 stats["no_referrer"] += 1
                 continue
-            if post(connection, earner, "referral_credit", REFERRAL_CENTS, f"referral:{month}:{user['id']}",
-                    source_user_id=user["id"], note=f"{user['display_name']}, {month}"):
+            period = user["paid_through"]
+            if post(connection, earner, "referral_credit", REFERRAL_CENTS, f"referral:{user['id']}:{period}",
+                    source_user_id=user["id"], note=f"{user['display_name']}, paid through {period}"):
                 stats["credited"] += 1
             else:
                 stats["already"] += 1
@@ -160,8 +166,8 @@ def accrue_referrals(today: dt.date | None = None) -> dict:
 def earnings_summary(user_id: int) -> dict:
     connection = db()
     referred = connection.execute(
-        "SELECT COUNT(*) AS total, SUM(plan IN ('active')) AS paying FROM users WHERE invited_by = ? AND is_active = 1",
-        (user_id,)).fetchone()
+        "SELECT COUNT(*) AS total, SUM(plan IN ('active') AND paid_through >= ?) AS paying FROM users"
+        " WHERE invited_by = ? AND is_active = 1", (now_utc().date().isoformat(), user_id)).fetchone()
     user = connection.execute("SELECT plan, paid_through FROM users WHERE id = ?", (user_id,)).fetchone()
     recent = connection.execute("SELECT kind, amount_cents, note, created_at FROM ledger WHERE user_id = ?"
                                 " ORDER BY id DESC LIMIT 5", (user_id,)).fetchall()
@@ -189,7 +195,7 @@ def billing_overview() -> dict:
         " JOIN users ON users.id = ledger.user_id LEFT JOIN users AS source ON source.id = ledger.source_user_id"
         " ORDER BY ledger.id DESC LIMIT 25").fetchall()
     platform = platform_account(connection)
-    paying = sum(1 for u in users if u["plan"] in PAID_PLANS and u["is_active"])
+    paying = sum(1 for u in users if is_paying(u))
     return {"users": users, "entries": entries, "platform": platform, "plans": PLANS, "kinds": KINDS,
             "paying": paying, "mrr": paying * SUBSCRIPTION_CENTS}
 
@@ -226,22 +232,28 @@ def admin_create_platform():
 
     email = (request.form.get("email") or "").strip()[:254]
     password = request.form.get("password") or ""
+    taken = db().execute("SELECT display_name FROM users WHERE slug = ?", (PLATFORM_SLUG,)).fetchone()
     if platform_account() is not None:
         flash("The numer.life/tapnet account already exists.", "error")
+    elif taken is not None:
+        flash(f"The link numer.life/{PLATFORM_SLUG} is already used by {taken['display_name']}. "
+              "Change their link first.", "error")
     elif not EMAIL_RE.match(email):
         flash("Enter the email address for the TAPNET account.", "error")
     elif len(password) < MIN_PASSWORD_LENGTH:
         flash(f"Choose a password of at least {MIN_PASSWORD_LENGTH} characters for the TAPNET account.", "error")
     else:
         try:
-            create_user(email, password, "practitioner", "TAPNET",
-                        invited_by=None, slug=PLATFORM_SLUG)
+            platform_id = create_user(email, password, "practitioner", "TAPNET",
+                                      invited_by=None, slug=PLATFORM_SLUG)
         except sqlite3.IntegrityError:
             flash("That email already has an account.", "error")
         else:
             with open_db() as connection:
-                connection.execute("UPDATE users SET plan = 'complimentary', round_robin = 0 WHERE slug = ?",
-                                   (PLATFORM_SLUG,))
+                connection.execute("UPDATE users SET plan = 'complimentary', round_robin = 0 WHERE id = ?",
+                                   (platform_id,))
+                connection.execute("INSERT INTO settings (key, value) VALUES ('platform_user_id', ?)"
+                                   " ON CONFLICT(key) DO UPDATE SET value = excluded.value", (str(platform_id),))
             flash("Created numer.life/tapnet. Sign in with that email to edit its profile; its credits show here.",
                   "info")
     return redirect(url_for("admin") + "#billing")
@@ -271,8 +283,16 @@ def admin_adjust():
 @app.cli.command("set-plan")
 @click.option("--email", prompt=True)
 @click.option("--plan", type=click.Choice(sorted(PLANS)), prompt=True)
-def set_plan_command(email, plan):
+@click.option("--paid-through", "paid_through", default="", help="YYYY-MM-DD; paid plans default to 31 days from today")
+def set_plan_command(email, plan, paid_through):
     """Set a practitioner's plan (e.g. complimentary for Liliana)."""
+    until = None
+    if plan in PAID_PLANS:
+        try:
+            until = dt.date.fromisoformat(paid_through).isoformat()
+        except ValueError:
+            until = (now_utc().date() + dt.timedelta(days=31)).isoformat()
     with open_db() as connection:
-        changed = connection.execute("UPDATE users SET plan = ? WHERE email = ?", (plan, email)).rowcount
+        changed = connection.execute("UPDATE users SET plan = ?, paid_through = ? WHERE email = ?",
+                                     (plan, until, email)).rowcount
     click.echo("Plan updated." if changed else "No account with that email.")
