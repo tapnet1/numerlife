@@ -115,11 +115,13 @@ def dashboard():
     slug = row["slug"] if row else None
     profile = json.loads(row["profile"] or "{}") if row else {}
     profile_missing = not any(profile.get(k) for k in ("booking_url", "phone", "website", "contact_email"))
+    referred_count = connection.execute("SELECT COUNT(*) FROM users WHERE invited_by = ?", (user["id"],)).fetchone()[0]
     total = stats["total"] or 0
     unlock_rate = round(100 * (stats["unlocked"] or 0) / total) if total else 0
     return render_template(
         "dashboard.html", stats=stats, total=total, unlock_rate=unlock_rate, recent=recent,
         share_url=f"{BASE_URL}/{slug}" if slug else None, stages=STAGES, profile_missing=profile_missing,
+        referred_count=referred_count,
     )
 
 

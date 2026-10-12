@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Join {{ site_name }} | Practitioner invite{% endblock %}
+{% block content %}
+<section class="card form-card join-card">
+  <p class="eyebrow center">You're invited</p>
+  <h1 class="form-title">{{ invite.inviter_name }} invited you to {{ site_name }}</h1>
+  <p class="center muted">Get a personal link that gives visitors a free numerology report, and receive every report request as a lead in your own dashboard, with contact details and numbers.</p>
+  {% if errors %}<div class="flash flash-error" role="alert">{% for e in errors %}<p>{{ e }}</p>{% endfor %}</div>{% endif %}
+  <form method="post" action="{{ url_for('join', token=invite.token) }}" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="display_name">Your name (as clients will see it)</label>
+    <input id="display_name" name="display_name" type="text" maxlength="80" required value="{{ form.display_name }}" autocomplete="name">
+    <label for="email">Email (you'll sign in with this)</label>
+    <input id="email" name="email" type="email" required value="{{ form.email }}" autocomplete="email">
+    <label for="slug">Your personal link</label>
+    <div class="slug-field"><span>{{ base_host }}/</span><input id="slug" name="slug" type="text" maxlength="40" required value="{{ form.slug }}" autocapitalize="none" spellcheck="false" placeholder="yourname"></div>
+    <p class="hint">Lowercase letters, numbers and dashes. You can change it later.</p>
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" minlength="12" required autocomplete="new-password">
+    <label for="confirm_password">Confirm password</label>
+    <input id="confirm_password" name="confirm_password" type="password" minlength="12" required autocomplete="new-password">
+    <p class="hint">At least 12 characters. A short phrase works well.</p>
+    <label class="check"><input type="checkbox" name="accept_terms" value="yes">
+      <span>I agree to the terms of use and the <a href="{{ url_for('privacy') }}" target="_blank">privacy policy</a>.</span></label>
+    <button type="submit" class="primary">Create my account</button>
+  </form>
+</section>
+{% endblock %}
