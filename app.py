@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import datetime as dt
 import functools
+import hashlib
 import hmac
 import logging
 import os
@@ -330,7 +331,10 @@ def _template_globals():
 # Login rate limiting
 # --------------------------------------------------------------------------
 def client_ip() -> str:
-    return request.remote_addr or "unknown"
+    """The visitor's address as a keyed hash: enough to rate-limit, never stored in the clear."""
+    key = app.config["SECRET_KEY"].encode()
+    address = (request.remote_addr or "unknown").encode()
+    return hmac.new(key, address, hashlib.sha256).hexdigest()[:32]
 
 
 def login_blocked(ip: str, email: str) -> bool:

@@ -65,6 +65,16 @@ class NameEdgeCasesTest(unittest.TestCase):
         self.assertEqual(n.letters_of("Ŋgozi"), "NGGOZI")
         self.assertEqual(n.letters_of("Ørsted Æble"), "ORSTEDAEBLE")
 
+    def test_hyphens_and_apostrophes_split_name_parts(self):
+        self.assertEqual(n.split_vowels("Lynn-Marie"), n.split_vowels("Lynn Marie"))
+        self.assertEqual(n.split_vowels("O'Lynn"), n.split_vowels("O Lynn"))
+
+    def test_rare_latin_letters_are_spelled(self):
+        self.assertEqual(n.letters_of("Ɖ"), "D")       # LATIN CAPITAL LETTER AFRICAN D
+        self.assertEqual(n.letters_of("Ɣ"), "G")       # LATIN CAPITAL LETTER GAMMA
+        self.assertEqual(n.letters_of("ƛ"), "L")       # LATIN SMALL LETTER LAMBDA WITH STROKE
+        self.assertEqual(n.unsupported_letters("Ɖɣƛ"), set())
+
     def test_non_latin_scripts_are_reported_not_dropped(self):
         self.assertEqual(n.unsupported_letters("José Łukasz Əli"), set())
         self.assertTrue(n.unsupported_letters("Иван"))

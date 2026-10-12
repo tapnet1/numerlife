@@ -10,8 +10,6 @@ Leads that arrive through numer.life/<slug> belong to that practitioner.
 from __future__ import annotations
 
 import datetime as dt
-import hashlib
-import hmac
 import json
 import re
 import secrets
@@ -23,6 +21,7 @@ from flask import abort, redirect, render_template, request, session, url_for
 import numerology
 from app import (
     app,
+    client_ip,
     create_user,
     current_user,
     db,
@@ -89,8 +88,7 @@ def referring_practitioner():
 # Abuse protection: per-IP limits (IPs stored only as keyed hashes) and a honeypot.
 # --------------------------------------------------------------------------
 def ip_hash() -> str:
-    key = app.config["SECRET_KEY"].encode()
-    return hmac.new(key, (request.remote_addr or "unknown").encode(), hashlib.sha256).hexdigest()[:32]
+    return client_ip()
 
 
 def reserve_attempt(kind: str, limit: int) -> bool:

@@ -32,7 +32,10 @@ _LATIN_NAMED = {
     "SHARP S": "SS", "AE": "AE", "OE": "OE", "ETH": "D", "THORN": "TH", "ENG": "NG",
     "SCHWA": "E", "TURNED E": "E", "REVERSED E": "E", "OPEN E": "E", "OPEN O": "O",
     "DOTLESS I": "I", "DOTLESS J": "J", "LONG S": "S", "YOGH": "Y", "WYNN": "W", "KRA": "K",
-    "EZH": "Z", "GLOTTAL STOP": "", "ALPHA": "A",
+    "EZH": "Z", "GLOTTAL STOP": "",
+    # Latin letters named after Greek ones
+    "ALPHA": "A", "BETA": "B", "GAMMA": "G", "DELTA": "D", "EPSILON": "E", "IOTA": "I",
+    "LAMBDA": "L", "OMEGA": "O", "UPSILON": "U", "PHI": "PH", "CHI": "CH", "THETA": "TH",
 }
 
 
@@ -61,6 +64,9 @@ def _latin_to_ascii(ch: str) -> str | None:
     for key, value in _LATIN_NAMED.items():
         if base == key or base.endswith(" " + key) or base.startswith(key + " "):
             return value
+    last = base.split()[-1]  # e.g. "AFRICAN D", "INSULAR G", "TURNED V"
+    if len(last) == 1 and "A" <= last <= "Z":
+        return last
     return None
 
 
@@ -87,7 +93,17 @@ def letters_of(name: str) -> str:
 def split_vowels(full_name: str) -> tuple[str, str]:
     """Vowel and consonant letters; Y is a vowel only in a name part with no other vowel."""
     vowels, consonants = [], []
-    for part in full_name.split():
+    # Name parts are split at anything that isn't a letter or accent (spaces, hyphens, apostrophes).
+    parts, current = [], []
+    for ch in unicodedata.normalize("NFKD", full_name):
+        if ch.isalpha() or unicodedata.combining(ch):
+            current.append(ch)
+        elif current:
+            parts.append("".join(current))
+            current = []
+    if current:
+        parts.append("".join(current))
+    for part in parts:
         letters = letters_of(part)
         y_is_vowel = not any(ch in VOWELS for ch in letters)
         for ch in letters:
