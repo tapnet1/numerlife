@@ -197,6 +197,15 @@ class AdminTestSendTest(EmailTestCase):
         self.assertIn("Alex", body(self.smtp.sent[0], "html"))
         self.assertIn("Recent emails", response.get_data(as_text=True))
 
+    def test_works_before_any_practitioner_exists(self):
+        with numer.open_db() as connection:
+            connection.execute("DELETE FROM users WHERE role = 'practitioner'")
+        self.login("owner@example.com")
+        with mock.patch.object(mailer, "connect", self.smtp):
+            response = self.post_test(to="tapnet1@gmail.com")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Sent 4 test emails", response.get_data(as_text=True))
+
     def test_reports_problems(self):
         self.login("owner@example.com")
         with mock.patch.object(mailer, "connect", FakeSMTP(fail=OSError("down"))):

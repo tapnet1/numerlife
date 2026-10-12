@@ -365,9 +365,12 @@ def sample_lead() -> dict:
 
 
 def sample_practitioner():
-    row = db().execute("SELECT * FROM users WHERE role = 'practitioner' AND is_active = 1 AND slug IS NOT NULL"
-                       " ORDER BY created_at LIMIT 1").fetchone()
-    return row or current_user()
+    connection = db()
+    row = connection.execute("SELECT * FROM users WHERE role = 'practitioner' AND is_active = 1"
+                             " ORDER BY slug IS NULL, created_at LIMIT 1").fetchone()
+    if row is None:  # no practitioners yet: use the admin's own full account row
+        row = connection.execute("SELECT * FROM users WHERE id = ?", (current_user()["id"],)).fetchone()
+    return row
 
 
 @app.context_processor
