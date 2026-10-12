@@ -103,7 +103,7 @@ jobs:
           # Install/upgrade dependencies before any application module is imported.
           test -x .venv/bin/python
           .venv/bin/python -m pip install --disable-pip-version-check --quiet -r requirements.txt
-          .venv/bin/python -c "import flask, cryptography; print('Dependencies verified')"
+          .venv/bin/python -c "import flask, cryptography, segno; print('Dependencies verified')"
           # Load .env through the Passenger entry point, back up the SQLite database with
           # the online backup API, then create missing tables.
           .venv/bin/python - <<'PY'

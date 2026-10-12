@@ -80,11 +80,8 @@
 {% endif %}
 
 {% if practitioner %}
-  <section class="card practitioner">
-    <p class="eyebrow">Your numerologist</p>
-    <h3>{{ practitioner.display_name }}</h3>
-    <p><a href="mailto:{{ practitioner.email }}">{{ practitioner.email }}</a></p>
-  </section>
+  {% set card = contact_card(practitioner) %}
+  {% include "_contact_card.html" %}
 {% endif %}
 {{ share_bar(share_url, "Know someone who'd love this?") }}
 {% endblock %}

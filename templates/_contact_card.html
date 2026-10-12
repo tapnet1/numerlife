@@ -1,0 +1,15 @@
+<section class="card practitioner">
+  <p class="eyebrow">Your numerologist</p>
+  <h3>{{ card.name }}</h3>
+  {% if card.headline %}<p class="pc-headline">{{ card.headline }}</p>{% endif %}
+  {% if card.bio %}<p class="pc-bio">{{ card.bio }}</p>{% endif %}
+  <div class="pc-actions">
+    {% if card.booking_url %}<a class="btn" href="{{ card.booking_url }}" target="_blank" rel="noopener">Book a reading</a>{% endif %}
+    {% if card.email %}<a class="btn-secondary" href="mailto:{{ card.email }}">Email</a>{% endif %}
+    {% if card.phone %}<a class="btn-secondary" href="tel:{{ card.phone | replace(' ', '') }}">Call {{ card.phone }}</a>{% endif %}
+    {% if card.website %}<a class="btn-secondary" href="{{ card.website }}" target="_blank" rel="noopener">Website</a>{% endif %}
+  </div>
+  {% if card.socials %}
+    <p class="pc-socials">{% for s in card.socials %}<a href="{{ s.url }}" target="_blank" rel="noopener">{{ s.label }}</a>{% endfor %}</p>
+  {% endif %}
+</section>
