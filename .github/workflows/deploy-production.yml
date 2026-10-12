@@ -70,6 +70,22 @@ jobs:
           test -f passenger_wsgi.py
           test -f .env
           test -z "$(git status --porcelain --untracked-files=no)"
+          # Required settings: fail on the essentials, warn on the rest. Values are never printed.
+          env_value() { grep -m1 "^$1=" .env | cut -d= -f2- || true; }
+          grep -q "^NUMER_DB=." .env || { echo "::error::NUMER_DB is missing from .env"; exit 1; }
+          secret="$(env_value NUMER_SECRET_KEY)"
+          if [ "${#secret}" -lt 32 ] || [ "$secret" = "change-me" ]; then
+            echo "::error::NUMER_SECRET_KEY must be a random value of at least 32 characters"
+            exit 1
+          fi
+          unset secret
+          case "$(env_value NUMER_BASE_URL)" in
+            https://*) ;;
+            *) echo "::error::NUMER_BASE_URL must be set to the site's https:// address"; exit 1 ;;
+          esac
+          for key in NUMER_CREDENTIAL_KEY NUMER_NOINDEX; do
+            grep -q "^${key}=." .env || echo "::warning::${key} is missing from .env"
+          done
           git fetch origin main
           # Deploy exactly the commit that passed the tests. If main moved on since,
           # stop: run the workflow again so the newer commit is tested first.
@@ -78,18 +94,16 @@ jobs:
             exit 1
           fi
           git merge --ff-only "$tested_sha"
+          # A local commit ahead of origin/main would make the merge a no-op; insist on exact.
+          if [ "$(git rev-parse HEAD)" != "$tested_sha" ]; then
+            echo "::error::Server is not on the tested commit (local changes on main?); fix the server checkout"
+            exit 1
+          fi
           echo "Deployed commit: $tested_sha"
           # Install/upgrade dependencies before any application module is imported.
           test -x .venv/bin/python
           .venv/bin/python -m pip install --disable-pip-version-check --quiet -r requirements.txt
           .venv/bin/python -c "import flask, cryptography; print('Dependencies verified')"
-          # Required settings: fail on the essentials, warn on the rest. Values are never printed.
-          for key in NUMER_SECRET_KEY NUMER_DB; do
-            grep -q "^${key}=." .env || { echo "::error::${key} is missing from .env"; exit 1; }
-          done
-          for key in NUMER_CREDENTIAL_KEY NUMER_BASE_URL NUMER_NOINDEX; do
-            grep -q "^${key}=." .env || echo "::warning::${key} is missing from .env"
-          done
           # Load .env through the Passenger entry point, back up the SQLite database with
           # the online backup API, then create missing tables.
           .venv/bin/python - <<'PY'

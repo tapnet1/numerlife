@@ -20,8 +20,9 @@ What is actually deployed and how. Decisions and status live in the project's
 ## Server-only files (never in git)
 
 - **`.env`** (chmod 600): `NUMER_SECRET_KEY`, `NUMER_CREDENTIAL_KEY`, `NUMER_DB`, `NUMER_BASE_URL`,
-  `NUMER_NOINDEX`. See `.env.example`. The deploy fails if `NUMER_SECRET_KEY` or `NUMER_DB` is
-  missing and warns about the rest. Values are never printed.
+  `NUMER_NOINDEX`. See `.env.example`. The deploy fails if `NUMER_DB` is missing, if
+  `NUMER_SECRET_KEY` is shorter than 32 characters or still the example value, or if
+  `NUMER_BASE_URL` is not an `https://` address; it warns about the rest. Values are never printed.
 - **`passenger_wsgi.py`**: loads `.env` into the environment, then `from app import app as application`.
 
 ## Passenger
@@ -81,10 +82,11 @@ added by Marco through the GitHub web editor.
 1. Runs the tests on `main` and records the exact commit tested.
 2. SSHes in as `numerlife1` with the pinned host key.
 3. Checks the server is on `main` with a clean tree, `passenger_wsgi.py` and `.env` present.
-4. `git fetch origin main`, then fast-forwards to **the tested commit only**. If `main` moved
-   after the tests ran, the deploy stops; run it again so the newer commit is tested first.
+4. `git fetch origin main`, then fast-forwards to **the tested commit only**, and confirms the
+   server is now exactly on it. If `main` moved after the tests ran, the deploy stops; run it
+   again so the newer commit is tested first.
 5. `pip install -r requirements.txt` into `.venv`, then verifies the imports.
-6. Checks required `.env` keys (names only).
+6. Checks required `.env` settings (secret key length, https base URL) without printing values.
 7. Backs up the database with SQLite's online backup API (timestamped, chmod 600).
 8. Runs `initialize()` (creates missing tables only) and verifies the required tables.
 9. Checks `NUMER_CREDENTIAL_KEY` is a valid 32-byte base64 key (warning if not).
