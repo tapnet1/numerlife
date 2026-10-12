@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Invite not valid | {{ site_name }}{% endblock %}
+{% block content %}
+<section class="card narrow center">
+  <h1>This invite link isn't valid</h1>
+  <p>It may have been used already, revoked, or expired. Ask the practitioner who invited you for a new link.</p>
+  <p><a href="{{ url_for('home') }}">Go to the home page</a></p>
+</section>
+{% endblock %}

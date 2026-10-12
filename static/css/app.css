@@ -300,6 +300,19 @@ input[type=url] { width: 100%; padding: .75rem .85rem; border: 1px solid #d9d1e6
 .qr-links { font-size: .9rem; font-weight: 500; }
 @media (max-width: 640px) { .grid-2 { grid-template-columns: 1fr; } .qr-kit { flex-direction: column; align-items: flex-start; } }
 
+/* ---- Invites ---- */
+.invite-ready { background: #fffaf0; border: 1px solid #f0dca8; border-radius: 12px; padding: 1rem 1.1rem; margin-bottom: 1rem; }
+.invite-ready .share-buttons { justify-content: flex-start; margin-top: .6rem; }
+.invite-list { list-style: none; margin: 0; padding: 0; }
+.invite-list li + li { border-top: 1px solid var(--line); }
+.invite-list li { padding: .7rem 0; }
+.invite-list p { margin: .15rem 0; }
+.link-box.small { font-size: .82rem; font-weight: 500; padding: .45rem .6rem; }
+button.link.revoke { color: var(--error); font-size: .88rem; }
+.invite-count { font-size: .95rem; margin: .4rem 0 .9rem; }
+.invite-count strong { font-family: var(--serif); font-size: 1.7rem; color: var(--violet); }
+.join-card .form-title { font-size: clamp(1.8rem, 4vw, 2.3rem); }
+
 /* ---- Footer ---- */
 .footer { text-align: center; color: #b9b0cc; font-size: .87rem; padding: 2.5rem 1rem; background: var(--night); margin-top: 3rem; }
 .footer p { margin: .3rem 0; }

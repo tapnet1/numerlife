@@ -43,6 +43,7 @@
     <nav aria-label="Account">
       <a href="{{ url_for('dashboard') }}"{% if request.endpoint == 'dashboard' %} aria-current="page"{% endif %}>Dashboard</a>
       <a href="{{ url_for('leads_list') }}"{% if request.endpoint in ('leads_list', 'lead_detail') %} aria-current="page"{% endif %}>Leads</a>
+      <a href="{{ url_for('invite_practitioner') }}"{% if request.endpoint == 'invite_practitioner' %} aria-current="page"{% endif %}>Invite</a>
       <a href="{{ url_for('edit_profile') }}"{% if request.endpoint in ('edit_profile', 'change_password') %} aria-current="page"{% endif %}>Profile</a>
       {% if user.role == 'admin' %}<a href="{{ url_for('admin') }}">Admin</a>{% endif %}
       <form method="post" action="{{ url_for('logout') }}" class="inline">

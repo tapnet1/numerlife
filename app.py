@@ -118,6 +118,20 @@ CREATE TABLE IF NOT EXISTS leads (
 );
 CREATE INDEX IF NOT EXISTS idx_leads_practitioner ON leads (practitioner_id, created_at);
 
+CREATE TABLE IF NOT EXISTS invites (
+    id          INTEGER PRIMARY KEY,
+    token       TEXT NOT NULL UNIQUE,
+    inviter_id  INTEGER NOT NULL REFERENCES users(id),
+    name        TEXT NOT NULL DEFAULT '',
+    email       TEXT NOT NULL DEFAULT '',
+    created_at  TEXT NOT NULL,
+    expires_at  TEXT NOT NULL,
+    used_by     INTEGER REFERENCES users(id),
+    used_at     TEXT,
+    revoked_at  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_invites_inviter ON invites (inviter_id, created_at);
+
 CREATE TABLE IF NOT EXISTS form_attempts (
     id         INTEGER PRIMARY KEY,
     ip_hash    TEXT NOT NULL,
@@ -138,7 +152,7 @@ ADDED_COLUMNS = (
     ("leads", "updated_at", "TEXT"),
 )
 
-REQUIRED_TABLES = {"users", "login_attempts", "leads", "form_attempts"}
+REQUIRED_TABLES = {"users", "login_attempts", "leads", "form_attempts", "invites"}
 
 
 def now_utc() -> dt.datetime:
@@ -550,3 +564,4 @@ def create_owner_command(email, display_name, password):
 import intake  # noqa: E402,F401
 import workspace  # noqa: E402,F401  (dashboard and leads for signed-in practitioners)
 import practitioner_profile  # noqa: E402,F401  (profile, password, QR share kit)
+import invites  # noqa: E402,F401  (practitioner invitations and referrals)

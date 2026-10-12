@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Invite practitioners | {{ site_name }}{% endblock %}
+{% block body_class %}app-page{% endblock %}
+{% block content %}
+<header class="app-head">
+  <div>
+    <p class="eyebrow">Grow the community</p>
+    <h1>Invite a practitioner</h1>
+  </div>
+</header>
+<p class="muted lead-in">{{ site_name }} is invitation-only. Invite numerologists you trust: they get their own personal link and lead dashboard, and they're recorded as your referral.</p>
+
+<div class="app-grid">
+  <div>
+    <section class="panel">
+      <h2>Create an invite link</h2>
+      {% if errors %}<div class="flash flash-error" role="alert">{% for e in errors %}<p>{{ e }}</p>{% endfor %}</div>{% endif %}
+      {% if new_link %}
+        <div class="invite-ready" role="status">
+          <p class="qr-title">Your invite link is ready</p>
+          <p class="link-box">{{ new_link }}</p>
+          <div class="share-buttons" data-share-url="{{ new_link }}" data-share-text="I'd love you to join me on {{ site_name }}: free numerology reports that bring you new clients. Here's your invite:">
+            <button type="button" class="share-btn share-native" hidden>Share</button>
+            <button type="button" class="share-btn share-copy" hidden><span>Copy link</span></button>
+            <a class="share-btn" href="https://wa.me/?text={{ ('Join me on ' ~ site_name ~ ': ' ~ new_link) | urlencode }}" target="_blank" rel="noopener">WhatsApp</a>
+            <a class="share-btn" href="mailto:?subject={{ ('Your invitation to ' ~ site_name) | urlencode }}&amp;body={{ ('I\'d love you to join me on ' ~ site_name ~ ', where your clients get free numerology reports and you get the leads.\n\nYour personal invite (valid ' ~ invite_days ~ ' days):\n' ~ new_link) | urlencode }}">Email</a>
+            <a class="share-btn" href="sms:?&amp;body={{ ('Join me on ' ~ site_name ~ ': ' ~ new_link) | urlencode }}">Text</a>
+          </div>
+          <p class="share-status" role="status" aria-live="polite"></p>
+          <p class="muted small">Single use, valid for {{ invite_days }} days.</p>
+        </div>
+      {% endif %}
+      <form method="post" action="{{ url_for('invite_practitioner') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="grid-2">
+          <div>
+            <label for="name">Their name <span class="optional">(optional)</span></label>
+            <input id="name" name="name" type="text" maxlength="80" value="{{ form.name }}">
+          </div>
+          <div>
+            <label for="email">Their email <span class="optional">(optional)</span></label>
+            <input id="email" name="email" type="email" value="{{ form.email }}">
+          </div>
+        </div>
+        <p class="hint">We'll pre-fill these on their sign-up form. Nothing is emailed automatically: you send the link.</p>
+        <button type="submit">{{ 'Create another invite' if new_link else 'Create invite link' }}</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Practitioners you've referred</h2>
+      {% if referred %}
+        <ul class="lead-rows">
+          {% for r in referred %}
+            <li><div class="lead-row">
+              <span class="lp">{{ r.display_name[:1] | upper }}</span>
+              <span class="lead-main"><span class="lead-name">{{ r.display_name }}</span>
+                <span class="lead-meta">{{ base_url.split('://')[-1] }}/{{ r.slug }}</span></span>
+              <span class="lead-side"><span class="badge badge-client">{{ 'Active' if r.is_active else 'Inactive' }}</span><span class="lead-time">Joined {{ r.created_at | friendly_time }}</span></span>
+            </div></li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted">No referrals yet. When someone joins with your invite link, they'll appear here.</p>
+      {% endif %}
+    </section>
+  </div>
+
+  <aside class="panel">
+    <h2>Open invites</h2>
+    {% if pending %}
+      <ul class="invite-list">
+        {% for i in pending %}
+          <li>
+            <p class="lead-name">{{ i.name or i.email or 'Unnamed invite' }}</p>
+            <p class="link-box small">{{ invite_url(i.token) }}</p>
+            <p class="lead-time">Expires {{ i.expires_at[:10] }}</p>
+            <form method="post" action="{{ url_for('revoke_invite', invite_id=i.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="link revoke">Revoke</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">No open invites.</p>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/share.js') }}" defer></script>{% endblock %}

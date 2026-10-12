@@ -55,7 +55,8 @@
     {% endif %}
   </section>
 
-  <aside class="panel">
+  <aside>
+  <div class="panel">
     {% if share_url %}
       <h2>Your personal link</h2>
       <p class="link-box"><a href="{{ share_url }}" target="_blank" rel="noopener">{{ share_url.split('://')[-1] }}</a></p>
@@ -73,6 +74,13 @@
       <h2>Your personal link</h2>
       <p class="muted">You don't have a personal link yet. {% if user.role == 'admin' %}Admins see every lead; practitioners get their own link.{% endif %}</p>
     {% endif %}
+  </div>
+  <div class="panel invite-panel">
+    <h2>Invite practitioners</h2>
+    <p class="muted small">Know numerologists who'd love more clients? Invite them: they'll be recorded as your referral.</p>
+    <p class="invite-count"><strong>{{ referred_count }}</strong> {{ 'practitioner' if referred_count == 1 else 'practitioners' }} referred</p>
+    <a class="btn" href="{{ url_for('invite_practitioner') }}">Invite a practitioner</a>
+  </div>
   </aside>
 </div>
 {% endblock %}
