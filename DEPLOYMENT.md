@@ -95,8 +95,14 @@ added by Marco through the GitHub web editor.
     (a redirect counts as a failure), and `/admin` must return 302 when signed out.
 12. Always deletes the temporary SSH key.
 
-No cron jobs yet. When `jobs.py` arrives, the deploy installs them in a marked crontab block
-(`# numerlife-jobs begin` / `# numerlife-jobs end`) so re-runs stay idempotent.
+Cron jobs live in a marked crontab block (`# numerlife-jobs begin` / `# numerlife-jobs end`) that
+each deploy rewrites, so re-runs stay idempotent:
+
+| Schedule | Job | What it does |
+|---|---|---|
+| hourly at :23 | `jobs.py purge-attempts` | deletes hashed sign-in/form attempt records older than a day |
+
+Output goes to `logs/jobs.log`.
 
 ## One-time steps after the first deploy
 

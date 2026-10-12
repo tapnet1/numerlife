@@ -69,6 +69,11 @@ class NameEdgeCasesTest(unittest.TestCase):
         self.assertEqual(n.split_vowels("Lynn-Marie"), n.split_vowels("Lynn Marie"))
         self.assertEqual(n.split_vowels("O'Lynn"), n.split_vowels("O Lynn"))
 
+    def test_modifier_apostrophes_are_separators(self):
+        self.assertEqual(n.unsupported_letters("Hawaiʻi Kaʼahumanu"), set())
+        self.assertEqual(n.letters_of("Hawaiʻi"), "HAWAII")
+        self.assertEqual(n.split_vowels("Oʻlynn"), n.split_vowels("O lynn"))
+
     def test_rare_latin_letters_are_spelled(self):
         self.assertEqual(n.letters_of("Ɖ"), "D")       # LATIN CAPITAL LETTER AFRICAN D
         self.assertEqual(n.letters_of("Ɣ"), "G")       # LATIN CAPITAL LETTER GAMMA

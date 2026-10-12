@@ -39,6 +39,11 @@ _LATIN_NAMED = {
 }
 
 
+def is_name_letter(ch: str) -> bool:
+    """Alphabetic, but not a modifier letter such as the ʻokina (ʻ) or ʼ, which act as apostrophes."""
+    return ch.isalpha() and unicodedata.category(ch) != "Lm"
+
+
 def _latin_to_ascii(ch: str) -> str | None:
     """A-Z spelling of one Latin letter, '' for letters with no sound value, None if not Latin."""
     if "A" <= ch.upper() <= "Z" and ch.isascii():
@@ -74,7 +79,7 @@ def unsupported_letters(name: str) -> set[str]:
     """Letters we can't spell in A-Z (e.g. Cyrillic or Greek); the form asks for a Latin spelling."""
     decomposed = unicodedata.normalize("NFKD", name)
     return {ch for ch in decomposed
-            if ch.isalpha() and not unicodedata.combining(ch) and _latin_to_ascii(ch) is None}
+            if is_name_letter(ch) and not unicodedata.combining(ch) and _latin_to_ascii(ch) is None}
 
 
 def letters_of(name: str) -> str:
@@ -82,7 +87,7 @@ def letters_of(name: str) -> str:
     decomposed = unicodedata.normalize("NFKD", name)
     out = []
     for ch in decomposed:
-        if unicodedata.combining(ch) or not ch.isalpha():
+        if unicodedata.combining(ch) or not is_name_letter(ch):
             continue
         spelled = _latin_to_ascii(ch)
         if spelled:
@@ -96,7 +101,7 @@ def split_vowels(full_name: str) -> tuple[str, str]:
     # Name parts are split at anything that isn't a letter or accent (spaces, hyphens, apostrophes).
     parts, current = [], []
     for ch in unicodedata.normalize("NFKD", full_name):
-        if ch.isalpha() or unicodedata.combining(ch):
+        if is_name_letter(ch) or unicodedata.combining(ch):
             current.append(ch)
         elif current:
             parts.append("".join(current))
