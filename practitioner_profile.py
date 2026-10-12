@@ -95,7 +95,10 @@ def contact_card(user_row) -> dict:
     """What a practitioner shows on their clients' reports (only filled-in fields)."""
     profile = load_profile(user_row)
     socials = [{"label": SOCIAL_NETWORKS[k][0], "url": profile[k]} for k in SOCIAL_NETWORKS if profile[k]]
+    keys = user_row.keys() if hasattr(user_row, "keys") else user_row
     return {
+        "id": user_row["id"] if "id" in keys else None,
+        "slug": user_row["slug"] if "slug" in keys else None,
         "name": user_row["display_name"],
         "headline": profile["headline"],
         "bio": profile["bio"],

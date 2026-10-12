@@ -340,6 +340,31 @@ button.link.revoke { color: var(--error); font-size: .88rem; }
 
 .rr { color: #9b7a2a; }
 
+/* ---- Photos and public profile ---- */
+.pc-photo { display: block; width: 96px; height: 96px; border-radius: 50%; object-fit: cover; margin: .4rem auto .6rem; border: 3px solid var(--gold); box-shadow: 0 6px 18px rgba(22,13,49,.18); }
+.pc-initial { display: grid; place-items: center; background: radial-gradient(circle at 35% 30%, var(--plum), var(--indigo)); color: var(--gold-soft); font-family: var(--serif); font-weight: 600; font-size: 2.6rem; }
+.pc-more { margin: .9rem 0 0; font-size: .9rem; }
+.photo-row { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; }
+.photo-row .pc-photo { margin: 0; }
+.photo-form label { margin-top: 0; }
+.photo-form input[type=file] { font: inherit; font-size: .9rem; }
+.photo-preview { border-radius: 50%; object-fit: cover; }
+.photo-preview[hidden] { display: none; }
+.public-link { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; margin: 0 0 1.25rem; }
+.about-hero { padding-bottom: clamp(4rem, 8vw, 5.5rem); }
+.about-photo { display: block; width: 168px; height: 168px; border-radius: 50%; object-fit: cover; margin: 0 auto 1.2rem; border: 4px solid var(--gold); box-shadow: 0 14px 40px rgba(0,0,0,.35); font-size: 4.2rem; }
+.about-cta { display: flex; flex-wrap: wrap; gap: .7rem; justify-content: center; margin-top: 1.6rem; }
+.btn-ghost { display: inline-block; padding: .85rem 1.5rem; border-radius: 999px; border: 1px solid rgba(246,240,225,.5); color: var(--cream); text-decoration: none; font-weight: 600; }
+.btn-ghost:hover { border-color: var(--gold); color: var(--gold); }
+.about-body { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 1.25rem; align-items: start; margin-top: -2.5rem; position: relative; z-index: 2; }
+.about-main p { font-size: 1.08rem; }
+.about-free { margin-top: 1.8rem; padding: 1.3rem 1.4rem; border-radius: 14px; background: #faf6ff; border: 1px solid #e4dbf1; }
+.about-free h3 { margin: 0 0 .4rem; font-size: 1.4rem; }
+.about-links { list-style: none; padding: 0; margin: 0 0 1rem; }
+.about-links li { padding: .55rem 0; border-bottom: 1px solid var(--line); }
+.about-links a { text-decoration: none; font-weight: 500; overflow-wrap: anywhere; }
+@media (max-width: 860px) { .about-body { grid-template-columns: 1fr; } }
+
 /* ---- Footer ---- */
 .footer { text-align: center; color: #b9b0cc; font-size: .87rem; padding: 2.5rem 1rem; background: var(--night); margin-top: 3rem; }
 .footer p { margin: .3rem 0; }

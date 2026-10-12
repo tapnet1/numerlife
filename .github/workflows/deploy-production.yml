@@ -103,7 +103,7 @@ jobs:
           # Install/upgrade dependencies before any application module is imported.
           test -x .venv/bin/python
           .venv/bin/python -m pip install --disable-pip-version-check --quiet -r requirements.txt
-          .venv/bin/python -c "import flask, cryptography, segno; print('Dependencies verified')"
+          .venv/bin/python -c "import flask, cryptography, segno, PIL; print('Dependencies verified')"
           # Push notifications: create the VAPID key once, on the server only. It never leaves .env;
           # rotating it would mean every device has to turn notifications on again.
           if ! grep -q '^NUMER_VAPID_PRIVATE_KEY=.' .env; then

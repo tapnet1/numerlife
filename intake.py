@@ -330,10 +330,13 @@ def privacy():
 
 @app.get("/sitemap.xml")
 def sitemap():
+    import public_profiles  # loaded after this module
+
     today = dt.date.today().isoformat()
+    pages = [("/", "1.0"), *[(path, "0.7") for path in public_profiles.sitemap_profiles()], ("/privacy", "0.3")]
     urls = "".join(
         f"<url><loc>{BASE_URL}{path}</loc><lastmod>{today}</lastmod><priority>{priority}</priority></url>"
-        for path, priority in (("/", "1.0"), ("/privacy", "0.3"))
+        for path, priority in pages
     )
     body = ('<?xml version="1.0" encoding="UTF-8"?>'
             f'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>')
