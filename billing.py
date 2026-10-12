@@ -155,8 +155,12 @@ def accrue_referrals(today: dt.date | None = None) -> dict:
                 stats["no_referrer"] += 1
                 continue
             period = user["paid_through"]
-            legacy = f"referral:{today.year:04d}-{today.month:02d}:{user['id']}"  # key used before 2026-10-12
-            if connection.execute("SELECT 1 FROM ledger WHERE reference = ?", (legacy,)).fetchone():
+            # Credits from the earlier monthly key (referral:YYYY-MM:<id>) count for the period they fell in.
+            period_start = (dt.date.fromisoformat(period) - dt.timedelta(days=31)).isoformat()
+            if connection.execute(
+                    "SELECT 1 FROM ledger WHERE kind = 'referral_credit' AND source_user_id = ?"
+                    " AND reference GLOB ? AND created_at >= ?",
+                    (user["id"], f"referral:[0-9][0-9][0-9][0-9]-[0-9][0-9]:{user['id']}", period_start)).fetchone():
                 stats["already"] += 1
                 continue
             if post(connection, earner, "referral_credit", REFERRAL_CENTS, f"referral:{user['id']}:{period}",
