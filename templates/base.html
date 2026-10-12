@@ -45,7 +45,10 @@
       <span>{{ site_name }}</span>
     </a>
     {% if user %}
-    <nav aria-label="Account">
+    <button type="button" class="menu-toggle" aria-controls="account-nav" aria-expanded="false">
+      <span class="menu-bars" aria-hidden="true"></span><span class="sr-only">Menu</span>
+    </button>
+    <nav id="account-nav" aria-label="Account">
       <a href="{{ url_for('dashboard') }}"{% if request.endpoint == 'dashboard' %} aria-current="page"{% endif %}>Dashboard</a>
       <a href="{{ url_for('leads_list') }}"{% if request.endpoint in ('leads_list', 'lead_detail') %} aria-current="page"{% endif %}>Leads</a>
       <a href="{{ url_for('invite_practitioner') }}"{% if request.endpoint == 'invite_practitioner' %} aria-current="page"{% endif %}>Invite</a>
@@ -76,6 +79,7 @@
     <p>Free numerology reports based on the Pythagorean system. For reflection and entertainment.</p>
     <p>&copy; {{ year }} {{ site_name }} · <a href="{{ url_for('privacy') }}">Privacy</a></p>
   </footer>
+  {% if user %}<script src="{{ url_for('static', filename='js/nav.js') }}" defer></script>{% endif %}
   {% block scripts %}{% endblock %}
 </body>
 </html>
