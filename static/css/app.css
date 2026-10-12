@@ -375,6 +375,16 @@ button.link.revoke { color: var(--error); font-size: .88rem; }
 .inline-form select, .inline-form input { width: auto; margin: 0; padding: .4rem .5rem; font-size: .9rem; }
 .stack > * + * { margin-top: .5rem; }
 
+/* ---- Wordmark: "numer" + a constellation star + gold italic "life" ---- */
+.wordmark { display: inline-flex; align-items: baseline; font-family: var(--serif); line-height: 1; white-space: nowrap; }
+.wm-numer { font-weight: 700; color: var(--cream); letter-spacing: .012em; }
+.wm-star { display: inline-block; width: .19em; height: .19em; margin: 0 .13em 0 .09em; border-radius: 50%; background: #fff;
+  box-shadow: 0 0 .1em .02em rgba(255, 255, 255, .95), 0 0 .32em .03em rgba(217, 180, 90, .5); }
+.wm-life { font-style: italic; font-weight: 600; color: var(--gold); letter-spacing: .01em; padding-right: .04em; }
+.brand .wordmark { font-size: 1.7rem; }
+.footer-brand { display: inline-flex; align-items: center; gap: .5rem; }
+.footer-brand .wordmark { font-size: 1.45rem; }
+
 /* ---- Footer ---- */
 .footer { text-align: center; color: #b9b0cc; font-size: .87rem; padding: 2.5rem 1rem; background: var(--night); margin-top: 3rem; }
 .footer p { margin: .3rem 0; }

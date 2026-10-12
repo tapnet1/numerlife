@@ -43,8 +43,8 @@
   <a class="skip-link" href="#main">Skip to content</a>
   <header class="topbar">
     <a class="brand" href="{{ url_for('home') }}" aria-label="{{ site_name }} home">
-      <img src="{{ url_for('static', filename='img/logo-128.png') }}" alt="" width="34" height="34">
-      <span>{{ site_name }}</span>
+      <img src="{{ url_for('static', filename='img/logo-128.png') }}" alt="" width="36" height="36">
+      {% include "_wordmark.html" %}
     </a>
     {% if user %}
     <button type="button" class="menu-toggle" aria-controls="account-nav" aria-expanded="false">
@@ -77,7 +77,7 @@
   </main>
 
   <footer class="footer">
-    <p class="footer-brand">{{ site_name }}</p>
+    <p class="footer-brand"><img src="{{ url_for('static', filename='img/logo-128.png') }}" alt="" width="30" height="30">{% include "_wordmark.html" %}</p>
     <p>Free numerology reports based on the Pythagorean system. For reflection and entertainment.</p>
     <p>&copy; {{ year }} {{ site_name }} · <a href="{{ url_for('privacy') }}">Privacy</a></p>
   </footer>
