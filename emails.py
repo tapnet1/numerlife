@@ -21,7 +21,7 @@ import numerology
 from app import BASE_URL, SITE_NAME, app, connect, current_user, db, iso, now_utc, open_db, role_required
 from practitioner_profile import contact_card
 
-MAX_ATTEMPTS = 5
+RETRY_MAX_DELAY = dt.timedelta(hours=1)    # failed sends back off 2, 4, 8 ... minutes, up to this
 EXPIRE_AFTER = dt.timedelta(days=3)          # don't deliver very stale queued email
 PRACTITIONER_NUDGE_EVERY = dt.timedelta(days=3)
 LEAD_WAITING = dt.timedelta(hours=48)        # an unlocked lead still "new" after this is waiting
@@ -65,6 +65,16 @@ def unsubscribe_url(kind: str, ident) -> str:
     return f"{BASE_URL}/unsubscribe/{_signer().dumps([kind, ident])}"
 
 
+def cancel_nudges(connection, kind: str, user_id: int | None = None, email: str | None = None) -> None:
+    """Drop reminder emails still waiting in the outbox once someone opts out."""
+    if user_id is not None:
+        where, value = "user_id = ?", user_id
+    else:
+        where, value = "lower(to_addr) = lower(?)", email
+    connection.execute(f"UPDATE email_outbox SET sent_at = ?, last_error = 'cancelled: unsubscribed'"
+                       f" WHERE sent_at IS NULL AND kind = ? AND {where}", (iso(now_utc()), kind, value))
+
+
 @app.route("/unsubscribe/<token>", methods=["GET", "POST"])
 def unsubscribe(token):
     try:
@@ -78,9 +88,11 @@ def unsubscribe(token):
         with open_db() as connection:
             if kind == "practitioner":
                 connection.execute("UPDATE users SET email_nudges = 0 WHERE id = ?", (int(ident),))
+                cancel_nudges(connection, "practitioner_nudge", user_id=int(ident))
             else:
                 connection.execute("UPDATE leads SET marketing_opt_in = 0 WHERE lower(email) = lower(?)",
                                    (str(ident),))
+                cancel_nudges(connection, "client_nudge", email=str(ident))
         done = True
     return render_template("unsubscribe.html", kind=kind, done=done)
 
@@ -221,9 +233,8 @@ def send_pending(limit: int = 50, ids: list[int] | None = None, smtp_factory=Non
                            " AND created_at < ?", (iso(now_utc()), iso(now_utc() - EXPIRE_AFTER)))
         stats["expired"] = connection.execute("SELECT changes()").fetchone()[0]
         connection.commit()
-        query = ("SELECT * FROM email_outbox WHERE sent_at IS NULL AND attempts < ?"
-                 " AND (claimed_at IS NULL OR claimed_at < ?)")
-        params: list = [MAX_ATTEMPTS, stale]
+        query = "SELECT * FROM email_outbox WHERE sent_at IS NULL AND (claimed_at IS NULL OR claimed_at < ?)"
+        params: list = [stale]
         if ids is not None:
             query += f" AND id IN ({','.join('?' * len(ids))})"
             params += ids
@@ -244,8 +255,11 @@ def send_pending(limit: int = 50, ids: list[int] | None = None, smtp_factory=Non
                 server.send_message(message)
             except Exception as exc:  # recorded and retried by the next run
                 error = mailer.describe_error(exc)
-                connection.execute("UPDATE email_outbox SET claimed_at = NULL, last_error = ? WHERE id = ?",
-                                   (error[:200], row["id"]))
+                # Hold the claim so the row waits before its next try (until EXPIRE_AFTER ends retries).
+                delay = min(dt.timedelta(minutes=2 ** min(row["attempts"] + 1, 10)), RETRY_MAX_DELAY)
+                retry_from = now_utc() + delay - dt.timedelta(minutes=5)
+                connection.execute("UPDATE email_outbox SET claimed_at = ?, last_error = ? WHERE id = ?",
+                                   (iso(retry_from), error[:200], row["id"]))
                 connection.commit()
                 stats["failed"] += 1
                 if server is not None:

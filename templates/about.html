@@ -4,7 +4,7 @@
 {% block title %}{{ card.name | truncate(30, True, "", 0) | trim }}, Numerologist | {{ site_name }}{% endblock %}
 {% block description %}{{ ((card.headline ~ '. ' if card.headline else '') ~ (card.bio or ('Get a free numerology report from ' ~ card.name ~ ' and book a personal reading.'))) | replace('\n', ' ') | replace('\r', '') | truncate(138, True, '…', 0) }}{% endblock %}
 {% block og_title %}{{ card.name }}, Numerologist{% endblock %}
-{% block structured_data %}<script type="application/ld+json">{{ person_ld | safe }}</script>{% endblock %}
+{% block structured_data %}<script type="application/ld+json">{{ person_ld | tojson }}</script>{% endblock %}
 
 {% block hero %}
 <section class="hero-band about-hero">

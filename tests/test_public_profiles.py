@@ -144,3 +144,31 @@ class AboutPageTest(ProfileTestCase):
             tag = re.search(r'<a [^>]*href="[^"]*/liliana/about"[^>]*>', html)
             self.assertIsNotNone(tag, path)
             self.assertIn('target="_blank"', tag.group(0))
+
+
+class ReviewFollowupTest(ProfileTestCase):
+    def test_json_ld_cannot_break_out_of_its_script_tag(self):
+        self.login("liliana@example.com")
+        self.save(headline="</script><meta http-equiv='refresh' content='0;url=https://evil.example'>")
+        html = self.client.get("/liliana/about").get_data(as_text=True)
+        script = re.search(r'<script type="application/ld\+json">(.*?)</script>', html, re.S).group(1)
+        self.assertNotIn("<", script)
+        self.assertEqual(json.loads(script)["mainEntity"]["jobTitle"][:9], "</script>")
+
+    def test_rejects_huge_dimensions_before_decoding(self):
+        image = Image.new("1", (6000, 6000))  # 36 MP, tiny when compressed
+        buffer = io.BytesIO()
+        image.save(buffer, "PNG")
+        self.assertLess(len(buffer.getvalue()), 100_000)
+        with self.assertRaises(ValueError):
+            pub.process_photo(buffer.getvalue())
+
+    def test_no_avatar_url_for_inactive_practitioner(self):
+        data = pub.process_photo(jpeg_bytes())
+        with numer.open_db() as connection:
+            connection.execute("INSERT INTO avatars (user_id, image, version, updated_at) VALUES (?, ?, 'abc', 'x')",
+                               (self.practitioner_id, data))
+        self.assertIsNotNone(pub_url(self))
+        with numer.open_db() as connection:
+            connection.execute("UPDATE users SET is_active = 0 WHERE id = ?", (self.practitioner_id,))
+        self.assertIsNone(pub_url(self))

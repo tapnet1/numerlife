@@ -99,6 +99,8 @@ class UnlockEmailTest(EmailTestCase):
         self.assertTrue(all(row["sent_at"] is None for row in rows))
         self.assertIn("sign-in failed", rows[0]["last_error"])
         self.assertNotIn("s3cret", rows[0]["last_error"])
+        with numer.open_db() as connection:  # skip the back-off wait
+            connection.execute("UPDATE email_outbox SET claimed_at = NULL")
         self.assertEqual(emails.send_pending(smtp_factory=self.smtp)["sent"], 2)
 
     def test_stale_queued_email_expires(self):
@@ -224,3 +226,38 @@ class EmailPreferencesTest(EmailTestCase):
             row = connection.execute("SELECT email_alerts, email_nudges FROM users WHERE id = ?",
                                      (self.practitioner_id,)).fetchone()
         self.assertEqual((row[0], row[1]), (0, 1))
+
+
+class ReviewFollowupTest(EmailTestCase):
+    def test_failed_mail_backs_off_and_keeps_retrying_until_expiry(self):
+        self.unlocked_lead()
+        failing = FakeSMTP(fail=OSError("down"))
+        self.assertEqual(emails.send_pending(smtp_factory=failing)["failed"], 2)
+        self.assertEqual(emails.send_pending(smtp_factory=self.smtp)["sent"], 0)  # waiting out the back-off
+        for attempt in range(8):  # many failures: rows are never abandoned before expiry
+            with numer.open_db() as connection:
+                connection.execute("UPDATE email_outbox SET claimed_at = NULL")
+            emails.send_pending(smtp_factory=failing)
+        self.assertTrue(all(row["sent_at"] is None for row in self.outbox()))
+        with numer.open_db() as connection:
+            connection.execute("UPDATE email_outbox SET claimed_at = NULL")
+        self.assertEqual(emails.send_pending(smtp_factory=self.smtp)["sent"], 2)
+
+    def test_unsubscribe_cancels_queued_nudges(self):
+        emails.set_setting("auto_nudges", "on")
+        self.set_booking()
+        lead = self.unlocked_lead(email="b@example.com", marketing_opt_in="yes")
+        self.age_lead(lead["id"], 60)
+        emails.run_nudges()
+        kinds = {row["kind"] for row in self.outbox() if row["sent_at"] is None}
+        self.assertEqual(kinds, {"report", "lead_alert", "practitioner_nudge", "client_nudge"})
+        for kind, ident in (("client", "B@example.com"), ("practitioner", self.practitioner_id)):
+            url = emails.unsubscribe_url(kind, ident).replace("http://localhost", "")
+            page = self.client.get(url)
+            self.client.post(url, data={"csrf_token": token_from(page.get_data(as_text=True))})
+        emails.send_pending(smtp_factory=self.smtp)
+        self.assertEqual(sorted(m["To"] for m in self.smtp.sent), ["b@example.com", "liliana@example.com"])
+        self.assertEqual({row["last_error"] for row in self.outbox() if "nudge" in row["kind"]},
+                         {"cancelled: unsubscribed"})
+
+    set_booking = NudgeTest.set_booking
