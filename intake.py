@@ -37,8 +37,8 @@ SLUG_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])$")
 RESERVED_SLUGS = frozenset("""
     about account accounts admin administrator api app apps assets auth billing blog
     contact dashboard docs favicon.ico health help home invite invites join leads legal
-    login logout manifest.webmanifest me numer numerlife pricing privacy profile r register
-    report reports robots.txt settings signin signout signup sitemap.xml static support
+    login logout manifest.webmanifest me numer numerlife pricing privacy profile qr r register
+    report reports robots.txt settings share signin signout signup sitemap.xml static support
     sw.js terms unlock www
 """.split())
 
@@ -232,7 +232,7 @@ def report_context(lead):
                       "title": title, "text": text})
     practitioner = None
     if lead["practitioner_id"]:
-        practitioner = db().execute("SELECT display_name, email FROM users WHERE id = ?",
+        practitioner = db().execute("SELECT * FROM users WHERE id = ?",
                                     (lead["practitioner_id"],)).fetchone()
     first_name = lead["full_name"].split(" ")[0]
     share_from = None

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Your profile | {{ site_name }}{% endblock %}
+{% block body_class %}app-page{% endblock %}
+{% block content %}
+<header class="app-head">
+  <div>
+    <p class="eyebrow">Settings</p>
+    <h1>Your profile</h1>
+  </div>
+  <a class="btn-secondary" href="{{ url_for('change_password') }}">Change password</a>
+</header>
+<p class="muted lead-in">This is what your clients see at the bottom of every report that comes through your link. Fill in only what you want to share.</p>
+
+{% if errors %}
+  <div class="flash flash-error" role="alert">{% for e in errors %}<p>{{ e }}</p>{% endfor %}</div>
+{% endif %}
+
+<div class="app-grid">
+  <form class="panel" method="post" action="{{ url_for('edit_profile') }}" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <h2>About you</h2>
+    <label for="display_name">Name clients see</label>
+    <input id="display_name" name="display_name" type="text" maxlength="80" required value="{{ form.display_name }}">
+    {% if user.role == 'practitioner' %}
+      <label for="slug">Your personal link</label>
+      <div class="slug-field"><span>{{ base_host }}/</span><input id="slug" name="slug" type="text" maxlength="40" required value="{{ form.slug }}" autocapitalize="none" spellcheck="false"></div>
+      <p class="hint">Lowercase letters, numbers and dashes. Changing it stops your old link from working.</p>
+    {% endif %}
+    <label for="headline">Headline <span class="optional">(optional)</span></label>
+    <input id="headline" name="headline" type="text" maxlength="140" value="{{ form.headline }}" placeholder="Certified numerologist · Life path readings">
+    <label for="bio">Short bio <span class="optional">(optional)</span></label>
+    <textarea id="bio" name="bio" rows="4" maxlength="600" placeholder="A sentence or two about how you help clients.">{{ form.bio }}</textarea>
+
+    <h2 class="mt">How clients reach you</h2>
+    <label for="booking_url">Booking link <span class="optional">(optional)</span></label>
+    <input id="booking_url" name="booking_url" type="url" value="{{ form.booking_url }}" placeholder="https://calendly.com/you">
+    <p class="hint">Shown as a "Book a reading" button on every report.</p>
+    <label for="contact_email">Contact email <span class="optional">(defaults to your sign-in email)</span></label>
+    <input id="contact_email" name="contact_email" type="email" value="{{ form.contact_email }}" placeholder="{{ user.email }}">
+    <label for="phone">Phone <span class="optional">(optional)</span></label>
+    <input id="phone" name="phone" type="tel" value="{{ form.phone }}">
+    <label for="website">Website <span class="optional">(optional)</span></label>
+    <input id="website" name="website" type="url" value="{{ form.website }}" placeholder="https://">
+
+    <h2 class="mt">Social links</h2>
+    <p class="hint">Paste a link or just your handle.</p>
+    <div class="grid-2">
+      {% for key, (label, template, hosts) in socials.items() %}
+        <div>
+          <label for="{{ key }}">{{ label }}</label>
+          <input id="{{ key }}" name="{{ key }}" type="text" value="{{ form[key] }}" placeholder="@handle">
+        </div>
+      {% endfor %}
+    </div>
+    <button type="submit">Save profile</button>
+  </form>
+
+  <aside>
+    <p class="eyebrow">Preview on reports</p>
+    {% set card = preview %}
+    {% include "_contact_card.html" %}
+  </aside>
+</div>
+{% endblock %}

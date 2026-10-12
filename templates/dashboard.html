@@ -30,6 +30,10 @@
   <p class="notice"><strong>{{ stats.unread }} new {{ 'lead' if stats.unread == 1 else 'leads' }}</strong> waiting for you. <a href="{{ url_for('leads_list', unlocked='yes') }}">Open them →</a></p>
 {% endif %}
 
+{% if user.role == 'practitioner' and profile_missing %}
+  <p class="notice">Make your reports work for you: <a href="{{ url_for('edit_profile') }}">add your booking link and contact details</a> so every client can reach you in one tap.</p>
+{% endif %}
+
 <div class="app-grid">
   <section class="panel">
     <div class="panel-head">
@@ -57,6 +61,14 @@
       <p class="link-box"><a href="{{ share_url }}" target="_blank" rel="noopener">{{ share_url.split('://')[-1] }}</a></p>
       <p class="muted small">Put it in your bio, newsletter and messages. Every report requested through it becomes your lead, and the report shows your name.</p>
       {{ share_bar(share_url, "Share it") }}
+      <div class="qr-kit">
+        <img src="{{ url_for('share_qr', fmt='svg') }}" alt="QR code for {{ share_url.split('://')[-1] }}" width="132" height="132">
+        <div>
+          <p class="qr-title">QR code</p>
+          <p class="muted small">For flyers, business cards and your table at events. Scanning it opens your link.</p>
+          <p class="qr-links"><a href="{{ url_for('share_qr', fmt='png', download=1) }}">Download PNG</a> · <a href="{{ url_for('share_qr', fmt='svg', download=1) }}">SVG (for print)</a></p>
+        </div>
+      </div>
     {% else %}
       <h2>Your personal link</h2>
       <p class="muted">You don't have a personal link yet. {% if user.role == 'admin' %}Admins see every lead; practitioners get their own link.{% endif %}</p>
