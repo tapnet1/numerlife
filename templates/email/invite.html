@@ -1,0 +1,16 @@
+{% extends "email/_layout.html" %}
+{% block preheader %}{{ inviter_name }} would like you to join them on {{ site_name }}.{% endblock %}
+{% block banner %}<p style="margin:14px 0 0;font-family:Georgia,serif;font-size:22px;color:#ffffff;">You're invited</p>{% endblock %}
+{% block body %}
+<p style="margin:0 0 14px;">Hi{% if first_name %} {{ first_name }}{% endif %},</p>
+<p style="margin:0 0 14px;"><strong>{{ inviter_name }}</strong> has invited you to join {{ site_name }}, a home for numerology practitioners.</p>
+<ul style="margin:0 0 18px;padding-left:20px;color:#4a4360;">
+  <li style="margin-bottom:6px;">Your own link (like {{ base_url.split('://')[-1] }}/yourname) where people get a free numerology report with your name on it.</li>
+  <li style="margin-bottom:6px;">Every visitor who unlocks their report becomes your lead, with instant alerts on your phone and by email.</li>
+  <li style="margin-bottom:6px;">A public profile page, a QR code and share kit, and a simple leads dashboard.</li>
+</ul>
+<p style="margin:0 0 22px;text-align:center;"><a href="{{ invite_link }}" style="display:inline-block;background:#d4af5a;color:#1b1038;font-weight:600;text-decoration:none;padding:13px 26px;border-radius:999px;">Accept the invitation</a></p>
+<p style="margin:0;font-size:14px;color:#7a7290;">This personal invitation works once and expires {{ expires }}. If the button doesn't work, paste this link into your browser:<br><a href="{{ invite_link }}" style="color:#4b2d8f;word-break:break-all;">{{ invite_link }}</a></p>
+{% include "email/_card.html" %}
+{% endblock %}
+{% block footer %}<p style="margin:0;">You're receiving this one-time email because {{ inviter_name }} invited you. Reply to reach them directly.</p>{% endblock %}

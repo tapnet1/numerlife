@@ -28,6 +28,7 @@ LEAD_WAITING = dt.timedelta(hours=48)        # an unlocked lead still "new" afte
 CLIENT_NUDGE_AFTER = dt.timedelta(days=2)
 CLIENT_NUDGE_WINDOW = dt.timedelta(days=14)
 KINDS = {
+    "invite": "Practitioner invitation",
     "report": "Visitor's report",
     "lead_alert": "New-lead alert to practitioner",
     "practitioner_nudge": "Nudge: leads waiting (practitioner)",
@@ -177,6 +178,33 @@ def client_nudge_email(lead, practitioner) -> tuple[str, str, str, dict]:
                "unsubscribe_url": unsubscribe}
     subject = f"{context['first_name']}, take your Life Path {numbers['life_path']} reading deeper"
     return (subject, *_render_pair("client_nudge", **context), {"List-Unsubscribe": f"<{unsubscribe}>"})
+
+
+def invite_email(inviter, invite, invite_link: str, expires: str) -> tuple[str, str, str, dict]:
+    inviter_name = inviter["display_name"] or "A numerologist"
+    context = {"inviter_name": inviter_name, "first_name": _first_name(invite["name"] or "") if invite["name"] else "",
+               "invite_link": invite_link, "expires": expires, "card_label": "Invited by", "card": _card(inviter) if inviter["role"] != "admin" else None}
+    subject = f"{inviter_name} invited you to join {SITE_NAME}"
+    headers = {"Reply-To": inviter["email"]} if inviter["email"] else {}
+    return (subject, *_render_pair("invite", **context), headers)
+
+
+def queue_invite(inviter_id: int, invite_id: int) -> bool:
+    """Email an open invitation to the address on it. Returns False if there's nothing to send."""
+    import invites  # loaded after this module
+    with open_db() as connection:
+        invite = connection.execute(
+            "SELECT * FROM invites WHERE id = ? AND inviter_id = ? AND used_by IS NULL AND revoked_at IS NULL",
+            (invite_id, inviter_id)).fetchone()
+        inviter = connection.execute("SELECT * FROM users WHERE id = ?", (inviter_id,)).fetchone()
+        if invite is None or inviter is None or not invite["email"] or not mailer.configured():
+            return False
+        subject, text, html, headers = invite_email(inviter, invite, invites.invite_url(invite["token"]),
+                                                    invite["expires_at"][:10])
+        enqueue(connection, "invite", invite["email"], subject, text, html, headers, user_id=inviter_id)
+        connection.execute("UPDATE invites SET emailed_at = ? WHERE id = ?", (iso(now_utc()), invite_id))
+    kick()
+    return True
 
 
 # --------------------------------------------------------------------------
@@ -405,7 +433,10 @@ def admin_email_test():
     lead, practitioner = sample_lead(), sample_practitioner()
     built = []
     for kind in kinds:
-        if kind == "report":
+        if kind == "invite":
+            sample = {"name": "Sam Rivera", "email": to}
+            built.append((kind, *invite_email(practitioner, sample, f"{BASE_URL}/", "in 14 days")))
+        elif kind == "report":
             built.append((kind, *report_email(lead, practitioner, report_url=f"{BASE_URL}/"), {}))
         elif kind == "lead_alert":
             built.append((kind, *lead_alert_email(lead, practitioner, lead_url=f"{BASE_URL}/leads"), {}))

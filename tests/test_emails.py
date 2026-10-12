@@ -191,10 +191,10 @@ class AdminTestSendTest(EmailTestCase):
         self.login("owner@example.com")
         with mock.patch.object(mailer, "connect", self.smtp):
             response = self.post_test(to="tapnet1@gmail.com")
-        self.assertIn("Sent 4 test emails to tapnet1@gmail.com", response.get_data(as_text=True))
+        self.assertIn("Sent 5 test emails to tapnet1@gmail.com", response.get_data(as_text=True))
         self.assertEqual({m["To"] for m in self.smtp.sent}, {"tapnet1@gmail.com"})
         self.assertTrue(all(m["Subject"].startswith("[Test] ") for m in self.smtp.sent))
-        self.assertIn("Alex", body(self.smtp.sent[0], "html"))
+        self.assertIn("Alex", body(self.smtp.sent[1], "html"))  # [0] is the invitation sample
         self.assertIn("Recent emails", response.get_data(as_text=True))
 
     def test_works_before_any_practitioner_exists(self):
@@ -204,7 +204,7 @@ class AdminTestSendTest(EmailTestCase):
         with mock.patch.object(mailer, "connect", self.smtp):
             response = self.post_test(to="tapnet1@gmail.com")
         self.assertEqual(response.status_code, 200)
-        self.assertIn("Sent 4 test emails", response.get_data(as_text=True))
+        self.assertIn("Sent 5 test emails", response.get_data(as_text=True))
 
     def test_reports_problems(self):
         self.login("owner@example.com")
@@ -287,3 +287,62 @@ class ReviewFollowupTest(EmailTestCase):
         self.assertEqual(self.smtp.sent, [])
 
     set_booking = NudgeTest.set_booking
+
+
+class InviteEmailTest(EmailTestCase):
+    def create_invite(self, **data):
+        page = self.client.get("/invite")
+        data["csrf_token"] = token_from(page.get_data(as_text=True))
+        return self.client.post("/invite", data=data)
+
+    def test_invite_with_email_is_sent(self):
+        self.login("liliana@example.com")
+        html = self.create_invite(name="Frank Moreau", email="frank@example.com").get_data(as_text=True)
+        self.assertIn("emailed the invitation to <strong>frank@example.com</strong>", html)
+        emails.send_pending(smtp_factory=self.smtp)
+        message = self.smtp.sent[-1]
+        self.assertEqual(message["To"], "frank@example.com")
+        self.assertEqual(message["Reply-To"], "liliana@example.com")
+        self.assertIn("Liliana invited you", message["Subject"])
+        with numer.open_db() as connection:
+            token = connection.execute("SELECT token, emailed_at FROM invites").fetchone()
+        self.assertIn(f"http://localhost/join/{token['token']}", body(message, "html"))
+        self.assertIn("Hi Frank", body(message, "plain"))
+        self.assertIsNotNone(token["emailed_at"])
+
+    def test_invite_without_email_sends_nothing(self):
+        self.login("liliana@example.com")
+        self.create_invite(name="Frank")
+        self.assertEqual([row["kind"] for row in self.outbox()], [])
+
+    def test_send_existing_invite_adding_an_address(self):
+        self.login("liliana@example.com")
+        self.create_invite(name="Frank")
+        with numer.open_db() as connection:
+            invite_id = connection.execute("SELECT id FROM invites").fetchone()[0]
+        page = self.client.get("/invite").get_data(as_text=True)
+        self.assertIn("Send by email", page)
+        html = self.client.post(f"/invite/{invite_id}/email", follow_redirects=True, data={
+            "csrf_token": token_from(page), "email": "frank@example.com"}).get_data(as_text=True)
+        self.assertIn("Invitation emailed to frank@example.com", html)
+        self.assertIn("Resend invitation to frank@example.com", html)
+        self.assertEqual([(r["kind"], r["to_addr"]) for r in self.outbox()], [("invite", "frank@example.com")])
+
+    def test_cannot_email_someone_elses_or_used_invite(self):
+        self.login("liliana@example.com")
+        self.create_invite(name="Frank", email="frank@example.com")
+        with numer.open_db() as connection:
+            invite_id = connection.execute("SELECT id FROM invites").fetchone()[0]
+        self.client.post("/logout", data={"csrf_token": token_from(self.client.get("/invite").get_data(as_text=True))})
+        self.login("owner@example.com")
+        page = self.client.get("/invite").get_data(as_text=True)
+        self.assertEqual(self.client.post(f"/invite/{invite_id}/email",
+                                          data={"csrf_token": token_from(page)}).status_code, 404)
+
+    def test_no_smtp_falls_back_to_sharing(self):
+        self.login("liliana@example.com")
+        with mock.patch.dict(os.environ, {"NUMER_SMTP_HOST": ""}):
+            html = self.create_invite(name="Frank", email="frank@example.com").get_data(as_text=True)
+        self.assertNotIn("emailed the invitation", html)
+        self.assertIn("Send them the link yourself", html)
+        self.assertEqual(self.outbox(), [])

@@ -1,7 +1,7 @@
 {% if card %}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:26px 0 6px;background:#faf6ff;border:1px solid #e4dbf1;border-radius:14px;">
 <tr><td style="padding:22px;text-align:center;">
-  <p style="margin:0 0 10px;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#7a7290;">Your numerologist</p>
+  <p style="margin:0 0 10px;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#7a7290;">{{ card_label or "Your numerologist" }}</p>
   {% if card.photo %}<img src="{{ card.photo }}" width="84" height="84" alt="{{ card.name }}" style="border-radius:50%;border:3px solid #d4af5a;display:block;margin:0 auto 10px;">{% endif %}
   <p style="margin:0;font-family:Georgia,serif;font-size:22px;color:#1b1038;">{{ card.name }}</p>
   {% if card.headline %}<p style="margin:4px 0 0;color:#9a7a2c;font-size:14px;">{{ card.headline }}</p>{% endif %}

@@ -18,6 +18,7 @@
       {% if new_link %}
         <div class="invite-ready" role="status">
           <p class="qr-title">Your invite link is ready</p>
+          {% if emailed_to %}<p class="small">We've emailed the invitation to <strong>{{ emailed_to }}</strong>. You can also share the link yourself:</p>{% endif %}
           <p class="link-box">{{ new_link }}</p>
           <div class="share-buttons" data-share-url="{{ new_link }}" data-share-text="I'd love you to join me on {{ site_name }}: free numerology reports that bring you new clients. Here's your invite:">
             <button type="button" class="share-btn share-native" hidden>Share</button>
@@ -42,7 +43,7 @@
             <input id="email" name="email" type="email" value="{{ form.email }}">
           </div>
         </div>
-        <p class="hint">We'll pre-fill these on their sign-up form. Nothing is emailed automatically: you send the link.</p>
+        <p class="hint">{% if can_email %}Add their email and we'll send them a branded invitation from {{ site_name }} (replies come to you). We also pre-fill their sign-up form.{% else %}We'll pre-fill these on their sign-up form. Send them the link yourself.{% endif %}</p>
         <button type="submit">{{ 'Create another invite' if new_link else 'Create invite link' }}</button>
       </form>
     </section>
@@ -74,7 +75,18 @@
           <li>
             <p class="lead-name">{{ i.name or i.email or 'Unnamed invite' }}</p>
             <p class="link-box small">{{ invite_url(i.token) }}</p>
-            <p class="lead-time">Expires {{ i.expires_at[:10] }}</p>
+            <p class="lead-time">Expires {{ i.expires_at[:10] }}{% if i.emailed_at %} · Emailed {{ i.emailed_at | friendly_time }}{% endif %}</p>
+            {% if can_email %}
+            <form method="post" action="{{ url_for('email_invite', invite_id=i.id) }}" class="inline-form wrap invite-email-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              {% if i.email %}
+                <button type="submit" class="link">{{ 'Resend' if i.emailed_at else 'Email' }} invitation to {{ i.email }}</button>
+              {% else %}
+                <input name="email" type="email" maxlength="254" placeholder="Their email" aria-label="Email for {{ i.name or 'this invite' }}" required>
+                <button type="submit" class="link">Send by email</button>
+              {% endif %}
+            </form>
+            {% endif %}
             <form method="post" action="{{ url_for('revoke_invite', invite_id=i.id) }}">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="link revoke">Revoke</button>
