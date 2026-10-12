@@ -25,6 +25,13 @@
 
   {% if bill.platform %}
     <p>Top of the referral chain: <strong>{{ bill.platform.display_name }}</strong> (<a href="/{{ bill.platform.slug }}" target="_blank" rel="noopener">{{ base_url.split('://')[-1] }}/{{ bill.platform.slug }}</a>), balance CAD {{ (bill.users | selectattr('id', 'equalto', bill.platform.id) | first).balance_cents | money }}.</p>
+  {% elif bill.slug_owner %}
+    <form method="post" action="{{ url_for('admin_adopt_platform') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="user_id" value="{{ bill.slug_owner.id }}">
+      <p>numer.life/tapnet belongs to <strong>{{ bill.slug_owner.display_name }}</strong> ({{ bill.slug_owner.email }}) but isn't marked as the platform account yet.</p>
+      <button type="submit" class="primary">Make this the top of the referral chain</button>
+    </form>
   {% else %}
     <form method="post" action="{{ url_for('admin_create_platform') }}" class="stack">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
