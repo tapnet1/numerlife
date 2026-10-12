@@ -260,4 +260,21 @@ class ReviewFollowupTest(EmailTestCase):
         self.assertEqual({row["last_error"] for row in self.outbox() if "nudge" in row["kind"]},
                          {"cancelled: unsubscribed"})
 
+    def test_opt_out_after_claim_still_wins(self):
+        emails.set_setting("auto_nudges", "on")
+        self.set_booking()
+        lead = self.unlocked_lead(email="b@example.com", marketing_opt_in="yes")
+        self.age_lead(lead["id"], 60)
+        emails.run_nudges()
+        emails.send_pending(smtp_factory=self.smtp)  # report, alert, both nudges
+        self.smtp.sent.clear()
+        with numer.open_db() as connection:  # requeue the nudges, then opt out without touching the outbox
+            connection.execute("INSERT INTO email_outbox (kind, to_addr, subject, body_text, body_html, lead_id,"
+                               " user_id, created_at) SELECT kind, to_addr, subject, body_text, body_html, lead_id,"
+                               " user_id, ? FROM email_outbox WHERE kind LIKE '%nudge'", (numer.iso(numer.now_utc()),))
+            connection.execute("UPDATE leads SET marketing_opt_in = 0")
+            connection.execute("UPDATE users SET email_nudges = 0")
+        emails.send_pending(smtp_factory=self.smtp)
+        self.assertEqual(self.smtp.sent, [])
+
     set_booking = NudgeTest.set_booking
