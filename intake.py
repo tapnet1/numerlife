@@ -18,8 +18,10 @@ import sqlite3
 import click
 from flask import abort, redirect, render_template, request, session, url_for
 
+import content
 import numerology
 from app import (
+    BASE_URL,
     app,
     client_ip,
     create_user,
@@ -153,9 +155,16 @@ def parse_birth_form(form) -> tuple[dict, list[str]]:
     return data, errors
 
 
+def share_url_for(practitioner) -> str:
+    """Public link to pass on: the practitioner's link if there is one, else the home page."""
+    path = url_for("practitioner_link", slug=practitioner["slug"]) if practitioner else url_for("home")
+    return BASE_URL + path
+
+
 def render_form(practitioner, data=None, errors=None, status=200):
     return render_template("home.html", practitioner=practitioner, form=data or {},
-                           errors=errors or []), status
+                           errors=errors or [], share_url=share_url_for(practitioner),
+                           **content.home_context()), status
 
 
 @app.get("/")
@@ -226,7 +235,11 @@ def report_context(lead):
         practitioner = db().execute("SELECT display_name, email FROM users WHERE id = ?",
                                     (lead["practitioner_id"],)).fetchone()
     first_name = lead["full_name"].split(" ")[0]
-    return {"lead": lead, "items": items, "practitioner": practitioner, "first_name": first_name}
+    share_from = None
+    if lead["practitioner_id"] and lead["ref_slug"]:
+        share_from = practitioner_by_slug(lead["ref_slug"])
+    return {"lead": lead, "items": items, "practitioner": practitioner, "first_name": first_name,
+            "share_url": share_url_for(share_from)}
 
 
 @app.get("/r/<token>")
@@ -273,6 +286,18 @@ def unlock_report(token):
 @app.get("/privacy")
 def privacy():
     return render_template("privacy.html")
+
+
+@app.get("/sitemap.xml")
+def sitemap():
+    today = dt.date.today().isoformat()
+    urls = "".join(
+        f"<url><loc>{BASE_URL}{path}</loc><lastmod>{today}</lastmod><priority>{priority}</priority></url>"
+        for path, priority in (("/", "1.0"), ("/privacy", "0.3"))
+    )
+    body = ('<?xml version="1.0" encoding="UTF-8"?>'
+            f'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>')
+    return body, 200, {"Content-Type": "application/xml; charset=utf-8"}
 
 
 # --------------------------------------------------------------------------

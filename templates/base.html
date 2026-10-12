@@ -3,51 +3,70 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}{{ site_name }} — Free numerology report{% endblock %}</title>
+  <title>{% block title %}Free Numerology Report: Life Path, Expression &amp; Soul Urge Numbers | {{ site_name }}{% endblock %}</title>
   <meta name="description" content="{% block description %}{{ site_description }}{% endblock %}">
-  {% if noindex %}<meta name="robots" content="noindex, nofollow">{% endif %}
-  <link rel="canonical" href="{{ base_url }}{{ request.path }}">
+  {% if noindex %}<meta name="robots" content="noindex, nofollow">{% else %}<meta name="robots" content="index, follow, max-image-preview:large">{% endif %}
+  {% set canonical = base_url ~ (canonical_path if canonical_path is defined else request.path) %}
+  <link rel="canonical" href="{{ canonical }}">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="{{ site_name }}">
-  <meta property="og:title" content="{{ self.title() }}">
-  <meta property="og:description" content="{{ self.description() }}">
-  <meta property="og:url" content="{{ base_url }}{{ request.path }}">
-  <meta name="twitter:card" content="summary">
-  <meta name="theme-color" content="#3b2a6b">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:title" content="{% block og_title %}{{ self.title() }}{% endblock %}">
+  <meta property="og:description" content="{{ self.description() | trim }}">
+  <meta property="og:url" content="{{ canonical }}">
+  <meta property="og:image" content="{{ base_url }}{{ url_for('static', filename='img/og-image.jpg') }}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:alt" content="Discover what your numbers say about you: a free numerology report from numer.life">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ self.og_title() | trim }}">
+  <meta name="twitter:description" content="{{ self.description() | trim }}">
+  <meta name="twitter:image" content="{{ base_url }}{{ url_for('static', filename='img/og-image.jpg') }}">
+  <meta name="theme-color" content="#24164a">
   <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
+  <link rel="preload" href="{{ url_for('static', filename='fonts/cormorant-garamond-latin-700-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="{{ url_for('static', filename='fonts/inter-latin-400-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  {% block structured_data %}{% endblock %}
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
+  <a class="skip-link" href="#main">Skip to content</a>
   <header class="topbar">
-    <a class="brand" href="{{ url_for('home') }}">
-      <img src="{{ url_for('static', filename='favicon.svg') }}" alt="" width="28" height="28">
+    <a class="brand" href="{{ url_for('home') }}" aria-label="{{ site_name }} home">
+      <img src="{{ url_for('static', filename='favicon.svg') }}" alt="" width="30" height="30">
       <span>{{ site_name }}</span>
     </a>
-    <nav>
-      {% if user %}
-        <a href="{{ url_for('dashboard') }}">Dashboard</a>
-        {% if user.role == 'admin' %}<a href="{{ url_for('admin') }}">Admin</a>{% endif %}
-        <form method="post" action="{{ url_for('logout') }}" class="inline">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button type="submit" class="link">Sign out</button>
-        </form>
-      {% else %}
-        <a href="{{ url_for('login') }}">Practitioner sign in</a>
-      {% endif %}
+    {% if user %}
+    <nav aria-label="Account">
+      <a href="{{ url_for('dashboard') }}">Dashboard</a>
+      {% if user.role == 'admin' %}<a href="{{ url_for('admin') }}">Admin</a>{% endif %}
+      <form method="post" action="{{ url_for('logout') }}" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="link">Sign out</button>
+      </form>
     </nav>
+    {% endif %}
   </header>
 
-  <main class="container">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% for category, message in messages %}
-        <p class="flash flash-{{ category }}" role="status">{{ message }}</p>
-      {% endfor %}
-    {% endwith %}
-    {% block content %}{% endblock %}
+  <main id="main">
+    {% block hero %}{% endblock %}
+    <div class="container">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          <p class="flash flash-{{ category }}" role="status">{{ message }}</p>
+        {% endfor %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </div>
   </main>
 
   <footer class="footer">
+    <p class="footer-brand">{{ site_name }}</p>
+    <p>Free numerology reports based on the Pythagorean system. For reflection and entertainment.</p>
     <p>&copy; {{ year }} {{ site_name }} · <a href="{{ url_for('privacy') }}">Privacy</a></p>
   </footer>
+  {% block scripts %}{% endblock %}
 </body>
 </html>
