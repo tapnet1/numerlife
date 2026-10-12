@@ -186,10 +186,15 @@ jobs:
             done
             test "$passed" -eq 1 || { echo "::error::/$endpoint did not return HTTP 200"; exit 1; }
           done
-          # Unauthenticated admin access must redirect to sign in, not error.
-          admin_code="$(curl --silent --show-error --max-time 15 --output /dev/null --write-out '%{http_code}' https://numer.life/admin)"
-          echo "/admin (signed out): HTTP $admin_code"
-          test "$admin_code" = "302"
+          # Unauthenticated admin access must redirect to sign in, not error (retried like the others).
+          admin_ok=0
+          for attempt in 1 2 3 4 5; do
+            admin_code="$(curl --silent --show-error --max-time 15 --output /dev/null --write-out '%{http_code}' https://numer.life/admin || true)"
+            echo "/admin (signed out): HTTP $admin_code (attempt $attempt)"
+            if [ "$admin_code" = "302" ]; then admin_ok=1; break; fi
+            sleep 5
+          done
+          test "$admin_ok" -eq 1 || { echo "::error::/admin did not redirect to sign in"; exit 1; }
 
       - name: Remove temporary SSH key
         if: always()
