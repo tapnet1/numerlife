@@ -159,9 +159,10 @@ jobs:
           push_job='* * * * * cd /home/numerlife1/numerlife && .venv/bin/python jobs.py send-push >> logs/jobs.log 2>&1'
           email_job='* * * * * cd /home/numerlife1/numerlife && .venv/bin/python jobs.py send-email >> logs/jobs.log 2>&1'
           nudge_job='41 15 * * * cd /home/numerlife1/numerlife && .venv/bin/python jobs.py send-nudges >> logs/jobs.log 2>&1'
+          referral_job='13 7 * * * cd /home/numerlife1/numerlife && .venv/bin/python jobs.py accrue-referrals >> logs/jobs.log 2>&1'
           if command -v crontab >/dev/null; then
             { crontab -l 2>/dev/null | sed '/# numerlife-jobs begin/,/# numerlife-jobs end/d'
-              printf '%s\n' '# numerlife-jobs begin' "$purge_job" "$push_job" "$email_job" "$nudge_job" '# numerlife-jobs end'
+              printf '%s\n' '# numerlife-jobs begin' "$purge_job" "$push_job" "$email_job" "$nudge_job" "$referral_job" '# numerlife-jobs end'
             } | crontab - && echo "Scheduled jobs installed" \
               || echo "::warning::Could not install cron jobs; add them in cPanel > Cron Jobs"
           else

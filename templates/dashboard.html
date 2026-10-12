@@ -89,6 +89,17 @@
     {% set devices = push_device_count(user.id) %}
     {% if devices %}<p class="muted small">Alerts are on for {{ devices }} {{ 'device' if devices == 1 else 'devices' }}.</p>{% endif %}
   </div>
+  {% if user.role == 'practitioner' %}
+  {% set earn = earnings_summary(user.id) %}
+  <div class="panel earnings-panel">
+    <h2>Earnings</h2>
+    <p class="earn-balance"><strong>CAD {{ earn.balance | money }}</strong> <span class="muted small">in credits</span></p>
+    <p class="muted small">Plan: {{ earn.plan_label }}. You earn CAD $1 every month for each practitioner you invite who subscribes{% if earn.paying %}: {{ earn.paying }} paying now, CAD {{ earn.monthly | money }}/month{% endif %}.</p>
+    {% if earn.recent %}
+      <ul class="earn-list">{% for e in earn.recent %}<li><span>{{ earn.kinds.get(e.kind, e.kind) }}{% if e.note %} · {{ e.note }}{% endif %}</span><span>{{ e.amount_cents | money }}</span></li>{% endfor %}</ul>
+    {% endif %}
+  </div>
+  {% endif %}
   <div class="panel invite-panel">
     <h2>Invite practitioners</h2>
     <p class="muted small">Know numerologists who'd love more clients? Invite them: they'll be recorded as your referral.</p>

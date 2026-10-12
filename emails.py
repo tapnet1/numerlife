@@ -218,6 +218,20 @@ def queue_unlock_emails(lead_id: int) -> None:
     kick()
 
 
+def _still_wanted(connection, row) -> bool:
+    """Re-check consent right before delivery, so an opt-out during a send run still wins."""
+    current = connection.execute("SELECT sent_at FROM email_outbox WHERE id = ?", (row["id"],)).fetchone()
+    if current is None or current["sent_at"] is not None:
+        return False
+    if row["kind"] == "practitioner_nudge":
+        user = connection.execute("SELECT email_nudges, is_active FROM users WHERE id = ?", (row["user_id"],)).fetchone()
+        return bool(user and user["email_nudges"] and user["is_active"])
+    if row["kind"] == "client_nudge":
+        lead = connection.execute("SELECT marketing_opt_in FROM leads WHERE id = ?", (row["lead_id"],)).fetchone()
+        return bool(lead and lead["marketing_opt_in"])
+    return True
+
+
 def send_pending(limit: int = 50, ids: list[int] | None = None, smtp_factory=None) -> dict:
     """Send queued email. Rows are claimed atomically, so overlapping runs never double-send."""
     stats = {"sent": 0, "failed": 0, "expired": 0}
@@ -247,6 +261,11 @@ def send_pending(limit: int = 50, ids: list[int] | None = None, smtp_factory=Non
             connection.commit()
             if not claimed:
                 continue
+            if not _still_wanted(connection, row):
+                connection.execute("UPDATE email_outbox SET sent_at = ?, last_error = 'cancelled: unsubscribed'"
+                                   " WHERE id = ? AND sent_at IS NULL", (iso(now_utc()), row["id"]))
+                connection.commit()
+                continue
             try:
                 if server is None:
                     server = smtp_factory()
@@ -269,7 +288,7 @@ def send_pending(limit: int = 50, ids: list[int] | None = None, smtp_factory=Non
                         pass
                 server = None
                 continue
-            connection.execute("UPDATE email_outbox SET sent_at = ?, last_error = '' WHERE id = ?",
+            connection.execute("UPDATE email_outbox SET sent_at = ?, last_error = '' WHERE id = ? AND sent_at IS NULL",
                                (iso(now_utc()), row["id"]))
             connection.commit()
             stats["sent"] += 1

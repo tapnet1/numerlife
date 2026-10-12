@@ -365,6 +365,16 @@ button.link.revoke { color: var(--error); font-size: .88rem; }
 .about-links a { text-decoration: none; font-weight: 500; overflow-wrap: anywhere; }
 @media (max-width: 860px) { .about-body { grid-template-columns: 1fr; } }
 
+/* ---- Billing ---- */
+.earn-balance { font-family: var(--serif); font-size: 1.9rem; margin: .2rem 0 .4rem; }
+.earn-balance .small { font-family: inherit; }
+.earn-list { list-style: none; padding: 0; margin: .6rem 0 0; font-size: .9rem; }
+.earn-list li { display: flex; justify-content: space-between; gap: .8rem; padding: .4rem 0; border-top: 1px solid var(--line); }
+.inline-form { display: flex; gap: .4rem; align-items: center; margin: 0; }
+.inline-form.wrap { flex-wrap: wrap; }
+.inline-form select, .inline-form input { width: auto; margin: 0; padding: .4rem .5rem; font-size: .9rem; }
+.stack > * + * { margin-top: .5rem; }
+
 /* ---- Footer ---- */
 .footer { text-align: center; color: #b9b0cc; font-size: .87rem; padding: 2.5rem 1rem; background: var(--night); margin-top: 3rem; }
 .footer p { margin: .3rem 0; }

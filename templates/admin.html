@@ -18,6 +18,72 @@
   </table>
 </section>
 
+{% set bill = billing_overview() %}
+<section class="card" id="billing">
+  <h2>Billing &amp; referrals</h2>
+  <p class="muted">{{ bill.paying }} paying {{ 'practitioner' if bill.paying == 1 else 'practitioners' }} · CAD {{ bill.mrr | money }}/month in subscriptions. Referral rewards (CAD $1/month per paying practitioner) go to their inviter, or to TAPNET. Sales split 25% TAPNET / 75% practitioner. PayPal checkout will set plans automatically; until then set them here.</p>
+
+  {% if bill.platform %}
+    <p>Top of the referral chain: <strong>{{ bill.platform.display_name }}</strong> (<a href="/{{ bill.platform.slug }}" target="_blank" rel="noopener">{{ base_url.split('://')[-1] }}/{{ bill.platform.slug }}</a>), balance CAD {{ (bill.users | selectattr('id', 'equalto', bill.platform.id) | first).balance_cents | money }}.</p>
+  {% else %}
+    <form method="post" action="{{ url_for('admin_create_platform') }}" class="stack">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <p><strong>Create the numer.life/tapnet account</strong>: the top of the referral chain, where TAPNET's referral rewards and 25% sale shares accrue.</p>
+      <label for="platform-email">TAPNET account email</label>
+      <input id="platform-email" name="email" type="email" maxlength="254" required>
+      <label for="platform-password">Password (12+ characters)</label>
+      <input id="platform-password" name="password" type="password" minlength="12" autocomplete="new-password" required>
+      <button type="submit" class="primary">Create numer.life/tapnet</button>
+    </form>
+  {% endif %}
+
+  <div class="table-wrap"><table>
+    <thead><tr><th>Account</th><th>Invited by</th><th>Plan</th><th>Credits (CAD)</th></tr></thead>
+    <tbody>
+    {% for u in bill.users if u.role == 'practitioner' %}
+      <tr>
+        <td>{{ u.display_name }}{% if u.slug %} <span class="muted small">/{{ u.slug }}</span>{% endif %}{% if not u.is_active %} <span class="muted small">(inactive)</span>{% endif %}</td>
+        <td>{{ u.inviter_name or '—' }}</td>
+        <td>
+          <form method="post" action="{{ url_for('admin_set_plan') }}" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="user_id" value="{{ u.id }}">
+            <select name="plan" aria-label="Plan for {{ u.display_name }}">
+              {% for key, label in bill.plans.items() %}<option value="{{ key }}"{% if u.plan == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+            <input type="date" name="paid_through" value="{{ u.paid_through or '' }}" aria-label="Paid through" title="Paid through (paid plans)">
+            <button type="submit" class="link">Save</button>
+          </form>
+        </td>
+        <td>{{ u.balance_cents | money }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+
+  <h3 class="mt">Manual adjustment</h3>
+  <form method="post" action="{{ url_for('admin_adjust') }}" class="inline-form wrap">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <select name="user_id" aria-label="Account">{% for u in bill.users if u.role == 'practitioner' %}<option value="{{ u.id }}">{{ u.display_name }}</option>{% endfor %}</select>
+    <input name="amount" type="number" step="0.01" placeholder="Amount, e.g. 5.00 or -2.50" aria-label="Amount in CAD" required>
+    <input name="note" type="text" maxlength="200" placeholder="Reason (required)" aria-label="Reason" required>
+    <button type="submit">Record</button>
+  </form>
+
+  <h3 class="mt">Ledger</h3>
+  {% if bill.entries %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>When</th><th>Account</th><th>Type</th><th>Amount</th><th>Note</th></tr></thead>
+    <tbody>
+    {% for e in bill.entries %}
+      <tr><td>{{ e.created_at | friendly_time }}</td><td>{{ e.owner }}</td><td>{{ bill.kinds.get(e.kind, e.kind) }}</td>
+        <td>{{ e.amount_cents | money }}</td><td>{{ e.note }}{% if e.source_name %} <span class="muted small">(from {{ e.source_name }})</span>{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="muted">No entries yet. Entries can't be edited or deleted; corrections are new adjustments.</p>{% endif %}
+</section>
+
 {% set mail = email_status() %}
 <section class="card" id="email">
   <h2>Email</h2>

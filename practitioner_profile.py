@@ -134,8 +134,10 @@ def edit_profile():
             errors.append("Name: enter the name clients will see")
         slug = row["slug"]
         if user["role"] == "practitioner":
+            submitted = (request.form.get("slug") or "").strip().lower()
             try:
-                slug = validate_slug(request.form.get("slug") or "")
+                # An unchanged link is kept as is (the platform's own reserved link included).
+                slug = row["slug"] if row["slug"] and submitted == row["slug"] else validate_slug(submitted)
             except ValueError as exc:
                 errors.append(f"Link name: {exc}")
         form = {"display_name": display_name, "slug": request.form.get("slug", ""),

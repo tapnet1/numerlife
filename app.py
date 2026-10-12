@@ -182,6 +182,24 @@ CREATE TABLE IF NOT EXISTS email_outbox (
 );
 CREATE INDEX IF NOT EXISTS idx_email_outbox_pending ON email_outbox (sent_at, created_at);
 
+CREATE TABLE IF NOT EXISTS ledger (
+    id             INTEGER PRIMARY KEY,
+    user_id        INTEGER NOT NULL REFERENCES users(id),
+    kind           TEXT NOT NULL,
+    amount_cents   INTEGER NOT NULL,
+    currency       TEXT NOT NULL DEFAULT 'CAD',
+    source_user_id INTEGER REFERENCES users(id),
+    reference      TEXT NOT NULL UNIQUE,
+    note           TEXT NOT NULL DEFAULT '',
+    created_by     INTEGER REFERENCES users(id),
+    created_at     TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ledger_user ON ledger (user_id, created_at);
+CREATE TRIGGER IF NOT EXISTS ledger_no_update BEFORE UPDATE ON ledger
+BEGIN SELECT RAISE(ABORT, 'ledger is append-only'); END;
+CREATE TRIGGER IF NOT EXISTS ledger_no_delete BEFORE DELETE ON ledger
+BEGIN SELECT RAISE(ABORT, 'ledger is append-only'); END;
+
 CREATE TABLE IF NOT EXISTS settings (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
@@ -207,6 +225,8 @@ ADDED_COLUMNS = (
     ("users", "email_nudges", "INTEGER NOT NULL DEFAULT 1"),  # reminder emails about waiting leads
     ("users", "nudged_at", "TEXT"),
     ("leads", "nudged_at", "TEXT"),                          # follow-up email sent to the visitor
+    ("users", "plan", "TEXT NOT NULL DEFAULT 'none'"),       # none | complimentary | active | past_due | cancelled
+    ("users", "paid_through", "TEXT"),                       # subscription paid up to this date (YYYY-MM-DD)
     ("leads", "source", "TEXT NOT NULL DEFAULT 'link'"),     # link | round_robin | none
     ("leads", "stage", "TEXT NOT NULL DEFAULT 'new'"),   # practitioner's pipeline: new/contacted/client/archived
     ("leads", "notes", "TEXT NOT NULL DEFAULT ''"),       # practitioner's private notes
@@ -215,7 +235,7 @@ ADDED_COLUMNS = (
 )
 
 REQUIRED_TABLES = {"users", "login_attempts", "leads", "form_attempts", "invites",
-                   "push_subscriptions", "push_outbox", "avatars", "email_outbox", "settings"}
+                   "push_subscriptions", "push_outbox", "avatars", "email_outbox", "settings", "ledger"}
 
 
 def now_utc() -> dt.datetime:
@@ -631,3 +651,4 @@ import invites  # noqa: E402,F401  (practitioner invitations and referrals)
 import notify  # noqa: E402,F401  (PWA manifest, service worker, push notifications)
 import public_profiles  # noqa: E402,F401  (profile photos, public practitioner pages)
 import emails  # noqa: E402,F401  (report emails, lead alerts, nudges, unsubscribe)
+import billing  # noqa: E402,F401  (plans, referral tree, CAD credits ledger)
