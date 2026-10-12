@@ -195,8 +195,11 @@ def billing_overview() -> dict:
         " JOIN users ON users.id = ledger.user_id LEFT JOIN users AS source ON source.id = ledger.source_user_id"
         " ORDER BY ledger.id DESC LIMIT 25").fetchall()
     platform = platform_account(connection)
+    slug_owner = None if platform else connection.execute(
+        "SELECT id, display_name, email FROM users WHERE slug = ?", (PLATFORM_SLUG,)).fetchone()
     paying = sum(1 for u in users if is_paying(u))
-    return {"users": users, "entries": entries, "platform": platform, "plans": PLANS, "kinds": KINDS,
+    return {"users": users, "entries": entries, "platform": platform, "slug_owner": slug_owner,
+            "plans": PLANS, "kinds": KINDS,
             "paying": paying, "mrr": paying * SUBSCRIPTION_CENTS}
 
 
@@ -259,6 +262,22 @@ def admin_create_platform():
     return redirect(url_for("admin") + "#billing")
 
 
+@app.post("/admin/billing/platform/adopt")
+@role_required("admin")
+def admin_adopt_platform():
+    """Mark the existing owner of numer.life/tapnet as the platform account (accounts made before the marker)."""
+    user_id = request.form.get("user_id", type=int)
+    with open_db() as connection:
+        owner = connection.execute("SELECT id FROM users WHERE slug = ? AND id = ?", (PLATFORM_SLUG, user_id)).fetchone()
+        if owner is None or platform_account(connection) is not None:
+            abort(400, description="That account can't be made the platform account.")
+        connection.execute("INSERT INTO settings (key, value) VALUES ('platform_user_id', ?)"
+                           " ON CONFLICT(key) DO UPDATE SET value = excluded.value", (str(owner["id"]),))
+        connection.execute("UPDATE users SET round_robin = 0 WHERE id = ?", (owner["id"],))
+    flash("numer.life/tapnet is now the top of the referral chain.", "info")
+    return redirect(url_for("admin") + "#billing")
+
+
 @app.post("/admin/billing/adjust")
 @role_required("admin")
 def admin_adjust():
@@ -288,9 +307,12 @@ def set_plan_command(email, plan, paid_through):
     """Set a practitioner's plan (e.g. complimentary for Liliana)."""
     until = None
     if plan in PAID_PLANS:
-        try:
-            until = dt.date.fromisoformat(paid_through).isoformat()
-        except ValueError:
+        if paid_through:
+            try:
+                until = dt.date.fromisoformat(paid_through).isoformat()
+            except ValueError:
+                raise click.BadParameter("use a real date as YYYY-MM-DD", param_hint="--paid-through")
+        else:
             until = (now_utc().date() + dt.timedelta(days=31)).isoformat()
     with open_db() as connection:
         changed = connection.execute("UPDATE users SET plan = ?, paid_through = ? WHERE email = ?",

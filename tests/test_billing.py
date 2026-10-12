@@ -182,6 +182,30 @@ class ReviewFollowupTest(BillingTestCase):
                                                  (self.maria_id,)).fetchone()[0])
 
 
+class SecondReviewTest(BillingTestCase):
+    def test_admin_can_adopt_an_unmarked_tapnet_account(self):
+        with numer.open_db() as connection:
+            connection.execute("DELETE FROM settings WHERE key = 'platform_user_id'")
+        self.login("owner@example.com")
+        page = self.client.get("/admin").get_data(as_text=True)
+        self.assertIn("Make this the top of the referral chain", page)
+        self.client.post("/admin/billing/platform/adopt", data={"csrf_token": token_from(page),
+                                                                "user_id": self.tapnet_id})
+        self.assertEqual(billing.platform_account(numer.connect())["id"], self.tapnet_id)
+        response = self.client.post("/admin/billing/platform/adopt", data={"csrf_token": token_from(page),
+                                                                           "user_id": self.maria_id})
+        self.assertEqual(response.status_code, 400)
+
+    def test_cli_rejects_a_malformed_date(self):
+        result = numer.app.test_cli_runner().invoke(
+            args=["set-plan", "--email", "maria@example.com", "--plan", "active", "--paid-through", "2026-02-30"])
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("YYYY-MM-DD", result.output)
+        with numer.open_db() as connection:
+            self.assertIsNone(connection.execute("SELECT paid_through FROM users WHERE id = ?",
+                                                 (self.maria_id,)).fetchone()[0])
+
+
 class DashboardEarningsTest(BillingTestCase):
     def test_practitioner_sees_credits_and_referrals(self):
         self.set_plan(self.maria_id, "active", "2026-11-30")
