@@ -93,22 +93,33 @@ def ip_hash() -> str:
     return hmac.new(key, (request.remote_addr or "unknown").encode(), hashlib.sha256).hexdigest()[:32]
 
 
-def over_limit(kind: str, limit: int) -> bool:
-    since = iso(now_utc() - dt.timedelta(hours=1))
-    count = db().execute(
-        "SELECT COUNT(*) FROM form_attempts WHERE ip_hash = ? AND kind = ? AND created_at >= ?",
-        (ip_hash(), kind, since),
-    ).fetchone()[0]
-    return count >= limit
+def reserve_attempt(kind: str, limit: int) -> bool:
+    """Count and record one attempt atomically; False if this connection is over the limit.
 
-
-def record_attempt(kind: str) -> None:
+    BEGIN IMMEDIATE takes SQLite's write lock first, so parallel requests from the same
+    address are counted one after another and can't all slip under the limit.
+    """
     connection = db()
-    connection.execute("INSERT INTO form_attempts (ip_hash, kind, created_at) VALUES (?, ?, ?)",
-                       (ip_hash(), kind, iso(now_utc())))
-    connection.execute("DELETE FROM form_attempts WHERE created_at < ?",
-                       (iso(now_utc() - dt.timedelta(days=1)),))
-    connection.commit()
+    since = iso(now_utc() - dt.timedelta(hours=1))
+    connection.commit()  # finish any implicit transaction before taking the lock
+    connection.execute("BEGIN IMMEDIATE")
+    try:
+        count = connection.execute(
+            "SELECT COUNT(*) FROM form_attempts WHERE ip_hash = ? AND kind = ? AND created_at >= ?",
+            (ip_hash(), kind, since),
+        ).fetchone()[0]
+        if count >= limit:
+            connection.rollback()
+            return False
+        connection.execute("INSERT INTO form_attempts (ip_hash, kind, created_at) VALUES (?, ?, ?)",
+                           (ip_hash(), kind, iso(now_utc())))
+        connection.execute("DELETE FROM form_attempts WHERE created_at < ?",
+                           (iso(now_utc() - dt.timedelta(days=1)),))
+        connection.commit()
+        return True
+    except BaseException:
+        connection.rollback()
+        raise
 
 
 # --------------------------------------------------------------------------
@@ -127,7 +138,9 @@ def parse_birth_form(form) -> tuple[dict, list[str]]:
         "birth_country": clean(form.get("birth_country"), MAX_PLACE),
     }
     errors = []
-    if not numerology.letters_of(data["full_name"]):
+    if numerology.unsupported_letters(data["full_name"]):
+        errors.append("Please write your name in Latin letters (A-Z, accents are fine).")
+    elif not numerology.letters_of(data["full_name"]):
         errors.append("Enter your full birth name.")
     try:
         born = dt.date.fromisoformat(data["birth_date"])
@@ -170,13 +183,12 @@ def start_report():
     practitioner = referring_practitioner()
     if request.form.get("website"):  # honeypot: humans never see this field
         return redirect(url_for("home"))
-    if over_limit("submit", SUBMIT_LIMIT_PER_HOUR):
-        return render_form(practitioner, request.form, ["Too many reports from your connection. "
-                                                        "Please try again in an hour."], 429)
     data, errors = parse_birth_form(request.form)
     if errors:
         return render_form(practitioner, data, errors, 400)
-    record_attempt("submit")
+    if not reserve_attempt("submit", SUBMIT_LIMIT_PER_HOUR):
+        return render_form(practitioner, data, ["Too many reports from your connection. "
+                                                "Please try again in an hour."], 429)
     numbers = numerology.core_numbers(data["full_name"], dt.date.fromisoformat(data["birth_date"]))
     token = secrets.token_urlsafe(24)
     connection = db()
@@ -239,19 +251,17 @@ def unlock_report(token):
     errors = []
     if request.form.get("website"):
         return redirect(url_for("report", token=token))
-    if over_limit("unlock", UNLOCK_LIMIT_PER_HOUR):
-        errors.append("Too many attempts from your connection. Please try again in an hour.")
-    else:
-        if not EMAIL_RE.match(form["email"]):
-            errors.append("Enter a valid email address.")
-        if form["phone"] and not PHONE_RE.match(form["phone"]):
-            errors.append("Enter a valid phone number, or leave it blank.")
-        if not form["consent_report"]:
-            errors.append("Please tick the box so we can send your report.")
+    if not EMAIL_RE.match(form["email"]):
+        errors.append("Enter a valid email address.")
+    if form["phone"] and not PHONE_RE.match(form["phone"]):
+        errors.append("Enter a valid phone number, or leave it blank.")
+    if not form["consent_report"]:
+        errors.append("Please tick the box so we can send your report.")
     if errors:
-        status = 429 if "Too many" in errors[0] else 400
-        return render_template("report.html", errors=errors, form=form, **report_context(lead)), status
-    record_attempt("unlock")
+        return render_template("report.html", errors=errors, form=form, **report_context(lead)), 400
+    if not reserve_attempt("unlock", UNLOCK_LIMIT_PER_HOUR):
+        errors = ["Too many attempts from your connection. Please try again in an hour."]
+        return render_template("report.html", errors=errors, form=form, **report_context(lead)), 429
     connection = db()
     connection.execute(
         "UPDATE leads SET email = ?, phone = ?, consent_report = 1, marketing_opt_in = ?,"

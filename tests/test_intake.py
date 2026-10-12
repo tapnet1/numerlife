@@ -82,6 +82,30 @@ class FormTest(IntakeTestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.headers["Cache-Control"], "no-store")
 
+    def test_non_latin_name_asks_for_latin_spelling(self):
+        response = self.submit(full_name="Иван Петров")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Latin letters", response.get_data(as_text=True))
+
+    def test_parallel_submissions_cannot_exceed_the_limit(self):
+        import threading
+        from werkzeug.test import Client
+        results = []
+        def worker():
+            client = Client(numer.app)
+            page = client.get("/", environ_base={"REMOTE_ADDR": "10.7.7.7"})
+            token = token_from(page.get_data(as_text=True))
+            data = form_data(csrf_token=token)
+            response = client.post("/report", data=data, environ_base={"REMOTE_ADDR": "10.7.7.7"})
+            results.append(response.status_code)
+        threads = [threading.Thread(target=worker) for _ in range(intake.SUBMIT_LIMIT_PER_HOUR + 6)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        self.assertEqual(results.count(302), intake.SUBMIT_LIMIT_PER_HOUR)
+        self.assertEqual(results.count(429), 6)
+
     def test_region_is_optional(self):
         self.assertEqual(self.submit(birth_region="").status_code, 302)
 

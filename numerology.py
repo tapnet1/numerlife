@@ -27,20 +27,61 @@ def letter_value(letter: str) -> int:
     return (ord(letter) - ord("A")) % 9 + 1
 
 
-# Latin letters that Unicode normalization does not reduce to A-Z.
-_LATIN_EXTRA = str.maketrans({
-    "ß": "SS", "ẞ": "SS", "Æ": "AE", "æ": "AE", "Œ": "OE", "œ": "OE", "Ø": "O", "ø": "O",
-    "Ł": "L", "ł": "L", "Đ": "D", "đ": "D", "Ð": "D", "ð": "D", "Þ": "TH", "þ": "TH",
-    "Ħ": "H", "ħ": "H", "ı": "I", "Ŋ": "NG", "ŋ": "NG", "Ŧ": "T", "ŧ": "T", "Ŀ": "L", "ŀ": "L",
-})
+# Latin letters whose Unicode name doesn't end in a plain A-Z letter.
+_LATIN_NAMED = {
+    "SHARP S": "SS", "AE": "AE", "OE": "OE", "ETH": "D", "THORN": "TH", "ENG": "NG",
+    "SCHWA": "E", "TURNED E": "E", "REVERSED E": "E", "OPEN E": "E", "OPEN O": "O",
+    "DOTLESS I": "I", "DOTLESS J": "J", "LONG S": "S", "YOGH": "Y", "WYNN": "W", "KRA": "K",
+    "EZH": "Z", "GLOTTAL STOP": "", "ALPHA": "A",
+}
+
+
+def _latin_to_ascii(ch: str) -> str | None:
+    """A-Z spelling of one Latin letter, '' for letters with no sound value, None if not Latin."""
+    if "A" <= ch.upper() <= "Z" and ch.isascii():
+        return ch.upper()
+    try:
+        name = unicodedata.name(ch)
+    except ValueError:
+        return None
+    if not name.startswith("LATIN "):
+        return None
+    if " LIGATURE " in name:  # Œ, Ĳ ...: the ligature's letters, in order
+        letters = name.split(" LIGATURE ", 1)[1].split(" WITH ")[0]
+        return letters if letters.isalpha() and letters.isascii() else None
+    if " LETTER " not in name:
+        return None
+    base = name.split(" LETTER ", 1)[1]
+    base = base.split(" WITH ")[0]
+    for prefix in ("SMALL CAPITAL ", "CAPITAL ", "SMALL "):
+        if base.startswith(prefix):
+            base = base[len(prefix):]
+    if len(base) == 1 and "A" <= base <= "Z":
+        return base
+    for key, value in _LATIN_NAMED.items():
+        if base == key or base.endswith(" " + key) or base.startswith(key + " "):
+            return value
+    return None
+
+
+def unsupported_letters(name: str) -> set[str]:
+    """Letters we can't spell in A-Z (e.g. Cyrillic or Greek); the form asks for a Latin spelling."""
+    decomposed = unicodedata.normalize("NFKD", name)
+    return {ch for ch in decomposed
+            if ch.isalpha() and not unicodedata.combining(ch) and _latin_to_ascii(ch) is None}
 
 
 def letters_of(name: str) -> str:
-    """Upper-case A-Z letters of a name, with accents removed."""
+    """Upper-case A-Z letters of a name: accents removed, other Latin letters transliterated."""
     decomposed = unicodedata.normalize("NFKD", name)
-    plain = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
-    plain = plain.translate(_LATIN_EXTRA)
-    return "".join(ch for ch in plain.upper() if "A" <= ch <= "Z")
+    out = []
+    for ch in decomposed:
+        if unicodedata.combining(ch) or not ch.isalpha():
+            continue
+        spelled = _latin_to_ascii(ch)
+        if spelled:
+            out.append(spelled)
+    return "".join(out)
 
 
 def split_vowels(full_name: str) -> tuple[str, str]:

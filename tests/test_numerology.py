@@ -61,6 +61,14 @@ class NameEdgeCasesTest(unittest.TestCase):
         self.assertEqual(n.letters_of("Đorđe"), "DORDE")
         self.assertEqual(n.letters_of("Þór"), "THOR")
         self.assertEqual(n.letters_of("Straße"), "STRASSE")
+        self.assertEqual(n.letters_of("Əhməd Əli"), "EHMEDELI")
+        self.assertEqual(n.letters_of("Ŋgozi"), "NGGOZI")
+        self.assertEqual(n.letters_of("Ørsted Æble"), "ORSTEDAEBLE")
+
+    def test_non_latin_scripts_are_reported_not_dropped(self):
+        self.assertEqual(n.unsupported_letters("José Łukasz Əli"), set())
+        self.assertTrue(n.unsupported_letters("Иван"))
+        self.assertTrue(n.unsupported_letters("John Σmith"))
 
     def test_y_is_the_vowel_in_a_part_without_other_vowels(self):
         # LYNN: Y is the vowel (7); L3 N5 N5 = 13 -> 4
