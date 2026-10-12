@@ -153,6 +153,9 @@ def edit_profile():
                      1 if request.form.get("email_alerts") == "yes" else 0,
                      1 if request.form.get("email_nudges") == "yes" else 0, user["id"]),
                 )
+                if request.form.get("email_nudges") != "yes":
+                    import emails  # loaded after this module
+                    emails.cancel_nudges(connection, "practitioner_nudge", user_id=user["id"])
                 connection.commit()
             except sqlite3.IntegrityError:
                 connection.rollback()

@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import warnings
 
 from flask import Response, abort, flash, redirect, render_template, request, url_for
 from PIL import Image, ImageOps, UnidentifiedImageError
@@ -18,11 +19,12 @@ from intake import SLUG_RE, RESERVED_SLUGS
 from practitioner_profile import contact_card
 
 AVATAR_SIZE = 512
-MAX_PIXELS = 40_000_000  # refuse decompression bombs
+MAX_PIXELS = 25_000_000  # refuse decompression bombs (the browser already shrinks photos to 512 px)
 
 
 def avatar_url(user_id: int) -> str | None:
-    row = db().execute("SELECT version FROM avatars WHERE user_id = ?", (user_id,)).fetchone()
+    row = db().execute("SELECT avatars.version FROM avatars JOIN users ON users.id = avatars.user_id"
+                       " WHERE avatars.user_id = ? AND users.is_active = 1", (user_id,)).fetchone()
     return url_for("avatar", user_id=user_id, v=row["version"]) if row else None
 
 
@@ -33,18 +35,27 @@ def process_photo(data: bytes) -> bytes:
     """Validate an uploaded image and return a clean square JPEG. Raises ValueError."""
     Image.MAX_IMAGE_PIXELS = MAX_PIXELS
     try:
-        with Image.open(io.BytesIO(data)) as probe:
-            probe.verify()
-        with Image.open(io.BytesIO(data)) as image:
-            if image.format not in ("JPEG", "PNG", "WEBP", "GIF"):
-                raise ValueError("Please upload a JPG, PNG or WebP photo.")
-            image = ImageOps.exif_transpose(image).convert("RGB")
-            image = ImageOps.fit(image, (AVATAR_SIZE, AVATAR_SIZE), Image.LANCZOS)
-            out = io.BytesIO()
-            image.save(out, "JPEG", quality=85, optimize=True, progressive=True)
-            return out.getvalue()
-    except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Image.DecompressionBombWarning)
+            return _clean_photo(data)
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
         raise ValueError("That file isn't a photo we can read. Please try a JPG or PNG.") from exc
+
+
+def _clean_photo(data: bytes) -> bytes:
+    with Image.open(io.BytesIO(data)) as probe:
+        width, height = probe.size
+        if width * height > MAX_PIXELS:  # checked before any pixels are decoded
+            raise ValueError("That photo is too large. Please choose a smaller one.")
+        probe.verify()
+    with Image.open(io.BytesIO(data)) as image:
+        if image.format not in ("JPEG", "PNG", "WEBP", "GIF"):
+            raise ValueError("Please upload a JPG, PNG or WebP photo.")
+        image = ImageOps.exif_transpose(image).convert("RGB")
+        image = ImageOps.fit(image, (AVATAR_SIZE, AVATAR_SIZE), Image.LANCZOS)
+        out = io.BytesIO()
+        image.save(out, "JPEG", quality=85, optimize=True, progressive=True)
+        return out.getvalue()
 
 
 @app.post("/settings/photo")
@@ -126,7 +137,7 @@ def practitioner_about(slug):
         person["mainEntity"]["image"] = BASE_URL + avatar_url(row["id"])
     person["mainEntity"] = {k: v for k, v in person["mainEntity"].items() if v}
     return render_template("about.html", practitioner=row, card=card, slug=slug, report_count=report_count,
-                           person_ld=json.dumps(person), photo=avatar_url(row["id"]))
+                           person_ld=person, photo=avatar_url(row["id"]))
 
 
 def sitemap_profiles() -> list[str]:
