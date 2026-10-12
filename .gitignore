@@ -1,0 +1,14 @@
+# Server-only files: never committed
+.env
+passenger_wsgi.py
+.venv/
+tmp/
+logs/
+
+# Local data
+*.db
+*.db.*.bak
+
+# Python
+__pycache__/
+*.pyc
