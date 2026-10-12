@@ -104,6 +104,8 @@ class QueueAndSendTest(NotifyTestCase):
         self.assertTrue(message["url"].startswith("/leads/"))
 
     def test_leads_without_practitioner_alert_admins(self):
+        with numer.open_db() as connection:
+            connection.execute("UPDATE users SET round_robin = 0")  # nobody takes shared visitors
         self.unlock_new_lead(path="/")
         self.assertEqual([r["user_id"] for r in self.outbox()], [self.admin_id])
 

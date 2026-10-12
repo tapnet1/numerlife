@@ -59,7 +59,7 @@ class FormTest(IntakeTestCase):
         self.assertEqual(response.status_code, 302)
         lead = self.leads()[0]
         self.assertEqual(lead["status"], "started")
-        self.assertIsNone(lead["practitioner_id"])
+        self.assertEqual(lead["source"], "round_robin")  # no link: shared fairly
         self.assertEqual(json.loads(lead["numbers"])["life_path"], 5)
         page = self.client.get(response.headers["Location"])
         self.assertEqual(page.status_code, 200)
@@ -147,13 +147,14 @@ class AttributionTest(IntakeTestCase):
         response = self.client.get("/nobody-here")
         self.assertEqual(response.status_code, 302)
         self.submit()
-        self.assertIsNone(self.leads()[0]["practitioner_id"])
+        self.assertEqual(self.leads()[0]["source"], "round_robin")
 
     def test_unknown_link_clears_an_earlier_attribution(self):
         self.client.get("/liliana")
         self.client.get("/someone-else")
         self.submit()
-        self.assertIsNone(self.leads()[0]["practitioner_id"])
+        lead = self.leads()[0]
+        self.assertEqual((lead["source"], lead["ref_slug"]), ("round_robin", None))
 
     def test_inactive_practitioner_link_is_not_attributed(self):
         self.client.get("/liliana")

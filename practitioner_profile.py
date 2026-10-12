@@ -121,7 +121,7 @@ def edit_profile():
     user = current_user()
     row = db().execute("SELECT * FROM users WHERE id = ?", (user["id"],)).fetchone()
     profile = load_profile(row)
-    form = {"display_name": row["display_name"], "slug": row["slug"] or "", **profile}
+    form = {"display_name": row["display_name"], "slug": row["slug"] or "", "round_robin": bool(row["round_robin"]), **profile}
     errors: list[str] = []
     if request.method == "POST":
         profile, errors = clean_profile(request.form)
@@ -134,13 +134,15 @@ def edit_profile():
                 slug = validate_slug(request.form.get("slug") or "")
             except ValueError as exc:
                 errors.append(f"Link name: {exc}")
-        form = {"display_name": display_name, "slug": request.form.get("slug", ""), **profile}
+        form = {"display_name": display_name, "slug": request.form.get("slug", ""),
+                "round_robin": request.form.get("round_robin") == "yes", **profile}
         if not errors:
             connection = db()
             try:
                 connection.execute(
-                    "UPDATE users SET display_name = ?, slug = ?, profile = ? WHERE id = ?",
-                    (display_name, slug, json.dumps(profile), user["id"]),
+                    "UPDATE users SET display_name = ?, slug = ?, profile = ?, round_robin = ? WHERE id = ?",
+                    (display_name, slug, json.dumps(profile),
+                     1 if request.form.get("round_robin") == "yes" else 0, user["id"]),
                 )
                 connection.commit()
             except sqlite3.IntegrityError:
