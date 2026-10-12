@@ -1,0 +1,172 @@
+import csv
+import io
+import json
+import os
+import sqlite3
+import unittest
+
+from test_app import PASSWORD, numer, token_from
+from test_intake import IntakeTestCase
+
+
+class WorkspaceTestCase(IntakeTestCase):
+    def setUp(self):
+        super().setUp()
+        self.other_id = numer.create_user("maria@example.com", PASSWORD, "practitioner", "Maria", slug="maria")
+        self.mine = self.add_lead(self.practitioner_id, "Ana Lopez", email="ana@example.com", phone="+1 780 555 0101")
+        self.mine_started = self.add_lead(self.practitioner_id, "Ben Cole", email=None)
+        self.theirs = self.add_lead(self.other_id, "Carla Ruiz", email="carla@example.com")
+        self.orphan = self.add_lead(None, "Dan Wu", email="dan@example.com")
+
+    def add_lead(self, practitioner_id, name, email=None, phone=""):
+        numbers = json.dumps({"life_path": 5, "expression": 8, "soul_urge": 6, "personality": 11, "birthday": 6})
+        with numer.open_db() as connection:
+            cursor = connection.execute(
+                "INSERT INTO leads (practitioner_id, token, full_name, birth_date, birth_city, birth_region,"
+                " birth_country, numbers, email, phone, consent_report, status, created_at, captured_at)"
+                " VALUES (?, ?, ?, '1990-07-15', 'Edmonton', 'Alberta', 'Canada', ?, ?, ?, ?, ?, ?, ?)",
+                (practitioner_id, os.urandom(12).hex(), name, numbers, email, phone, 1 if email else 0,
+                 "captured" if email else "started", numer.iso(numer.now_utc()),
+                 numer.iso(numer.now_utc()) if email else None),
+            )
+            return cursor.lastrowid
+
+    def csrf(self, path):
+        return token_from(self.client.get(path).get_data(as_text=True))
+
+
+class ScopingTest(WorkspaceTestCase):
+    def test_practitioner_sees_only_their_leads(self):
+        self.login("liliana@example.com")
+        html = self.client.get("/leads").get_data(as_text=True)
+        self.assertIn("Ana Lopez", html)
+        self.assertIn("Ben Cole", html)
+        self.assertNotIn("Carla Ruiz", html)
+        self.assertNotIn("Dan Wu", html)
+
+    def test_other_practitioners_lead_is_404(self):
+        self.login("liliana@example.com")
+        self.assertEqual(self.client.get(f"/leads/{self.theirs}").status_code, 404)
+        self.assertEqual(self.client.get(f"/leads/{self.orphan}").status_code, 404)
+
+    def test_cannot_update_another_practitioners_lead(self):
+        self.login("liliana@example.com")
+        token = self.csrf("/leads")
+        response = self.client.post(f"/leads/{self.theirs}", data={"csrf_token": token, "stage": "client", "notes": "x"})
+        self.assertEqual(response.status_code, 404)
+        with numer.open_db() as connection:
+            row = connection.execute("SELECT stage, notes FROM leads WHERE id = ?", (self.theirs,)).fetchone()
+        self.assertEqual((row["stage"], row["notes"]), ("new", ""))
+
+    def test_admin_sees_everything_with_practitioner_names(self):
+        self.login("owner@example.com")
+        html = self.client.get("/leads").get_data(as_text=True)
+        for name in ("Ana Lopez", "Carla Ruiz", "Dan Wu"):
+            self.assertIn(name, html)
+        self.assertIn("No practitioner", html)
+        self.assertEqual(self.client.get(f"/leads/{self.theirs}").status_code, 200)
+
+    def test_export_is_scoped(self):
+        self.login("liliana@example.com")
+        body = self.client.get("/leads/export.csv").get_data(as_text=True)
+        names = {row[1] for row in csv.reader(io.StringIO(body))}
+        self.assertEqual(names, {"Name", "Ana Lopez", "Ben Cole"})
+
+    def test_workspace_requires_sign_in(self):
+        for path in ("/dashboard", "/leads", f"/leads/{self.mine}", "/leads/export.csv"):
+            self.assertEqual(self.client.get(path).status_code, 302, path)
+
+
+class LeadsTest(WorkspaceTestCase):
+    def test_detail_shows_contact_birth_and_numbers_and_marks_viewed(self):
+        self.login("liliana@example.com")
+        html = self.client.get(f"/leads/{self.mine}").get_data(as_text=True)
+        for text in ("ana@example.com", "+1 780 555 0101", "1990-07-15", "Edmonton, Alberta, Canada",
+                     "Life Path", "The Adventurer", "Soul Urge"):
+            self.assertIn(text, html)
+        with numer.open_db() as connection:
+            viewed = connection.execute("SELECT viewed_at FROM leads WHERE id = ?", (self.mine,)).fetchone()[0]
+        self.assertIsNotNone(viewed)
+
+    def test_started_lead_explains_missing_contact(self):
+        self.login("liliana@example.com")
+        html = self.client.get(f"/leads/{self.mine_started}").get_data(as_text=True)
+        self.assertIn("didn't unlock the full report", html)
+
+    def test_stage_and_notes_are_saved(self):
+        self.login("liliana@example.com")
+        token = self.csrf(f"/leads/{self.mine}")
+        response = self.client.post(f"/leads/{self.mine}", data={
+            "csrf_token": token, "stage": "contacted", "notes": "Called Tuesday.\r\nBook a reading."})
+        self.assertEqual(response.status_code, 302)
+        with numer.open_db() as connection:
+            row = connection.execute("SELECT stage, notes FROM leads WHERE id = ?", (self.mine,)).fetchone()
+        self.assertEqual((row["stage"], row["notes"]), ("contacted", "Called Tuesday.\nBook a reading."))
+
+    def test_unknown_stage_is_rejected(self):
+        self.login("liliana@example.com")
+        token = self.csrf(f"/leads/{self.mine}")
+        response = self.client.post(f"/leads/{self.mine}", data={"csrf_token": token, "stage": "vip"})
+        self.assertEqual(response.status_code, 400)
+
+    def test_search_and_filters(self):
+        self.login("liliana@example.com")
+        html = self.client.get("/leads?q=ana@").get_data(as_text=True)
+        self.assertIn("Ana Lopez", html)
+        self.assertNotIn("Ben Cole", html)
+        html = self.client.get("/leads?unlocked=no").get_data(as_text=True)
+        self.assertIn("Ben Cole", html)
+        self.assertNotIn("Ana Lopez", html)
+
+    def test_archived_hidden_by_default(self):
+        with numer.open_db() as connection:
+            connection.execute("UPDATE leads SET stage = 'archived' WHERE id = ?", (self.mine_started,))
+        self.login("liliana@example.com")
+        self.assertNotIn("Ben Cole", self.client.get("/leads").get_data(as_text=True))
+        self.assertIn("Ben Cole", self.client.get("/leads?stage=archived").get_data(as_text=True))
+        self.assertIn("Ben Cole", self.client.get("/leads?stage=all").get_data(as_text=True))
+
+    def test_csv_neutralises_formulas(self):
+        self.add_lead(self.practitioner_id, "=HYPERLINK(\"http://evil\")", email="x@example.com")
+        self.login("liliana@example.com")
+        body = self.client.get("/leads/export.csv").get_data(as_text=True)
+        self.assertIn("'=HYPERLINK", body)
+        self.assertNotIn(",=HYPERLINK", body)
+
+
+class DashboardTest(WorkspaceTestCase):
+    def test_stats_and_share_link(self):
+        self.login("liliana@example.com")
+        html = self.client.get("/dashboard").get_data(as_text=True)
+        self.assertIn('<span class="stat-n">2</span><span class="stat-l">Total leads</span>', html)
+        self.assertIn('<span class="stat-n">50%</span>', html)       # 1 of 2 unlocked
+        self.assertIn("1 new lead", html)
+        self.assertIn('data-share-url="http://localhost/liliana"', html)
+        self.assertIn("Ana Lopez", html)
+        self.assertNotIn("Carla Ruiz", html)
+
+    def test_empty_dashboard_guides_the_practitioner(self):
+        self.login("maria@example.com")
+        with numer.open_db() as connection:
+            connection.execute("DELETE FROM leads WHERE practitioner_id = ?", (self.other_id,))
+        html = self.client.get("/dashboard").get_data(as_text=True)
+        self.assertIn("No leads yet.", html)
+
+
+class LeadColumnsMigrationTest(unittest.TestCase):
+    def test_existing_leads_table_gains_pipeline_columns(self):
+        path = os.path.join(os.path.dirname(numer.DB), "old-leads.db")
+        if os.path.exists(path):
+            os.remove(path)
+        numer.initialize(path)
+        connection = sqlite3.connect(path)
+        try:
+            columns = {row[1] for row in connection.execute("PRAGMA table_info(leads)")}
+        finally:
+            connection.close()
+            os.remove(path)
+        self.assertTrue({"stage", "notes", "viewed_at", "updated_at"} <= columns)
+
+
+if __name__ == "__main__":
+    unittest.main()

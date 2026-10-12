@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Leads | {{ site_name }}{% endblock %}
+{% block body_class %}app-page{% endblock %}
+{% block content %}
+<header class="app-head">
+  <div>
+    <p class="eyebrow">{{ 'All practitioners' if user.role == 'admin' else 'Your leads' }}</p>
+    <h1>Leads</h1>
+  </div>
+  <a class="btn-secondary" href="{{ url_for('export_leads', q=q, stage=stage, unlocked=unlocked) }}">Download CSV</a>
+</header>
+
+<form class="filters" method="get" action="{{ url_for('leads_list') }}" role="search">
+  <label class="sr-only" for="q">Search</label>
+  <input id="q" name="q" type="search" value="{{ q }}" placeholder="Search name, email, phone or birthplace">
+  <label class="sr-only" for="stage">Stage</label>
+  <select id="stage" name="stage">
+    <option value="">Active (not archived)</option>
+    {% for key, label in stages.items() %}<option value="{{ key }}"{% if stage == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    <option value="all"{% if stage == 'all' %} selected{% endif %}>Everything</option>
+  </select>
+  <label class="sr-only" for="unlocked">Report</label>
+  <select id="unlocked" name="unlocked">
+    <option value="">Any report</option>
+    <option value="yes"{% if unlocked == 'yes' %} selected{% endif %}>Unlocked (has email)</option>
+    <option value="no"{% if unlocked == 'no' %} selected{% endif %}>Didn't unlock</option>
+  </select>
+  <button type="submit">Filter</button>
+  {% if q or stage or unlocked %}<a class="clear" href="{{ url_for('leads_list') }}">Clear</a>{% endif %}
+</form>
+
+<section class="panel">
+  {% if leads %}
+    <ul class="lead-rows">
+      {% for lead in leads %}
+        {% include "_lead_row.html" %}
+      {% endfor %}
+    </ul>
+    {% if more %}<p class="muted small center">Showing the newest {{ leads|length }}. Search or filter to narrow the list, or download the CSV for everything.</p>{% endif %}
+  {% else %}
+    <div class="empty">
+      <p class="empty-n" aria-hidden="true">✦</p>
+      <p><strong>{% if q or stage or unlocked %}No leads match these filters.{% else %}No leads yet.{% endif %}</strong></p>
+      {% if not (q or stage or unlocked) %}<p class="muted">Share your personal link from the dashboard to start receiving leads.</p>{% endif %}
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

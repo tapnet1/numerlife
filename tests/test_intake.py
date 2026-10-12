@@ -302,7 +302,7 @@ class CommandsTest(IntakeTestCase):
 
     def test_dashboard_shows_share_link(self):
         self.login("liliana@example.com")
-        self.assertIn(b"/liliana</strong>", self.client.get("/dashboard").data)
+        self.assertIn(b"localhost/liliana</a>", self.client.get("/dashboard").data)
 
 
 if __name__ == "__main__":

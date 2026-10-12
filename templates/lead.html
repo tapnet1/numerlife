@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ lead.full_name }} | Leads | {{ site_name }}{% endblock %}
+{% block body_class %}app-page{% endblock %}
+{% block content %}
+<p class="crumb"><a href="{{ url_for('leads_list') }}">← All leads</a></p>
+<header class="app-head">
+  <div>
+    <p class="eyebrow">Lead · {{ lead.created_at | friendly_time }}{% if user.role == 'admin' %} · {{ lead.practitioner_name or 'No practitioner' }}{% endif %}</p>
+    <h1>{{ lead.full_name }}</h1>
+  </div>
+  <span class="badge badge-{{ lead.stage }} badge-lg">{{ stages[lead.stage] }}</span>
+</header>
+
+<div class="app-grid">
+  <div>
+    <section class="panel">
+      <h2>Contact</h2>
+      {% if lead.status == 'captured' %}
+        <dl class="facts">
+          <dt>Email</dt><dd><a href="mailto:{{ lead.email }}?subject={{ ('Your numerology report, ' ~ lead.full_name.split(' ')[0]) | urlencode }}">{{ lead.email }}</a></dd>
+          <dt>Phone</dt><dd>{% if lead.phone %}<a href="tel:{{ lead.phone | replace(' ', '') }}">{{ lead.phone }}</a>{% else %}<span class="muted">Not given</span>{% endif %}</dd>
+          <dt>Marketing</dt><dd>{{ 'Opted in to insights and offers' if lead.marketing_opt_in else 'Not opted in: contact about their report only' }}</dd>
+          <dt>Unlocked</dt><dd>{{ lead.captured_at | friendly_time }}</dd>
+        </dl>
+        <div class="actions">
+          <a class="btn" href="mailto:{{ lead.email }}?subject={{ ('Your numerology report, ' ~ lead.full_name.split(' ')[0]) | urlencode }}">Email {{ lead.full_name.split(' ')[0] }}</a>
+          {% if lead.phone %}<a class="btn-secondary" href="tel:{{ lead.phone | replace(' ', '') }}">Call</a><a class="btn-secondary" href="sms:{{ lead.phone | replace(' ', '') }}">Text</a>{% endif %}
+        </div>
+      {% else %}
+        <p class="muted">This visitor saw their Life Path number but didn't unlock the full report, so there's no email or phone yet.</p>
+      {% endif %}
+    </section>
+
+    <section class="panel">
+      <h2>Birth details</h2>
+      <dl class="facts">
+        <dt>Full birth name</dt><dd>{{ lead.full_name }}</dd>
+        <dt>Date of birth</dt><dd>{{ lead.birth_date }}</dd>
+        <dt>Place of birth</dt><dd>{{ lead | birth_place }}</dd>
+      </dl>
+    </section>
+
+    <section class="panel">
+      <h2>Numbers</h2>
+      <div class="lead-numbers">
+        {% for item in numbers %}
+          <div class="lead-number">
+            <span class="big-number small-number">{{ item.number or '–' }}</span>
+            <div>
+              <p class="eyebrow">{{ item.label }}</p>
+              <p class="ln-title">{{ item.title }}</p>
+              <p class="small muted">{{ item.text }}</p>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+
+  <aside>
+    <section class="panel">
+      <h2>Follow-up</h2>
+      <form method="post" action="{{ url_for('update_lead', lead_id=lead.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="stage">Stage</label>
+        <select id="stage" name="stage">
+          {% for key, label in stages.items() %}<option value="{{ key }}"{% if lead.stage == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+        <label for="notes">Private notes</label>
+        <textarea id="notes" name="notes" rows="8" maxlength="5000" placeholder="Only you can see these notes.">{{ lead.notes }}</textarea>
+        <button type="submit">Save</button>
+      </form>
+      {% if lead.updated_at %}<p class="muted small">Last saved {{ lead.updated_at | friendly_time }}</p>{% endif %}
+    </section>
+  </aside>
+</div>
+{% endblock %}
