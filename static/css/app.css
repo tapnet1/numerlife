@@ -313,6 +313,13 @@ button.link.revoke { color: var(--error); font-size: .88rem; }
 .invite-count strong { font-family: var(--serif); font-size: 1.7rem; color: var(--violet); }
 .join-card .form-title { font-size: clamp(1.8rem, 4vw, 2.3rem); }
 
+/* ---- Lead alerts ---- */
+.notify-panel .actions { margin-top: .6rem; align-items: center; }
+.notify-panel button { margin-top: 0; }
+.notify-panel .install-app { margin-top: .8rem; }
+.notify-panel button.link { color: var(--muted); font-size: .88rem; }
+.notify-panel button[hidden], .notify-panel p[hidden] { display: none; }
+
 /* ---- Footer ---- */
 .footer { text-align: center; color: #b9b0cc; font-size: .87rem; padding: 2.5rem 1rem; background: var(--night); margin-top: 3rem; }
 .footer p { margin: .3rem 0; }

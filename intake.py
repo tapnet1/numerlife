@@ -274,12 +274,18 @@ def unlock_report(token):
         errors = ["Too many attempts from your connection. Please try again in an hour."]
         return render_template("report.html", errors=errors, form=form, **report_context(lead)), 429
     connection = db()
-    connection.execute(
+    captured = connection.execute(
         "UPDATE leads SET email = ?, phone = ?, consent_report = 1, marketing_opt_in = ?,"
         " status = 'captured', captured_at = ? WHERE id = ? AND status = 'started'",
         (form["email"], form["phone"], 1 if form["marketing_opt_in"] else 0, iso(now_utc()), lead["id"]),
-    )
+    ).rowcount
     connection.commit()
+    if captured:
+        import notify  # loaded after this module; imported here to avoid a circular import
+        try:
+            notify.queue_new_lead(lead["id"])
+        except Exception:  # a notification problem must never break the visitor's report
+            app.logger.exception("Could not queue the new-lead notification")
     return redirect(url_for("report", token=token))
 
 

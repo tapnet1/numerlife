@@ -75,6 +75,19 @@
       <p class="muted">You don't have a personal link yet. {% if user.role == 'admin' %}Admins see every lead; practitioners get their own link.{% endif %}</p>
     {% endif %}
   </div>
+  <div class="panel notify-panel" data-vapid="{{ vapid_public_key or '' }}" data-csrf="{{ csrf_token() }}">
+    <h2>Lead alerts</h2>
+    <p class="notify-status muted small" role="status" aria-live="polite">Get an alert on this device the moment a new lead unlocks their report.</p>
+    <div class="actions">
+      <button type="button" class="btn notify-on">Turn on notifications</button>
+      <button type="button" class="btn-secondary notify-test" hidden>Send a test</button>
+      <button type="button" class="link notify-off" hidden>Turn off on this device</button>
+    </div>
+    <button type="button" class="btn-secondary install-app" hidden>Install the app</button>
+    <p class="ios-hint muted small" hidden>On iPhone or iPad: tap <strong>Share</strong> then <strong>Add to Home Screen</strong>, open numer.life from your Home Screen, and turn on notifications there.</p>
+    {% set devices = push_device_count(user.id) %}
+    {% if devices %}<p class="muted small">Alerts are on for {{ devices }} {{ 'device' if devices == 1 else 'devices' }}.</p>{% endif %}
+  </div>
   <div class="panel invite-panel">
     <h2>Invite practitioners</h2>
     <p class="muted small">Know numerologists who'd love more clients? Invite them: they'll be recorded as your referral.</p>
@@ -84,4 +97,5 @@
   </aside>
 </div>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='js/share.js') }}" defer></script>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/share.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/push.js') }}" defer></script>{% endblock %}

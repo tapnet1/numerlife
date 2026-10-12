@@ -104,6 +104,14 @@ jobs:
           test -x .venv/bin/python
           .venv/bin/python -m pip install --disable-pip-version-check --quiet -r requirements.txt
           .venv/bin/python -c "import flask, cryptography, segno; print('Dependencies verified')"
+          # Push notifications: create the VAPID key once, on the server only. It never leaves .env;
+          # rotating it would mean every device has to turn notifications on again.
+          if ! grep -q '^NUMER_VAPID_PRIVATE_KEY=.' .env; then
+            vapid="$(.venv/bin/python webpush.py generate)"
+            (umask 077; printf '\nNUMER_VAPID_PRIVATE_KEY=%s\n' "$vapid" >> .env)
+            unset vapid
+            echo "Push notification key created in .env"
+          fi
           # Load .env through the Passenger entry point, back up the SQLite database with
           # the online backup API, then create missing tables.
           .venv/bin/python - <<'PY'
@@ -136,6 +144,8 @@ jobs:
           if missing:
               raise RuntimeError(f"Database initialization missing tables: {sorted(missing)}")
           print("Database initialized and required tables verified")
+          import webpush
+          print("Push notifications: configured" if webpush.public_key() else "::warning::Push key missing")
           import secretbox
           try:
               secretbox.check_key()
@@ -146,9 +156,10 @@ jobs:
           # Background jobs, installed in a marked crontab block so re-running stays idempotent.
           mkdir -p tmp logs && chmod 700 logs
           purge_job='23 * * * * cd /home/numerlife1/numerlife && .venv/bin/python jobs.py purge-attempts >> logs/jobs.log 2>&1'
+          push_job='* * * * * cd /home/numerlife1/numerlife && .venv/bin/python jobs.py send-push >> logs/jobs.log 2>&1'
           if command -v crontab >/dev/null; then
             { crontab -l 2>/dev/null | sed '/# numerlife-jobs begin/,/# numerlife-jobs end/d'
-              printf '%s\n' '# numerlife-jobs begin' "$purge_job" '# numerlife-jobs end'
+              printf '%s\n' '# numerlife-jobs begin' "$purge_job" "$push_job" '# numerlife-jobs end'
             } | crontab - && echo "Scheduled jobs installed" \
               || echo "::warning::Could not install cron jobs; add them in cPanel > Cron Jobs"
           else
