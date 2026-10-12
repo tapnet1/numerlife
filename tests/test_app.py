@@ -63,7 +63,10 @@ class PublicPagesTest(AppTestCase):
     def test_login_page_and_css(self):
         self.assertEqual(self.client.get("/login").status_code, 200)
         self.assertEqual(self.client.get("/static/css/app.css").status_code, 200)
-        self.assertEqual(self.client.get("/static/favicon.svg").status_code, 200)
+        self.assertEqual(self.client.get("/static/img/favicon-32.png").status_code, 200)
+        favicon = self.client.get("/favicon.ico")
+        self.assertEqual(favicon.status_code, 200)
+        self.assertEqual(favicon.data[:4], b"\x00\x00\x01\x00")  # a real .ico file
 
     def test_noindex_everywhere(self):
         response = self.client.get("/")

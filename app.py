@@ -558,7 +558,7 @@ def robots():
 
 @app.get("/favicon.ico")
 def favicon():
-    return redirect(url_for("static", filename="favicon.svg"), code=301)
+    return app.send_static_file("favicon.ico")
 
 
 @app.errorhandler(400)
