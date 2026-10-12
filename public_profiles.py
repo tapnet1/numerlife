@@ -15,7 +15,7 @@ from flask import Response, abort, flash, redirect, render_template, request, ur
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 from app import BASE_URL, app, current_user, db, iso, login_required, now_utc
-from intake import SLUG_RE, RESERVED_SLUGS
+from intake import PLATFORM_SLUGS, RESERVED_SLUGS, SLUG_RE
 from practitioner_profile import contact_card
 
 AVATAR_SIZE = 512
@@ -105,7 +105,7 @@ def avatar(user_id):
 # Public practitioner page
 # --------------------------------------------------------------------------
 def public_practitioner(slug: str):
-    if not SLUG_RE.match(slug) or slug in RESERVED_SLUGS:
+    if not SLUG_RE.match(slug) or (slug in RESERVED_SLUGS and slug not in PLATFORM_SLUGS):
         return None
     return db().execute(
         "SELECT * FROM users WHERE slug = ? AND role = 'practitioner' AND is_active = 1", (slug,)

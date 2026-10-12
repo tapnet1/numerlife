@@ -39,8 +39,10 @@ RESERVED_SLUGS = frozenset("""
     contact dashboard docs favicon.ico health help home invite invites join leads legal
     login logout manifest.webmanifest me numer numerlife pricing privacy profile qr r register
     report reports robots.txt settings share signin signout signup sitemap.xml static support
-    sw.js terms unlock www
+    sw.js tapnet terms unlock www
 """.split())
+
+PLATFORM_SLUGS = frozenset({"tapnet"})  # reserved for numer.life's own account, but a working link
 
 REPORT_LINK_DAYS = 30
 SUBMIT_LIMIT_PER_HOUR = 10
@@ -174,7 +176,7 @@ def home():
 
 @app.get("/<slug>")
 def practitioner_link(slug):
-    if not SLUG_RE.match(slug) or slug in RESERVED_SLUGS:
+    if not SLUG_RE.match(slug) or (slug in RESERVED_SLUGS and slug not in PLATFORM_SLUGS):
         abort(404)
     practitioner = practitioner_by_slug(slug)
     if practitioner is None:
