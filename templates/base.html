@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Free Numerology Report: Life Path, Expression &amp; Soul Urge Numbers | {{ site_name }}{% endblock %}</title>
+  <title>{% block title %}Free Numerology Report: Your Life Path Number | {{ site_name }}{% endblock %}</title>
   <meta name="description" content="{% block description %}{{ site_description }}{% endblock %}">
+  <meta name="keywords" content="{% block keywords %}numerology, free numerology report, life path number, numerology calculator, expression number, soul urge number, personality number, birthday number, master numbers, Pythagorean numerology{% endblock %}">
   {% if noindex %}<meta name="robots" content="noindex, nofollow">{% else %}<meta name="robots" content="index, follow, max-image-preview:large">{% endif %}
   {% set canonical = base_url ~ (canonical_path if canonical_path is defined else request.path) %}
   <link rel="canonical" href="{{ canonical }}">
@@ -26,7 +27,7 @@
   <meta name="theme-color" content="#24164a">
   <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
-  <link rel="preload" href="{{ url_for('static', filename='fonts/cormorant-garamond-latin-700-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="{{ url_for('static', filename='fonts/cormorant-garamond-latin-600-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="{{ url_for('static', filename='fonts/inter-latin-400-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
   {% block structured_data %}{% endblock %}
