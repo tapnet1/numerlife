@@ -15,7 +15,7 @@ import segno
 from flask import Response, abort, flash, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from app import BASE_URL, MIN_PASSWORD_LENGTH, app, current_user, db, login_required
+from app import BASE_URL, MIN_PASSWORD_LENGTH, app, current_user, db, login_required, open_db
 
 EMAIL_RE = re.compile(r"^[^@\s]{1,64}@[^@\s]+\.[A-Za-z]{2,}$")
 PHONE_RE = re.compile(r"^\+?[0-9 ().-]{7,25}$")
@@ -207,7 +207,20 @@ def change_password():
             session.permanent = True
             flash("Password changed.", "info")
             return redirect(url_for("dashboard"))
-    return render_template("password.html", errors=errors), (400 if errors else 200)
+    alerts = db().execute("SELECT email_alerts FROM users WHERE id = ?", (current_user()["id"],)).fetchone()
+    return render_template("password.html", errors=errors, email_alerts=bool(alerts and alerts["email_alerts"])), \
+        (400 if errors else 200)
+
+
+@app.post("/settings/alerts")
+@login_required
+def save_alerts():
+    """Email-alert preference for team members (practitioners set it on their profile page)."""
+    with open_db() as connection:
+        connection.execute("UPDATE users SET email_alerts = ? WHERE id = ?",
+                           (1 if request.form.get("email_alerts") == "yes" else 0, current_user()["id"]))
+    flash("Email alerts saved.", "info")
+    return redirect(url_for("change_password"))
 
 
 # --------------------------------------------------------------------------

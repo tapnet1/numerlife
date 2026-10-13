@@ -145,3 +145,45 @@ class ReassignTest(TeamTestCase):
         self.assertNotIn("Reassign", page)
         self.assertEqual(self.client.post(f"/leads/{lead_id}/assign", data={
             "csrf_token": token_from(page), "practitioner_id": self.frank_id}).status_code, 403)
+
+
+class TeamReviewTest(TeamTestCase):
+    def convert(self):
+        self.login("owner@example.com")
+        html = self.admin_post("/admin/accounts/team", user_id=self.frank_id,
+                               owner_id=self.practitioner_id).get_data(as_text=True)
+        self.client.post("/logout", data={"csrf_token": token_from(html)})
+
+    def test_cached_referral_to_converted_member_credits_the_practitioner(self):
+        self.client.get("/broccoli")          # visitor opens Frank's link first
+        visitor = self.client
+        self.client = numer.app.test_client()
+        self.convert()
+        self.client = visitor
+        response = self.submit("/")           # same browser session, link now gone
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self.leads()[-1]["practitioner_id"], self.practitioner_id)
+
+    def test_member_can_turn_off_email_alerts(self):
+        self.convert()
+        self.login("frank@example.com")
+        page = self.client.get("/settings/password").get_data(as_text=True)
+        self.assertIn("Email alerts", page)
+        self.client.post("/settings/alerts", data={"csrf_token": token_from(page)})
+        with numer.open_db() as connection:
+            self.assertEqual(connection.execute("SELECT email_alerts FROM users WHERE id = ?",
+                                                (self.frank_id,)).fetchone()[0], 0)
+
+    def test_conversion_closes_the_members_invites(self):
+        self.login("frank@example.com")
+        page = self.client.get("/invite").get_data(as_text=True)
+        self.client.post("/invite", data={"csrf_token": token_from(page), "name": "Pal"})
+        with numer.open_db() as connection:
+            invite = connection.execute("SELECT id, token FROM invites").fetchone()
+        self.client.post("/logout", data={"csrf_token": token_from(page)})
+        self.convert()
+        self.assertEqual(self.client.get(f"/join/{invite['token']}").status_code, 404)
+        self.login("frank@example.com")
+        page = self.client.get("/dashboard").get_data(as_text=True)
+        self.assertEqual(self.client.post(f"/invite/{invite['id']}/email", data={
+            "csrf_token": token_from(page), "email": "pal@example.com"}).status_code, 403)

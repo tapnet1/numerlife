@@ -32,7 +32,7 @@ def open_invite(token: str):
         "SELECT invites.*, users.display_name AS inviter_name FROM invites"
         " JOIN users ON users.id = invites.inviter_id"
         " WHERE invites.token = ? AND invites.used_by IS NULL AND invites.revoked_at IS NULL"
-        " AND users.is_active = 1",
+        " AND users.is_active = 1 AND users.team_of IS NULL",
         (token,),
     ).fetchone()
     if row is None or dt.datetime.fromisoformat(row["expires_at"]) < now_utc():
@@ -119,6 +119,8 @@ def _email_invite(inviter_id: int, invite_id: int) -> bool:
 def email_invite(invite_id):
     """Email (or re-email) an open invite, optionally adding the address first."""
     user = current_user()
+    if user["team_of"]:
+        abort(403)
     connection = db()
     invite = connection.execute(
         "SELECT * FROM invites WHERE id = ? AND inviter_id = ? AND used_by IS NULL AND revoked_at IS NULL",

@@ -95,6 +95,8 @@ def admin_set_team():
                                    (owner_id, iso(now_utc()), user_id)).rowcount
         connection.execute("UPDATE users SET team_of = ?, slug = NULL, round_robin = 0 WHERE id = ?",
                            (owner_id, user_id))
+        connection.execute("UPDATE invites SET revoked_at = ? WHERE inviter_id = ? AND used_by IS NULL"
+                           " AND revoked_at IS NULL", (iso(now_utc()), user_id))
     flash(f"{member['display_name']} is now on {owner['display_name']}'s team"
           + (f"; {moved} lead{'s' if moved != 1 else ''} moved to {owner['display_name']}." if moved else "."), "info")
     return _back()

@@ -80,9 +80,14 @@ def referring_practitioner():
     if practitioner_id is None:
         return None
     row = db().execute(
-        "SELECT id, display_name, slug FROM users WHERE id = ? AND role = 'practitioner' AND is_active = 1",
+        "SELECT id, display_name, slug, team_of FROM users WHERE id = ? AND role = 'practitioner' AND is_active = 1",
         (practitioner_id,),
     ).fetchone()
+    if row is not None and row["team_of"]:  # link opened before the account joined a team: credit the practitioner
+        row = db().execute("SELECT id, display_name, slug, team_of FROM users WHERE id = ? AND role = 'practitioner'"
+                           " AND is_active = 1 AND team_of IS NULL", (row["team_of"],)).fetchone()
+        if row is not None:
+            session["ref_id"] = row["id"]
     if row is None:
         session.pop("ref_id", None)
     return row
