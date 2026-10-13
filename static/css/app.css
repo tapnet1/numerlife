@@ -385,6 +385,12 @@ button.link.revoke { color: var(--error); font-size: .88rem; }
 .footer-brand { display: inline-flex; align-items: center; gap: .5rem; }
 .footer-brand .wordmark { font-size: 1.45rem; }
 
+/* ---- Sign-in link and admin tools ---- */
+.signin-link { font-size: .9rem; font-weight: 500; color: var(--cream); text-decoration: none; border: 1px solid rgba(246, 240, 225, .35); padding: .45rem .9rem; border-radius: 999px; white-space: nowrap; }
+.signin-link:hover { border-color: var(--gold); color: var(--gold); }
+.admin-tools { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+.admin-tools h3 { margin: 0 0 .3rem; }
+
 /* ---- Footer ---- */
 .footer { text-align: center; color: #b9b0cc; font-size: .87rem; padding: 2.5rem 1rem; background: var(--night); margin-top: 3rem; }
 .footer p { margin: .3rem 0; }

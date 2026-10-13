@@ -14,7 +14,7 @@ import json
 from flask import Response, abort, flash, redirect, render_template, request, url_for
 
 import numerology
-from app import BASE_URL, app, current_user, db, iso, login_required, now_utc
+from app import BASE_URL, app, current_user, db, iso, login_required, now_utc, role_required, workspace_owner_id
 
 STAGES = {
     "new": "New",
@@ -30,7 +30,7 @@ def lead_scope(user) -> tuple[str, list]:
     """SQL condition and parameters limiting leads to what this user may see."""
     if user["role"] == "admin":
         return "1 = 1", []
-    return "leads.practitioner_id = ?", [user["id"]]
+    return "leads.practitioner_id = ?", [workspace_owner_id(user)]
 
 
 def scoped_lead(lead_id: int):
@@ -111,17 +111,19 @@ def dashboard():
         f" WHERE {condition} ORDER BY leads.created_at DESC LIMIT 6",
         params,
     ).fetchall()
-    row = connection.execute("SELECT slug, profile FROM users WHERE id = ?", (user["id"],)).fetchone()
+    owner_id = workspace_owner_id(user)
+    row = connection.execute("SELECT slug, profile, display_name FROM users WHERE id = ?", (owner_id,)).fetchone()
     slug = row["slug"] if row else None
     profile = json.loads(row["profile"] or "{}") if row else {}
     profile_missing = not any(profile.get(k) for k in ("booking_url", "phone", "website", "contact_email"))
-    referred_count = connection.execute("SELECT COUNT(*) FROM users WHERE invited_by = ?", (user["id"],)).fetchone()[0]
+    referred_count = connection.execute("SELECT COUNT(*) FROM users WHERE invited_by = ?", (owner_id,)).fetchone()[0]
+    team_owner = row["display_name"] if row and owner_id != user["id"] else None
     total = stats["total"] or 0
     unlock_rate = round(100 * (stats["unlocked"] or 0) / total) if total else 0
     return render_template(
         "dashboard.html", stats=stats, total=total, unlock_rate=unlock_rate, recent=recent,
         share_url=f"{BASE_URL}/{slug}" if slug else None, stages=STAGES, profile_missing=profile_missing,
-        referred_count=referred_count,
+        referred_count=referred_count, team_owner=team_owner,
     )
 
 
@@ -194,6 +196,34 @@ def update_lead(lead_id):
     connection.commit()
     flash("Saved.", "info")
     return redirect(url_for("lead_detail", lead_id=lead["id"]))
+
+
+@app.post("/leads/<int:lead_id>/assign")
+@role_required("admin")
+def assign_lead(lead_id):
+    """Admin: move a lead to another practitioner (or to nobody)."""
+    target = request.form.get("practitioner_id", type=int)
+    connection = db()
+    if target:
+        ok = connection.execute("SELECT 1 FROM users WHERE id = ? AND role = 'practitioner' AND team_of IS NULL",
+                                (target,)).fetchone()
+        if ok is None:
+            abort(400, description="Choose a practitioner.")
+    changed = connection.execute("UPDATE leads SET practitioner_id = ?, source = 'assigned', viewed_at = NULL,"
+                                 " updated_at = ? WHERE id = ?", (target or None, iso(now_utc()), lead_id)).rowcount
+    connection.commit()
+    if not changed:
+        abort(404)
+    flash("Lead reassigned.", "info")
+    return redirect(url_for("lead_detail", lead_id=lead_id))
+
+
+def assignable_practitioners():
+    return db().execute("SELECT id, display_name, slug FROM users WHERE role = 'practitioner' AND is_active = 1"
+                        " AND team_of IS NULL ORDER BY display_name").fetchall()
+
+
+app.jinja_env.globals["assignable_practitioners"] = assignable_practitioners
 
 
 def _csv_safe(value) -> str:

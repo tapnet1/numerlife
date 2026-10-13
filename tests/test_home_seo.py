@@ -57,10 +57,11 @@ class HomeSeoTest(AppTestCase):
             self.assertIn(text, html)
         self.assertEqual(len(re.findall(r"<h1[ >]", html)), 1)
 
-    def test_no_public_sign_in_link(self):
+    def test_sign_in_link_but_no_sign_up(self):
         html = self.client.get("/").get_data(as_text=True)
-        self.assertNotIn("Practitioner sign in", html)
-        self.assertNotIn('href="/login"', html)
+        self.assertIn('<a class="signin-link" href="/login">Practitioner sign in</a>', html)
+        self.assertNotIn("Sign up", html)
+        self.assertNotIn("/join", html)
 
     def test_share_bar_links_home(self):
         html = self.client.get("/").get_data(as_text=True)

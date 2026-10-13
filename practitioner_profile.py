@@ -122,6 +122,8 @@ def edit_profile():
     from intake import validate_slug  # imported here: intake imports this module's helpers
 
     user = current_user()
+    if user["team_of"]:  # team members manage leads; the practitioner owns the profile
+        return redirect(url_for("change_password"))
     row = db().execute("SELECT * FROM users WHERE id = ?", (user["id"],)).fetchone()
     profile = load_profile(row)
     form = {"display_name": row["display_name"], "slug": row["slug"] or "", "round_robin": bool(row["round_robin"]),
@@ -216,7 +218,8 @@ def change_password():
 def share_qr(fmt):
     if fmt not in ("svg", "png"):
         abort(404)
-    row = db().execute("SELECT slug FROM users WHERE id = ?", (current_user()["id"],)).fetchone()
+    from app import workspace_owner_id
+    row = db().execute("SELECT slug FROM users WHERE id = ?", (workspace_owner_id(current_user()),)).fetchone()
     target = f"{BASE_URL}/{row['slug']}" if row and row["slug"] else f"{BASE_URL}/"
     qr = segno.make(target, error="m")
     buffer = io.BytesIO()

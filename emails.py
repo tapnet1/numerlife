@@ -242,6 +242,9 @@ def queue_unlock_emails(lead_id: int) -> None:
         if lead["practitioner_id"]:
             practitioner = connection.execute("SELECT * FROM users WHERE id = ?", (lead["practitioner_id"],)).fetchone()
             recipients = [practitioner] if practitioner and practitioner["is_active"] else []
+            if recipients:  # team members get the alert too
+                recipients += connection.execute("SELECT * FROM users WHERE team_of = ? AND is_active = 1",
+                                                 (practitioner["id"],)).fetchall()
         else:
             recipients = connection.execute("SELECT * FROM users WHERE role = 'admin' AND is_active = 1").fetchall()
         subject, text, html = report_email(lead, practitioner if practitioner and practitioner["is_active"] else None)

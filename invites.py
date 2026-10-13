@@ -61,6 +61,8 @@ def referral_summary(user_id: int) -> dict:
 @login_required
 def invite_practitioner():
     user = current_user()
+    if user["team_of"]:
+        abort(403)
     new_link = None
     emailed_to = None
     errors = []

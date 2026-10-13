@@ -141,7 +141,8 @@ def queue_new_lead(lead_id: int) -> None:
         if lead is None:
             return
         if lead["practitioner_id"]:
-            recipients = [lead["practitioner_id"]]
+            recipients = [lead["practitioner_id"]] + [r[0] for r in connection.execute(
+                "SELECT id FROM users WHERE team_of = ? AND is_active = 1", (lead["practitioner_id"],))]
         else:
             recipients = [r[0] for r in connection.execute(
                 "SELECT id FROM users WHERE role = 'admin' AND is_active = 1")]

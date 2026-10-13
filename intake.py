@@ -69,7 +69,7 @@ def validate_slug(slug: str) -> str:
 def practitioner_by_slug(slug: str):
     return db().execute(
         "SELECT id, display_name, slug FROM users"
-        " WHERE slug = ? AND role = 'practitioner' AND is_active = 1",
+        " WHERE slug = ? AND role = 'practitioner' AND is_active = 1 AND team_of IS NULL",
         (slug,),
     ).fetchone()
 
@@ -232,7 +232,7 @@ def next_round_robin_practitioner():
     try:
         row = connection.execute(
             "SELECT id, display_name, slug FROM users WHERE role = 'practitioner' AND is_active = 1"
-            " AND round_robin = 1 AND slug IS NOT NULL"
+            " AND round_robin = 1 AND slug IS NOT NULL AND team_of IS NULL"
             " ORDER BY round_robin_at IS NOT NULL, round_robin_at, id LIMIT 1"
         ).fetchone()
         if row is not None:

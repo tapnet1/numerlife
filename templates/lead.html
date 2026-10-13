@@ -72,6 +72,20 @@
       </form>
       {% if lead.updated_at %}<p class="muted small">Last saved {{ lead.updated_at | friendly_time }}</p>{% endif %}
     </section>
+    {% if user.role == 'admin' %}
+    <section class="panel">
+      <h2>Assigned to</h2>
+      <form method="post" action="{{ url_for('assign_lead', lead_id=lead.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="practitioner_id" class="sr-only">Practitioner</label>
+        <select id="practitioner_id" name="practitioner_id">
+          <option value="">Nobody (admins only)</option>
+          {% for p in assignable_practitioners() %}<option value="{{ p.id }}"{% if lead.practitioner_id == p.id %} selected{% endif %}>{{ p.display_name }}{% if p.slug %} (/{{ p.slug }}){% endif %}</option>{% endfor %}
+        </select>
+        <button type="submit">Reassign</button>
+      </form>
+    </section>
+    {% endif %}
   </aside>
 </div>
 {% endblock %}
