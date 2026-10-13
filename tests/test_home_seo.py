@@ -19,7 +19,7 @@ class HomeSeoTest(AppTestCase):
         self.assertIn("<title>Free Numerology Report: Your Life Path Number | numer.life</title>", html)
         self.assertIn('name="keywords" content="numerology, free numerology report, life path number', html)
         for tag in ('name="description"', 'property="og:title"', 'property="og:description"',
-                    'property="og:image" content="http://localhost/static/img/og-image.jpg"',
+                    'property="og:image" content="http://localhost/static/img/og-image.jpg?v=2"',
                     'property="og:image:width" content="1200"', 'name="twitter:card" content="summary_large_image"',
                     'rel="canonical" href="http://localhost/"', 'rel="apple-touch-icon"'):
             self.assertIn(tag, html)
@@ -34,7 +34,7 @@ class HomeSeoTest(AppTestCase):
             self.assertLessEqual(len(description), 140, description)
 
     def test_og_image_and_fonts_are_served(self):
-        for path in ("/static/img/og-image.jpg", "/static/img/apple-touch-icon.png",
+        for path in ("/static/img/og-image.jpg?v=2", "/static/img/apple-touch-icon.png",
                      "/static/fonts/cormorant-garamond-latin-700-normal.woff2", "/static/js/share.js"):
             response = self.client.get(path)
             self.assertEqual(response.status_code, 200, path)
