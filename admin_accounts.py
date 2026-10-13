@@ -87,6 +87,9 @@ def admin_set_team():
             return _back()
         owner = connection.execute("SELECT * FROM users WHERE id = ? AND role = 'practitioner' AND team_of IS NULL"
                                    " AND is_active = 1", (owner_id,)).fetchone()
+        platform = connection.execute("SELECT value FROM settings WHERE key = 'platform_user_id'").fetchone()
+        if platform is not None and str(user_id) == platform["value"]:
+            abort(400, description="The numer.life/tapnet account can't be a team member.")
         if owner is None or owner_id == user_id or member["role"] != "practitioner":
             abort(400, description="Choose a different practitioner.")
         if connection.execute("SELECT 1 FROM users WHERE team_of = ?", (user_id,)).fetchone():

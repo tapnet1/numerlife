@@ -6,7 +6,7 @@
       <span class="lead-meta">
         {% if lead.status == 'captured' %}{{ lead.email }}{% else %}<span class="muted">Didn't unlock: no email yet</span>{% endif %}
         {% if user.role == 'admin' %} · {{ lead.practitioner_name or 'No practitioner' }}{% endif %}
-        {% if lead.source == 'round_robin' %} · <span class="rr">shared visitor</span>{% endif %}
+        {% if lead.source == 'round_robin' %} · <span class="rr">shared visitor</span>{% elif lead.source == 'assigned' %} · <span class="rr">assigned</span>{% endif %}
       </span>
     </span>
     <span class="lead-side">

@@ -187,3 +187,25 @@ class TeamReviewTest(TeamTestCase):
         page = self.client.get("/dashboard").get_data(as_text=True)
         self.assertEqual(self.client.post(f"/invite/{invite['id']}/email", data={
             "csrf_token": token_from(page), "email": "pal@example.com"}).status_code, 403)
+
+
+class TeamSecondReviewTest(TeamTestCase):
+    def test_platform_account_cannot_join_a_team(self):
+        with numer.open_db() as connection:
+            connection.execute("INSERT INTO settings (key, value) VALUES ('platform_user_id', ?)", (str(self.frank_id),))
+        self.login("owner@example.com")
+        page = self.client.get("/admin").get_data(as_text=True)
+        response = self.client.post("/admin/accounts/team", data={"csrf_token": token_from(page),
+                                                                  "user_id": self.frank_id, "owner_id": self.practitioner_id})
+        self.assertEqual(response.status_code, 400)
+
+    def test_assigned_leads_are_labelled(self):
+        response = self.submit("/broccoli")
+        self.unlock(response.headers["Location"].rsplit("/", 1)[-1])
+        lead_id = self.leads()[0]["id"]
+        self.login("owner@example.com")
+        page = self.client.get(f"/leads/{lead_id}").get_data(as_text=True)
+        html = self.client.post(f"/leads/{lead_id}/assign", follow_redirects=True, data={
+            "csrf_token": token_from(page), "practitioner_id": self.practitioner_id}).get_data(as_text=True)
+        self.assertIn("assigned by numer.life", html)
+        self.assertNotIn("no practitioner", html)
