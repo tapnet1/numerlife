@@ -72,5 +72,15 @@ jobs:
               for row in connection.execute("SELECT id, kind, created_at, sent_at, attempts, last_error"
                                             " FROM email_outbox ORDER BY id DESC LIMIT 10"):
                   print(dict(row))
+          print("== Accounts (no emails)")
+          with app.open_db() as connection:
+              for row in connection.execute("SELECT id, role, display_name, slug, is_active, round_robin, invited_by,"
+                                            " created_at FROM users ORDER BY id"):
+                  print(dict(row))
+              print("== Recent leads: attribution only (no names or contact details)")
+              for row in connection.execute("SELECT leads.id, leads.created_at, leads.source, leads.ref_slug, leads.status,"
+                                            " users.display_name AS assigned_to FROM leads"
+                                            " LEFT JOIN users ON users.id = leads.practitioner_id ORDER BY leads.id DESC LIMIT 15"):
+                  print(dict(row))
           PY
           REMOTE
