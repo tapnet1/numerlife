@@ -209,3 +209,14 @@ class TeamSecondReviewTest(TeamTestCase):
             "csrf_token": token_from(page), "practitioner_id": self.practitioner_id}).get_data(as_text=True)
         self.assertIn("assigned by numer.life", html)
         self.assertNotIn("no practitioner", html)
+
+    def test_cannot_assign_to_inactive_practitioner(self):
+        response = self.submit("/liliana")
+        self.unlock(response.headers["Location"].rsplit("/", 1)[-1])
+        lead_id = self.leads()[0]["id"]
+        with numer.open_db() as connection:
+            connection.execute("UPDATE users SET is_active = 0 WHERE id = ?", (self.frank_id,))
+        self.login("owner@example.com")
+        page = self.client.get(f"/leads/{lead_id}").get_data(as_text=True)
+        self.assertEqual(self.client.post(f"/leads/{lead_id}/assign", data={
+            "csrf_token": token_from(page), "practitioner_id": self.frank_id}).status_code, 400)

@@ -205,7 +205,8 @@ def assign_lead(lead_id):
     target = request.form.get("practitioner_id", type=int)
     connection = db()
     if target:
-        ok = connection.execute("SELECT 1 FROM users WHERE id = ? AND role = 'practitioner' AND team_of IS NULL",
+        ok = connection.execute("SELECT 1 FROM users WHERE id = ? AND role = 'practitioner' AND team_of IS NULL"
+                                " AND is_active = 1",
                                 (target,)).fetchone()
         if ok is None:
             abort(400, description="Choose a practitioner.")
