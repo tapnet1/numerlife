@@ -15,7 +15,7 @@ import segno
 from flask import Response, abort, flash, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from app import BASE_URL, MIN_PASSWORD_LENGTH, app, current_user, db, login_required
+from app import BASE_URL, MIN_PASSWORD_LENGTH, app, current_user, db, login_required, open_db
 
 EMAIL_RE = re.compile(r"^[^@\s]{1,64}@[^@\s]+\.[A-Za-z]{2,}$")
 PHONE_RE = re.compile(r"^\+?[0-9 ().-]{7,25}$")
@@ -122,6 +122,8 @@ def edit_profile():
     from intake import validate_slug  # imported here: intake imports this module's helpers
 
     user = current_user()
+    if user["team_of"]:  # team members manage leads; the practitioner owns the profile
+        return redirect(url_for("change_password"))
     row = db().execute("SELECT * FROM users WHERE id = ?", (user["id"],)).fetchone()
     profile = load_profile(row)
     form = {"display_name": row["display_name"], "slug": row["slug"] or "", "round_robin": bool(row["round_robin"]),
@@ -205,7 +207,20 @@ def change_password():
             session.permanent = True
             flash("Password changed.", "info")
             return redirect(url_for("dashboard"))
-    return render_template("password.html", errors=errors), (400 if errors else 200)
+    alerts = db().execute("SELECT email_alerts FROM users WHERE id = ?", (current_user()["id"],)).fetchone()
+    return render_template("password.html", errors=errors, email_alerts=bool(alerts and alerts["email_alerts"])), \
+        (400 if errors else 200)
+
+
+@app.post("/settings/alerts")
+@login_required
+def save_alerts():
+    """Email-alert preference for team members (practitioners set it on their profile page)."""
+    with open_db() as connection:
+        connection.execute("UPDATE users SET email_alerts = ? WHERE id = ?",
+                           (1 if request.form.get("email_alerts") == "yes" else 0, current_user()["id"]))
+    flash("Email alerts saved.", "info")
+    return redirect(url_for("change_password"))
 
 
 # --------------------------------------------------------------------------
@@ -216,7 +231,8 @@ def change_password():
 def share_qr(fmt):
     if fmt not in ("svg", "png"):
         abort(404)
-    row = db().execute("SELECT slug FROM users WHERE id = ?", (current_user()["id"],)).fetchone()
+    from app import workspace_owner_id
+    row = db().execute("SELECT slug FROM users WHERE id = ?", (workspace_owner_id(current_user()),)).fetchone()
     target = f"{BASE_URL}/{row['slug']}" if row and row["slug"] else f"{BASE_URL}/"
     qr = segno.make(target, error="m")
     buffer = io.BytesIO()

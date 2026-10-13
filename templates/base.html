@@ -53,14 +53,20 @@
     <nav id="account-nav" aria-label="Account">
       <a href="{{ url_for('dashboard') }}"{% if request.endpoint == 'dashboard' %} aria-current="page"{% endif %}>Dashboard</a>
       <a href="{{ url_for('leads_list') }}"{% if request.endpoint in ('leads_list', 'lead_detail') %} aria-current="page"{% endif %}>Leads</a>
+      {% if is_team_member(user) %}
+      <a href="{{ url_for('change_password') }}"{% if request.endpoint == 'change_password' %} aria-current="page"{% endif %}>Password</a>
+      {% else %}
       <a href="{{ url_for('invite_practitioner') }}"{% if request.endpoint == 'invite_practitioner' %} aria-current="page"{% endif %}>Invite</a>
       <a href="{{ url_for('edit_profile') }}"{% if request.endpoint in ('edit_profile', 'change_password') %} aria-current="page"{% endif %}>Profile</a>
+      {% endif %}
       {% if user.role == 'admin' %}<a href="{{ url_for('admin') }}">Admin</a>{% endif %}
       <form method="post" action="{{ url_for('logout') }}" class="inline">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="link">Sign out</button>
       </form>
     </nav>
+    {% elif request.endpoint != 'login' %}
+    <a class="signin-link" href="{{ url_for('login') }}">Practitioner sign in</a>
     {% endif %}
   </header>
 
@@ -79,7 +85,7 @@
   <footer class="footer">
     <p class="footer-brand"><img src="{{ url_for('static', filename='img/logo-128.png') }}" alt="" width="30" height="30">{% include "_wordmark.html" %}</p>
     <p>Free numerology reports based on the Pythagorean system. For reflection and entertainment.</p>
-    <p>&copy; {{ year }} {{ site_name }} · <a href="{{ url_for('privacy') }}">Privacy</a></p>
+    <p>&copy; {{ year }} {{ site_name }} · <a href="{{ url_for('privacy') }}">Privacy</a> · <a href="{{ url_for('login') }}">Practitioner sign in</a></p>
   </footer>
   {% if user %}<script src="{{ url_for('static', filename='js/nav.js') }}" defer></script>{% endif %}
   {% block scripts %}{% endblock %}

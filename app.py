@@ -226,6 +226,7 @@ ADDED_COLUMNS = (
     ("users", "nudged_at", "TEXT"),
     ("leads", "nudged_at", "TEXT"),                          # follow-up email sent to the visitor
     ("invites", "emailed_at", "TEXT"),                       # invitation last emailed by numer.life
+    ("users", "team_of", "INTEGER REFERENCES users(id)"),     # team member: works on this practitioner's leads
     ("users", "plan", "TEXT NOT NULL DEFAULT 'none'"),       # none | complimentary | active | past_due | cancelled
     ("users", "paid_through", "TEXT"),                       # subscription paid up to this date (YYYY-MM-DD)
     ("leads", "source", "TEXT NOT NULL DEFAULT 'link'"),     # link | round_robin | none
@@ -322,13 +323,25 @@ def create_user(email: str, password: str, role: str, display_name: str = "",
         return cursor.lastrowid
 
 
+def workspace_owner_id(user) -> int:
+    """Whose leads and link this user works with: a team member works on their practitioner's."""
+    return user["team_of"] or user["id"]
+
+
+def is_team_member(user) -> bool:
+    return bool(user is not None and user["team_of"])
+
+
+app.jinja_env.globals["is_team_member"] = is_team_member
+
+
 def current_user() -> sqlite3.Row | None:
     if "user" not in g:
         g.user = None
         user_id = session.get("user_id")
         if user_id is not None:
             row = db().execute(
-                "SELECT id, email, role, display_name FROM users WHERE id = ? AND is_active = 1",
+                "SELECT id, email, role, display_name, team_of FROM users WHERE id = ? AND is_active = 1",
                 (user_id,),
             ).fetchone()
             if row is None:
@@ -540,8 +553,9 @@ def logout():
 @role_required("admin")
 def admin():
     users = db().execute(
-        "SELECT id, email, role, display_name, slug, is_active, created_at, last_login_at"
-        " FROM users ORDER BY created_at"
+        "SELECT users.id, users.email, users.role, users.display_name, users.slug, users.is_active,"
+        " users.created_at, users.last_login_at, users.team_of, owner.display_name AS team_owner"
+        " FROM users LEFT JOIN users AS owner ON owner.id = users.team_of ORDER BY users.created_at"
     ).fetchall()
     return render_template("admin.html", users=users)
 
@@ -674,3 +688,4 @@ import notify  # noqa: E402,F401  (PWA manifest, service worker, push notificati
 import public_profiles  # noqa: E402,F401  (profile photos, public practitioner pages)
 import emails  # noqa: E402,F401  (report emails, lead alerts, nudges, unsubscribe)
 import billing  # noqa: E402,F401  (plans, referral tree, CAD credits ledger)
+import admin_accounts  # noqa: E402,F401  (add practitioners, passwords, team members)

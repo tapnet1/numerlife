@@ -5,7 +5,7 @@
 <p class="crumb"><a href="{{ url_for('leads_list') }}">← All leads</a></p>
 <header class="app-head">
   <div>
-    <p class="eyebrow">Lead · {{ lead.created_at | friendly_time }} · {{ 'via your link' if lead.source == 'link' else ('shared visitor (no link)' if lead.source == 'round_robin' else 'no practitioner') }}{% if user.role == 'admin' %} · {{ lead.practitioner_name or 'No practitioner' }}{% endif %}</p>
+    <p class="eyebrow">Lead · {{ lead.created_at | friendly_time }} · {{ {'link': 'via your link', 'round_robin': 'shared visitor (no link)', 'assigned': 'assigned by numer.life'}.get(lead.source, 'no practitioner') }}{% if user.role == 'admin' %} · {{ lead.practitioner_name or 'No practitioner' }}{% endif %}</p>
     <h1>{{ lead.full_name }}</h1>
   </div>
   <span class="badge badge-{{ lead.stage }} badge-lg">{{ stages[lead.stage] }}</span>
@@ -72,6 +72,20 @@
       </form>
       {% if lead.updated_at %}<p class="muted small">Last saved {{ lead.updated_at | friendly_time }}</p>{% endif %}
     </section>
+    {% if user.role == 'admin' %}
+    <section class="panel">
+      <h2>Assigned to</h2>
+      <form method="post" action="{{ url_for('assign_lead', lead_id=lead.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="practitioner_id" class="sr-only">Practitioner</label>
+        <select id="practitioner_id" name="practitioner_id">
+          <option value="">Nobody (admins only)</option>
+          {% for p in assignable_practitioners() %}<option value="{{ p.id }}"{% if lead.practitioner_id == p.id %} selected{% endif %}>{{ p.display_name }}{% if p.slug %} (/{{ p.slug }}){% endif %}</option>{% endfor %}
+        </select>
+        <button type="submit">Reassign</button>
+      </form>
+    </section>
+    {% endif %}
   </aside>
 </div>
 {% endblock %}

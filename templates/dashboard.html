@@ -5,7 +5,7 @@
 {% block content %}
 <header class="app-head">
   <div>
-    <p class="eyebrow">Dashboard</p>
+    <p class="eyebrow">{% if team_owner %}{{ team_owner }}'s team{% else %}Dashboard{% endif %}</p>
     <h1>Welcome back{% if user.display_name %}, {{ user.display_name }}{% endif %}</h1>
   </div>
   <a class="btn-secondary" href="{{ url_for('leads_list') }}">All leads →</a>
@@ -30,7 +30,7 @@
   <p class="notice"><strong>{{ stats.unread }} new {{ 'lead' if stats.unread == 1 else 'leads' }}</strong> waiting for you. <a href="{{ url_for('leads_list', unlocked='yes') }}">Open them →</a></p>
 {% endif %}
 
-{% if user.role == 'practitioner' and profile_missing %}
+{% if user.role == 'practitioner' and profile_missing and not team_owner %}
   <p class="notice">Make your reports work for you: <a href="{{ url_for('edit_profile') }}">add your booking link and contact details</a> so every client can reach you in one tap.</p>
 {% endif %}
 
@@ -58,10 +58,10 @@
   <aside>
   <div class="panel">
     {% if share_url %}
-      <h2>Your personal link</h2>
+      <h2>{% if team_owner %}{{ team_owner }}'s link{% else %}Your personal link{% endif %}</h2>
       <p class="link-box"><a href="{{ share_url }}" target="_blank" rel="noopener">{{ share_url.split('://')[-1] }}</a></p>
       <p class="muted small">Put it in your bio, newsletter and messages. Every report requested through it becomes your lead, and the report shows your name.</p>
-      {% if user.role == 'practitioner' %}<p class="small"><a href="{{ share_url }}/about" target="_blank" rel="noopener">View your public page ↗</a> · <a href="{{ url_for('edit_profile') }}">Edit profile</a></p>{% endif %}
+      {% if user.role == 'practitioner' and not is_team_member(user) %}<p class="small"><a href="{{ share_url }}/about" target="_blank" rel="noopener">View your public page ↗</a> · <a href="{{ url_for('edit_profile') }}">Edit profile</a></p>{% endif %}
       {{ share_bar(share_url, "Share it") }}
       <div class="qr-kit">
         <img src="{{ url_for('share_qr', fmt='svg') }}" alt="QR code for {{ share_url.split('://')[-1] }}" width="132" height="132">
@@ -89,7 +89,7 @@
     {% set devices = push_device_count(user.id) %}
     {% if devices %}<p class="muted small">Alerts are on for {{ devices }} {{ 'device' if devices == 1 else 'devices' }}.</p>{% endif %}
   </div>
-  {% if user.role == 'practitioner' %}
+  {% if user.role == 'practitioner' and not is_team_member(user) %}
   {% set earn = earnings_summary(user.id) %}
   <div class="panel earnings-panel">
     <h2>Earnings</h2>
@@ -100,12 +100,14 @@
     {% endif %}
   </div>
   {% endif %}
+  {% if not is_team_member(user) %}
   <div class="panel invite-panel">
     <h2>Invite practitioners</h2>
     <p class="muted small">Know numerologists who'd love more clients? Invite them: they'll be recorded as your referral.</p>
     <p class="invite-count"><strong>{{ referred_count }}</strong> {{ 'practitioner' if referred_count == 1 else 'practitioners' }} referred</p>
     <a class="btn" href="{{ url_for('invite_practitioner') }}">Invite a practitioner</a>
   </div>
+  {% endif %}
   </aside>
 </div>
 {% endblock %}
