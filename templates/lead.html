@@ -72,6 +72,25 @@
       </form>
       {% if lead.updated_at %}<p class="muted small">Last saved {{ lead.updated_at | friendly_time }}</p>{% endif %}
     </section>
+    {% set cal = lead_calendar(lead.id) %}
+    <section class="panel">
+      <h2>Personal calendar</h2>
+      {% if cal %}
+        <p class="small">{{ calendar_kinds[cal.kind] }}{% if not cal.active %} · paused{% endif %}</p>
+        <a class="btn" href="{{ url_for('edit_calendar', lead_id=lead.id) }}">Open calendar</a>
+      {% elif lead.status == 'captured' %}
+        <form method="post" action="{{ url_for('start_calendar', lead_id=lead.id) }}" class="stack">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <label for="cal-kind">Type</label>
+          <select id="cal-kind" name="kind">{% for k, label in calendar_kinds.items() %}<option value="{{ k }}">{{ label }}</option>{% endfor %}</select>
+          <label for="cal-lang">Language</label>
+          <select id="cal-lang" name="lang"><option value="es">Español</option><option value="en">English</option></select>
+          <button type="submit">Start calendar</button>
+        </form>
+      {% else %}
+        <p class="muted small">Available once they unlock their report.</p>
+      {% endif %}
+    </section>
     {% if user.role == 'admin' %}
     <section class="panel">
       <h2>Assigned to</h2>

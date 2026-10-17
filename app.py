@@ -200,6 +200,47 @@ BEGIN SELECT RAISE(ABORT, 'ledger is append-only'); END;
 CREATE TRIGGER IF NOT EXISTS ledger_no_delete BEFORE DELETE ON ledger
 BEGIN SELECT RAISE(ABORT, 'ledger is append-only'); END;
 
+CREATE TABLE IF NOT EXISTS calendars (
+    id              INTEGER PRIMARY KEY,
+    lead_id         INTEGER NOT NULL UNIQUE REFERENCES leads(id),
+    practitioner_id INTEGER REFERENCES users(id),
+    kind            TEXT NOT NULL CHECK (kind IN ('numerology', 'magialogia')),
+    lang            TEXT NOT NULL DEFAULT 'en',
+    token           TEXT NOT NULL UNIQUE,
+    params          TEXT NOT NULL DEFAULT '{}',
+    active          INTEGER NOT NULL DEFAULT 1,
+    created_at      TEXT NOT NULL,
+    updated_at      TEXT
+);
+
+CREATE TABLE IF NOT EXISTS calendar_months (
+    calendar_id  INTEGER NOT NULL REFERENCES calendars(id),
+    month        TEXT NOT NULL,
+    intro        TEXT NOT NULL DEFAULT '',
+    published_at TEXT,
+    PRIMARY KEY (calendar_id, month)
+);
+
+CREATE TABLE IF NOT EXISTS calendar_notes (
+    calendar_id INTEGER NOT NULL REFERENCES calendars(id),
+    day         TEXT NOT NULL,
+    text        TEXT NOT NULL,
+    PRIMARY KEY (calendar_id, day)
+);
+
+CREATE TABLE IF NOT EXISTS calendar_content (
+    practitioner_id INTEGER NOT NULL REFERENCES users(id),
+    lang            TEXT NOT NULL,
+    number          INTEGER NOT NULL,
+    title           TEXT NOT NULL DEFAULT '',
+    focus           TEXT NOT NULL DEFAULT '',
+    avoid           TEXT NOT NULL DEFAULT '',
+    lucky           TEXT NOT NULL DEFAULT '',
+    color           TEXT NOT NULL DEFAULT '',
+    updated_at      TEXT NOT NULL,
+    PRIMARY KEY (practitioner_id, lang, number)
+);
+
 CREATE TABLE IF NOT EXISTS settings (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
@@ -237,7 +278,8 @@ ADDED_COLUMNS = (
 )
 
 REQUIRED_TABLES = {"users", "login_attempts", "leads", "form_attempts", "invites",
-                   "push_subscriptions", "push_outbox", "avatars", "email_outbox", "settings", "ledger"}
+                   "push_subscriptions", "push_outbox", "avatars", "email_outbox", "settings", "ledger",
+                   "calendars", "calendar_months", "calendar_notes", "calendar_content"}
 
 
 def now_utc() -> dt.datetime:
@@ -423,10 +465,12 @@ def _security_headers(response):
     )
     if app.config["SESSION_COOKIE_SECURE"]:
         response.headers.setdefault("Strict-Transport-Security", "max-age=86400")
-    if NOINDEX or request.endpoint in ("report", "unlock_report", "start_report", "unsubscribe"):
+    if NOINDEX or request.endpoint in ("report", "unlock_report", "start_report", "unsubscribe",
+                                         "calendar_public", "calendar_pdf"):
         # Personal report pages are never indexed, even after launch.
         response.headers["X-Robots-Tag"] = "noindex, nofollow"
-    if (session.get("user_id") and request.endpoint not in ("avatar", "static")) or request.endpoint in ("login", "report", "unlock_report", "start_report"):
+    if (session.get("user_id") and request.endpoint not in ("avatar", "static")) or request.endpoint in ("login", "report", "unlock_report", "start_report",
+                                                                  "calendar_public", "calendar_pdf"):
         response.headers["Cache-Control"] = "no-store"  # signed-in pages never cached
     return response
 
@@ -689,3 +733,4 @@ import public_profiles  # noqa: E402,F401  (profile photos, public practitioner 
 import emails  # noqa: E402,F401  (report emails, lead alerts, nudges, unsubscribe)
 import billing  # noqa: E402,F401  (plans, referral tree, CAD credits ledger)
 import admin_accounts  # noqa: E402,F401  (add practitioners, passwords, team members)
+import calendars  # noqa: E402,F401  (personal calendars: editor, client page, PDF)

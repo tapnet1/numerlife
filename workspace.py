@@ -212,6 +212,7 @@ def assign_lead(lead_id):
             abort(400, description="Choose a practitioner.")
     changed = connection.execute("UPDATE leads SET practitioner_id = ?, source = 'assigned', viewed_at = NULL,"
                                  " updated_at = ? WHERE id = ?", (target or None, iso(now_utc()), lead_id)).rowcount
+    connection.execute("UPDATE calendars SET practitioner_id = ? WHERE lead_id = ?", (target or None, lead_id))
     connection.commit()
     if not changed:
         abort(404)

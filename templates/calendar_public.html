@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}{{ labels.calendar }} · {{ month_name }} {{ year }} | {{ site_name }}{% endblock %}
+{% block body_class %}app-page calendar-page{% endblock %}
+{% block content %}
+<header class="app-head">
+  <div>
+    <p class="eyebrow">{{ labels.calendar }}{% if card %} · {{ labels.prepared_by }} {{ card.name }}{% endif %}</p>
+    <h1>{{ month_name }} {{ year }}</h1>
+  </div>
+  <div class="actions">
+    <a class="btn-secondary" href="{{ url_for('calendar_public', token=cal.token, month_key=prev_key) }}">← {{ labels.prev }}</a>
+    <a class="btn-secondary" href="{{ url_for('calendar_public', token=cal.token, month_key=next_key) }}">{{ labels.next }} →</a>
+  </div>
+</header>
+
+{% if visible or preview %}
+  {% if preview %}<p class="flash flash-info">Preview: your client can't see this month until you publish it.</p>{% endif %}
+  <section class="panel cal-summary">
+    <p><span class="lp lp-lg">{{ personal_year }}</span> <strong>{{ labels.personal_year }}</strong> · {{ year_guide.title }}</p>
+    <p><span class="lp lp-lg">{{ personal_month }}</span> <strong>{{ labels.personal_month }}</strong> · {{ month_guide.title }}</p>
+    {% if intro %}{% for para in intro.split('\n') if para.strip() %}<p>{{ para }}</p>{% endfor %}{% endif %}
+    <p><a class="btn" href="{{ url_for('calendar_pdf', token=cal.token, month_key=key) }}">{{ labels.download_pdf }}</a></p>
+  </section>
+
+  <div class="cal-grid" role="table" aria-label="{{ month_name }} {{ year }}">
+    <div class="cal-row cal-head" role="row">{% for w in labels.weekdays %}<span role="columnheader">{{ w }}</span>{% endfor %}</div>
+    {% for week in weeks %}
+    <div class="cal-row" role="row">
+      {% for d in week %}
+        {% if d %}
+        <a class="cal-cell{% if d.note %} has-note{% endif %}" href="#d{{ d.date.day }}" role="cell">
+          <span class="cal-num">{{ d.date.day }}</span><span class="lp">{{ d.number }}</span>
+          <span class="cal-title">{{ d.guide.title }}</span>
+          {% if d.moon %}<span class="cal-moon moon-{{ d.moon }}" title="{{ labels.moon[d.moon] }}"></span>{% endif %}
+          {% if d.holiday %}<span class="cal-hol">{{ d.holiday }}</span>{% endif %}
+        </a>
+        {% else %}<span class="cal-cell empty" role="cell"></span>{% endif %}
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <ol class="cal-list">
+    {% for d in days %}
+    <li id="d{{ d.date.day }}" class="panel">
+      <h2><span class="lp">{{ d.number }}</span> {{ labels.weekdays[d.date.weekday()] }} {{ d.date.day }} · {{ d.guide.title }}
+        {% if d.moon %}<small>· {{ labels.moon[d.moon] }}</small>{% endif %}{% if d.holiday %}<small class="gold">· {{ d.holiday }}</small>{% endif %}</h2>
+      {% if d.note %}<p class="cal-note">{{ d.note }}</p>{% endif %}
+      <p><strong>{{ labels.focus }}:</strong> {{ d.guide.focus }}</p>
+      <p><strong>{{ labels.avoid }}:</strong> {{ d.guide.avoid }}</p>
+      <p class="muted small">{{ labels.lucky }}: {{ d.guide.lucky }} · {{ labels.color }}: {{ d.guide.color }}</p>
+    </li>
+    {% endfor %}
+  </ol>
+{% else %}
+  <section class="panel"><p>{{ labels.not_ready }}</p></section>
+{% endif %}
+{% if card %}{% include "_contact_card.html" %}{% endif %}
+{% endblock %}
