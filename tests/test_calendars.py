@@ -46,7 +46,17 @@ class CalendarTestCase(IntakeTestCase):
         self.unlock(response.headers["Location"].rsplit("/", 1)[-1])
         return self.leads()[-1]
 
-    def start(self, lead_id, kind="magialogia", lang="es"):
+    def log_reading(self, lead_id, kind="magialogia", done=True):
+        page = self.client.get(f"/leads/{lead_id}").get_data(as_text=True)
+        data = {"csrf_token": token_from(page), "kind": kind, "date": "2025-11-20", "time": "18:30",
+                "duration": "90", "mode": "online"}
+        if done:
+            data["already_done"] = "yes"
+        return self.client.post(f"/leads/{lead_id}/readings", data=data)
+
+    def start(self, lead_id, kind="magialogia", lang="es", with_reading=True):
+        if kind == "magialogia" and with_reading:
+            self.log_reading(lead_id)
         page = self.client.get(f"/leads/{lead_id}").get_data(as_text=True)
         return self.client.post(f"/leads/{lead_id}/calendar", data={
             "csrf_token": token_from(page), "kind": kind, "lang": lang})

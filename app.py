@@ -200,6 +200,25 @@ BEGIN SELECT RAISE(ABORT, 'ledger is append-only'); END;
 CREATE TRIGGER IF NOT EXISTS ledger_no_delete BEFORE DELETE ON ledger
 BEGIN SELECT RAISE(ABORT, 'ledger is append-only'); END;
 
+CREATE TABLE IF NOT EXISTS readings (
+    id              INTEGER PRIMARY KEY,
+    lead_id         INTEGER NOT NULL REFERENCES leads(id),
+    practitioner_id INTEGER REFERENCES users(id),
+    kind            TEXT NOT NULL,
+    mode            TEXT NOT NULL DEFAULT 'online',
+    scheduled_at    TEXT NOT NULL,
+    duration_min    INTEGER NOT NULL DEFAULT 60,
+    status          TEXT NOT NULL DEFAULT 'scheduled',
+    notes           TEXT NOT NULL DEFAULT '',
+    params          TEXT NOT NULL DEFAULT '{}',
+    created_by      INTEGER REFERENCES users(id),
+    created_at      TEXT NOT NULL,
+    updated_at      TEXT,
+    completed_at    TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_readings_lead ON readings (lead_id, scheduled_at);
+CREATE INDEX IF NOT EXISTS idx_readings_when ON readings (status, scheduled_at);
+
 CREATE TABLE IF NOT EXISTS calendars (
     id              INTEGER PRIMARY KEY,
     lead_id         INTEGER NOT NULL UNIQUE REFERENCES leads(id),
@@ -279,7 +298,7 @@ ADDED_COLUMNS = (
 
 REQUIRED_TABLES = {"users", "login_attempts", "leads", "form_attempts", "invites",
                    "push_subscriptions", "push_outbox", "avatars", "email_outbox", "settings", "ledger",
-                   "calendars", "calendar_months", "calendar_notes", "calendar_content"}
+                   "calendars", "calendar_months", "calendar_notes", "calendar_content", "readings"}
 
 
 def now_utc() -> dt.datetime:
@@ -734,3 +753,4 @@ import emails  # noqa: E402,F401  (report emails, lead alerts, nudges, unsubscri
 import billing  # noqa: E402,F401  (plans, referral tree, CAD credits ledger)
 import admin_accounts  # noqa: E402,F401  (add practitioners, passwords, team members)
 import calendars  # noqa: E402,F401  (personal calendars: editor, client page, PDF)
+import readings  # noqa: E402,F401  (client record: scheduled and logged readings)

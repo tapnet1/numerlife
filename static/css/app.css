@@ -429,6 +429,17 @@ button.link.revoke { color: var(--error); font-size: .88rem; }
   .cal-cell .lp { width: 1.3rem; height: 1.3rem; font-size: .8rem; }
 }
 
+/* ---- Readings ---- */
+.reading-list { list-style: none; padding: 0; margin: 0; }
+.reading-list li a { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .65rem 0; border-top: 1px solid var(--line); text-decoration: none; color: inherit; }
+.reading-list li:first-child a { border-top: 0; }
+.badge-r-scheduled { background: #efe9f8; color: var(--plum); }
+.badge-r-completed { background: #e3f4e8; color: #1f6b3a; }
+.badge-r-cancelled, .badge-r-no_show { background: #f3eeee; color: #8a4b4b; }
+.upcoming { margin-bottom: 1.25rem; }
+details > summary.btn-secondary { display: inline-block; cursor: pointer; list-style: none; }
+details > summary.btn-secondary::-webkit-details-marker { display: none; }
+
 /* ---- Footer ---- */
 .footer { text-align: center; color: #b9b0cc; font-size: .87rem; padding: 2.5rem 1rem; background: var(--night); margin-top: 3rem; }
 .footer p { margin: .3rem 0; }
