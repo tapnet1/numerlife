@@ -223,7 +223,13 @@ def save_calendar_month(lead_id, month_key):
     if action == "unpublish":  # don't deliver anything about this month that's still waiting
         import emails  # loaded before this module
         with open_db() as connection:
-            emails.cancel_calendar_mail(connection, cal["lead_id"], include_published=True)
+            if key == engine.local_today().strftime("%Y-%m"):  # daily / monthly mail is always this month's
+                emails.cancel_calendar_mail(connection, cal["lead_id"], include_published=True)
+            else:
+                connection.execute("UPDATE email_outbox SET sent_at = ?, last_error = 'cancelled: unpublished'"
+                                   " WHERE sent_at IS NULL AND kind = 'calendar_published' AND lead_id = ?"
+                                   " AND subject LIKE ?", (iso(now_utc()), cal["lead_id"],
+                                                          f"%{content.MONTH_NAMES[cal['lang']][month - 1]} {year}%"))
             connection.execute("UPDATE calendar_months SET emailed_at = NULL WHERE calendar_id = ? AND month = ?",
                                (cal["id"], key))
     if action == "publish" and request.form.get("notify") == "yes":

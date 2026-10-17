@@ -219,3 +219,15 @@ class CalendarEmailTest(CalendarTestCase):
         self.client.post(f"/leads/{lead['id']}/calendar/{engine.local_today():%Y-%m}",
                          data={"csrf_token": token_from(page), "action": "unpublish"})
         self.assertIn("cancelled", self.outbox("calendar_published")[0]["last_error"])
+
+    def test_unpublishing_another_month_keeps_this_months_mail(self):
+        lead = self.lead_via_liliana()
+        page = self.magialogia_for(lead, notify=True)                   # this month: notice queued
+        nxt = "%04d-%02d" % engine.shift_month(*engine.local_today().timetuple()[:2], 1)
+        self.client.post(f"/leads/{lead['id']}/calendar/{nxt}",
+                         data={"csrf_token": token_from(page), "action": "publish", "notify": "yes"})
+        self.client.post(f"/leads/{lead['id']}/calendar/{nxt}",
+                         data={"csrf_token": token_from(page), "action": "unpublish"})
+        this_month, next_month = self.outbox("calendar_published")
+        self.assertIsNone(this_month["sent_at"])
+        self.assertIn("cancelled", next_month["last_error"])
