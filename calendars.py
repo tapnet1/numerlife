@@ -220,6 +220,12 @@ def save_calendar_month(lead_id, month_key):
                            " ON CONFLICT(calendar_id, month) DO UPDATE SET intro = excluded.intro"
                            + ("" if published == "keep" else ", published_at = excluded.published_at"),
                            (cal["id"], key, intro, None if published == "keep" else published))
+    if action == "unpublish":  # don't deliver anything about this month that's still waiting
+        import emails  # loaded before this module
+        with open_db() as connection:
+            emails.cancel_calendar_mail(connection, cal["lead_id"], include_published=True)
+            connection.execute("UPDATE calendar_months SET emailed_at = NULL WHERE calendar_id = ? AND month = ?",
+                               (cal["id"], key))
     if action == "publish" and request.form.get("notify") == "yes":
         if calendar_mail.queue_published(cal["id"], key):
             flash("We've emailed your client the link.", "info")

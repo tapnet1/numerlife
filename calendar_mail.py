@@ -120,6 +120,19 @@ def _month_published(connection, cal, key: str):
                               " AND published_at IS NOT NULL", (cal["id"], key)).fetchone()
 
 
+def _overview_sent(connection, cal_id: int, key: str) -> bool:
+    row = connection.execute("SELECT emailed_at FROM calendar_months WHERE calendar_id = ? AND month = ?",
+                             (cal_id, key)).fetchone()
+    return bool(row and row["emailed_at"])
+
+
+def _mark_overview(connection, cal_id: int, key: str) -> None:
+    """Record that this month's overview (welcome, monthly or publish notice) has gone to the client."""
+    connection.execute("INSERT INTO calendar_months (calendar_id, month, emailed_at) VALUES (?, ?, ?)"
+                       " ON CONFLICT(calendar_id, month) DO UPDATE SET emailed_at = excluded.emailed_at",
+                       (cal_id, key, iso(now_utc())))
+
+
 def set_frequency(cal_id: int, freq: str, by_client: bool = False) -> bool:
     """Change how often a client gets their calendar; subscribing sends this month's overview now.
 
@@ -152,8 +165,8 @@ def set_frequency(cal_id: int, freq: str, by_client: bool = False) -> bool:
                    and (cal["kind"] == "numerology" or _month_published(connection, cal, month_key) is not None))
         if welcome:
             marker = day_key if freq == "daily" else month_key
-        elif freq == "monthly" and (marker or "").startswith(month_key):
-            marker = month_key  # this month's calendar already went out as a daily or welcome email
+        elif freq == "monthly" and _overview_sent(connection, cal_id, month_key):
+            marker = month_key  # this month's overview already went out
         connection.execute("UPDATE calendars SET email_freq = ?, last_emailed = ?, email_opt_out = ?, updated_at = ?"
                            " WHERE id = ?", (freq, marker, opt_out, iso(now_utc()), cal_id))
         if freq == "none":
@@ -161,6 +174,7 @@ def set_frequency(cal_id: int, freq: str, by_client: bool = False) -> bool:
             return True
         if welcome:
             _queue(connection, "calendar_monthly", cal, lead, _build(cal, lead, today.year, today.month, "welcome"))
+            _mark_overview(connection, cal_id, month_key)
     emails.kick()
     return True
 
@@ -175,8 +189,7 @@ def queue_published(cal_id: int, key: str) -> bool:
         if not lead or not cal["active"] or cal["email_opt_out"] or not _month_published(connection, cal, key):
             return False
         _queue(connection, "calendar_published", cal, lead, _build(cal, lead, year, month, "published"))
-        connection.execute("UPDATE calendar_months SET emailed_at = ? WHERE calendar_id = ? AND month = ?",
-                           (iso(now_utc()), cal_id, key))
+        _mark_overview(connection, cal_id, key)
     emails.kick()
     return True
 
@@ -208,9 +221,10 @@ def run(now: dt.datetime | None = None) -> dict:
                 connection.execute("UPDATE calendars SET last_emailed = ? WHERE id = ?", (today.isoformat(), cal["id"]))
                 counts["daily"] += 1
             else:
-                if not (published and published["emailed_at"]):  # the publish email already covered this month
+                if not _overview_sent(connection, cal["id"], key):  # a welcome or publish email covers it
                     _queue(connection, "calendar_monthly", cal, lead,
                            _build(cal, lead, today.year, today.month, "monthly"))
+                    _mark_overview(connection, cal["id"], key)
                     counts["monthly"] += 1
                 connection.execute("UPDATE calendars SET last_emailed = ? WHERE id = ?", (key, cal["id"]))
     return counts

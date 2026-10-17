@@ -200,3 +200,22 @@ class CalendarEmailTest(CalendarTestCase):
         self.assertIn("only they can turn them back on", response.get_data(as_text=True))
         self.assertEqual((self.calendar()["email_freq"], self.calendar()["email_opt_out"]), ("none", 1))
         self.assertEqual(len(self.outbox("calendar_monthly")), 1)   # just the original welcome
+
+    def test_daily_then_monthly_still_gets_the_overview(self):
+        lead = self.lead_via_liliana()
+        page = self.magialogia_for(lead, publish=False, email_freq="daily")
+        self.client.post(f"/leads/{lead['id']}/calendar/{engine.local_today():%Y-%m}",
+                         data={"csrf_token": token_from(page), "action": "publish"})
+        self.assertEqual(calendar_mail.run(local_morning(0, hour=23))["daily"], 1)
+        self.client.post(f"/leads/{lead['id']}/calendar/settings",
+                         data={"csrf_token": token_from(page), "lang": "es", "email_freq": "monthly"})
+        self.assertEqual(calendar_mail.run(local_morning(0, hour=23))["monthly"], 1)
+        self.assertEqual(calendar_mail.run(local_morning(0, hour=23))["monthly"], 0)
+
+    def test_unpublishing_cancels_waiting_notice(self):
+        lead = self.lead_via_liliana()
+        page = self.magialogia_for(lead, notify=True)
+        self.assertIsNone(self.outbox("calendar_published")[0]["sent_at"])
+        self.client.post(f"/leads/{lead['id']}/calendar/{engine.local_today():%Y-%m}",
+                         data={"csrf_token": token_from(page), "action": "unpublish"})
+        self.assertIn("cancelled", self.outbox("calendar_published")[0]["last_error"])
