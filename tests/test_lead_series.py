@@ -139,3 +139,28 @@ class LeadSeriesTest(IntakeTestCase):
         self.client.get(f"/e/o/{row['track']}.gif")
         with numer.open_db() as connection:
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM email_events").fetchone()[0], 0)
+
+    def test_metrics_count_delivered_mail_and_keep_conversions(self):
+        self.turn_on()
+        lead = self.captured_lead(lang_header="en")
+        lead_series.run(later(2))
+        with numer.open_db() as connection:
+            connection.execute("UPDATE email_outbox SET sent_at = created_at, last_error = 'expired'")
+        with numer.app.test_request_context():
+            self.assertEqual(lead_series.step_stats()[0]["sent"], 0)
+            self.assertEqual(lead_series.conversions()["reached"], 0)
+        with numer.open_db() as connection:
+            connection.execute("UPDATE email_outbox SET last_error = ''")
+        self.login("liliana@example.com")
+        for stage in ("client", "archived"):
+            page = self.client.get(f"/leads/{lead['id']}").get_data(as_text=True)
+            self.client.post(f"/leads/{lead['id']}", data={"csrf_token": token_from(page), "stage": stage})
+        with numer.app.test_request_context():
+            self.assertEqual(lead_series.conversions(), {"reached": 1, "converted": 1})
+
+    def test_report_link_counts_from_unlock(self):
+        lead = self.captured_lead()
+        with numer.open_db() as connection:
+            connection.execute("UPDATE leads SET created_at = ? WHERE id = ?",
+                               ((numer.now_utc() - dt.timedelta(days=100)).isoformat(), lead["id"]))
+        self.assertEqual(self.client.get(f"/r/{lead['token']}").status_code, 200)

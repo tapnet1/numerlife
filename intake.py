@@ -258,7 +258,7 @@ def lead_for_token(token: str):
     lead = db().execute("SELECT * FROM leads WHERE token = ?", (token,)).fetchone()
     if lead is None:
         abort(404)
-    created = dt.datetime.fromisoformat(lead["created_at"])
+    created = dt.datetime.fromisoformat(lead["captured_at"] or lead["created_at"])  # unlocking restarts the clock
     if now_utc() - created > dt.timedelta(days=REPORT_LINK_DAYS):
         abort(404)
     return lead

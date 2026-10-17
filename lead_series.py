@@ -238,7 +238,7 @@ def run(now: dt.datetime | None = None, force: bool = False) -> dict:
 # --------------------------------------------------------------------------
 def step_stats() -> list[dict]:
     rows = db().execute(
-        "SELECT o.campaign, COUNT(*) AS queued, SUM(o.sent_at IS NOT NULL AND o.last_error NOT LIKE 'cancelled%')"
+        "SELECT o.campaign, COUNT(*) AS queued, SUM(o.sent_at IS NOT NULL AND o.last_error = '')"
         " AS sent,"
         " SUM(EXISTS (SELECT 1 FROM email_events e WHERE e.track = o.track AND e.event IN ('open', 'click')))"
         " AS opened,"
@@ -263,9 +263,10 @@ def conversions() -> dict:
     """Leads who got at least one series email, and how many of them went on to book or become clients."""
     row = db().execute(
         "SELECT COUNT(*) AS reached,"
-        " SUM(l.stage = 'client' OR EXISTS (SELECT 1 FROM readings r WHERE r.lead_id = l.id)) AS converted"
+        " SUM(l.client_at IS NOT NULL OR l.stage = 'client' OR EXISTS (SELECT 1 FROM readings r WHERE r.lead_id = l.id))"
+        " AS converted"
         " FROM leads l WHERE EXISTS (SELECT 1 FROM email_outbox o WHERE o.kind = ? AND o.lead_id = l.id"
-        " AND o.sent_at IS NOT NULL AND o.last_error NOT LIKE 'cancelled%')", (KIND,)).fetchone()
+        " AND o.sent_at IS NOT NULL AND o.last_error = '')", (KIND,)).fetchone()
     return {"reached": row["reached"] or 0, "converted": row["converted"] or 0}
 
 
@@ -275,7 +276,7 @@ def lead_progress(lead_id: int) -> dict:
         " EXISTS (SELECT 1 FROM email_events e WHERE e.track = o.track AND e.event IN ('open', 'click')) AS opened,"
         " EXISTS (SELECT 1 FROM email_events e WHERE e.track = o.track AND e.event = 'click') AS clicked"
         " FROM email_outbox o WHERE o.kind = ? AND o.lead_id = ? ORDER BY o.id", (KIND, lead_id)).fetchall()
-    sent = [r for r in rows if r["sent_at"] and not (r["last_error"] or "").startswith("cancelled")]
+    sent = [r for r in rows if r["sent_at"] and not r["last_error"]]  # delivered (not cancelled or expired)
     return {"sent": len(sent), "total": len(STEPS), "opened": sum(r["opened"] for r in sent),
             "clicked": sum(r["clicked"] for r in sent)}
 

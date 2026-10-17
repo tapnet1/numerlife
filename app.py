@@ -309,6 +309,7 @@ ADDED_COLUMNS = (
     ("leads", "lang", "TEXT"),                               # visitor's language for emails (en | es)
     ("leads", "series_step", "INTEGER NOT NULL DEFAULT 0"),  # follow-up series: next step to send
     ("leads", "series_sent_at", "TEXT"),
+    ("leads", "client_at", "TEXT"),                          # first time the lead was marked a client
     ("email_outbox", "campaign", "TEXT"),                    # series step key
     ("email_outbox", "track", "TEXT"),                       # open/click tracking token
 )

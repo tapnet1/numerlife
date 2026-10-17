@@ -196,6 +196,9 @@ def update_lead(lead_id):
     connection = db()
     connection.execute("UPDATE leads SET stage = ?, notes = ?, lang = ?, updated_at = ? WHERE id = ?",
                        (stage, notes, lang, iso(now_utc()), lead["id"]))
+    if stage == "client":
+        connection.execute("UPDATE leads SET client_at = ? WHERE id = ? AND client_at IS NULL",
+                           (iso(now_utc()), lead["id"]))
     connection.commit()
     flash("Saved.", "info")
     return redirect(url_for("lead_detail", lead_id=lead["id"]))
