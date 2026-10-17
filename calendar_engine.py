@@ -106,6 +106,15 @@ HOLIDAYS = {
 }
 
 
+def _merge_holiday_names():
+    import calendar_languages
+    for key, names in calendar_languages.HOLIDAYS.items():
+        HOLIDAYS.setdefault(key, {}).update(names)
+
+
+_merge_holiday_names()
+
+
 # --------------------------------------------------------------------------
 # Month grid
 # --------------------------------------------------------------------------

@@ -90,6 +90,7 @@ def month_view(cal, lead, year: int, month: int) -> dict:
 
 app.jinja_env.globals["lead_calendar"] = calendar_for_lead
 app.jinja_env.globals["calendar_kinds"] = KINDS
+app.jinja_env.globals["calendar_languages"] = content.LANGUAGES
 
 
 def _scoped_lead(lead_id: int):
