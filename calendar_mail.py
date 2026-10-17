@@ -187,9 +187,11 @@ def run(now: dt.datetime | None = None) -> dict:
     today, key = local.date(), local.strftime("%Y-%m")
     counts = {"daily": 0, "monthly": 0}
     with app.test_request_context("/", base_url=BASE_URL), open_db() as connection:
-        rows = connection.execute("SELECT * FROM calendars WHERE active = 1 AND email_freq IN ('daily', 'monthly')"
-                                  " AND (last_emailed IS NULL OR last_emailed NOT IN (?, ?))",
-                                  (today.isoformat(), key)).fetchall()
+        rows = connection.execute(
+            "SELECT * FROM calendars WHERE active = 1 AND ("
+            " (email_freq = 'daily' AND (last_emailed IS NULL OR last_emailed != ?))"
+            " OR (email_freq = 'monthly' AND (last_emailed IS NULL OR last_emailed != ?)))",
+            (today.isoformat(), key)).fetchall()
         for cal in rows:
             lead = _lead(connection, cal)
             if lead is None:

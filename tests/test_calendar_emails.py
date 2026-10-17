@@ -177,3 +177,12 @@ class CalendarEmailTest(CalendarTestCase):
         report = self.client.get(f"/r/{lead['token']}").get_data(as_text=True)
         self.assertIn('<input type="hidden" name="lang" value="es">', report)
         self.assertNotIn('id="cal-lang"', report)
+
+    def test_switching_monthly_to_daily_sends_tomorrow(self):
+        lead = self.lead_via_liliana()
+        self.signup(lead, freq="monthly", lang="en")
+        cal = self.calendar()
+        page = self.client.get(f"/c/{cal['token']}").get_data(as_text=True)
+        self.client.post(f"/c/{cal['token']}/emails", data={"csrf_token": token_from(page), "freq": "daily"})
+        self.assertEqual(calendar_mail.run(local_morning(0, hour=23))["daily"], 1)  # today's hasn't gone yet
+        self.assertEqual(calendar_mail.run(local_morning(1))["daily"], 1)
