@@ -45,7 +45,7 @@ def readings_for_lead(lead_id: int):
 def completed_magialogia(lead_id: int):
     """The latest completed Magialogía reading for this client, if any."""
     return db().execute("SELECT * FROM readings WHERE lead_id = ? AND kind = 'magialogia' AND status = 'completed'"
-                        " ORDER BY completed_at DESC, id DESC LIMIT 1", (lead_id,)).fetchone()
+                        " ORDER BY scheduled_at DESC, id DESC LIMIT 1", (lead_id,)).fetchone()
 
 
 def reading_params(reading) -> dict:

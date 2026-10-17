@@ -86,3 +86,29 @@ class ReadingsTest(CalendarTestCase):
             "csrf_token": token_from(page), "kind": "tarot", "date": "nope"}).get_data(as_text=True)
         self.assertIn("Choose a reading type", html)
         self.assertEqual(self.readings(), [])
+
+
+class ReadingsReviewTest(ReadingsTest):
+    def test_latest_reading_is_by_session_date(self):
+        lead = self.lead_via_liliana()
+        self.login("liliana@example.com")
+        page = self.client.get(f"/leads/{lead['id']}").get_data(as_text=True)
+        for date in ("2025-11-20", "2025-06-01"):      # the older session logged last
+            self.client.post(f"/leads/{lead['id']}/readings", data={
+                "csrf_token": token_from(page), "kind": "magialogia", "date": date, "time": "10:00",
+                "duration": "60", "mode": "online", "already_done": "yes"})
+        import readings
+        with numer.app.test_request_context("/"):
+            self.assertEqual(readings.completed_magialogia(lead["id"])["scheduled_at"], "2025-11-20T10:00")
+
+    def test_reading_page_offers_switching_a_numerology_calendar(self):
+        lead = self.lead_via_liliana()
+        self.login("liliana@example.com")
+        self.start(lead["id"], kind="numerology", lang="fr")
+        self.log_reading(lead["id"], done=True)
+        reading = self.readings()[-1]
+        page = self.client.get(f"/leads/{lead['id']}/readings/{reading['id']}").get_data(as_text=True)
+        self.assertIn("Switch to Magialogía calendar", page)
+        self.client.post(f"/leads/{lead['id']}/calendar", data={
+            "csrf_token": token_from(page), "kind": "magialogia", "lang": "fr"})
+        self.assertEqual((self.calendar()["kind"], self.calendar()["lang"]), ("magialogia", "fr"))
