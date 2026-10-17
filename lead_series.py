@@ -178,6 +178,18 @@ def build(lead, practitioner, key: str, track: str | None = None, today: dt.date
     return subject, text, html, {"List-Unsubscribe": f"<{unsubscribe}>"}
 
 
+def requeue_pending(connection, where: str, params: tuple) -> None:
+    """Cancel undelivered series emails for leads matching `where` (e.g. after a reassignment)
+    and step them back, so the next run rebuilds them with the new practitioner's details."""
+    rows = connection.execute(f"SELECT o.id, o.lead_id FROM email_outbox o JOIN leads ON leads.id = o.lead_id"
+                              f" WHERE o.kind = ? AND o.sent_at IS NULL AND {where}", (KIND, *params)).fetchall()
+    for row in rows:
+        connection.execute("UPDATE email_outbox SET sent_at = ?, last_error = 'cancelled: reassigned' WHERE id = ?",
+                           (iso(now_utc()), row["id"]))
+        connection.execute("UPDATE leads SET series_step = MAX(series_step - 1, 0), series_sent_at = NULL"
+                           " WHERE id = ?", (row["lead_id"],))
+
+
 # --------------------------------------------------------------------------
 # Daily run
 # --------------------------------------------------------------------------

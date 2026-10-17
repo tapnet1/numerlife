@@ -94,6 +94,8 @@ def admin_set_team():
             abort(400, description="Choose a different practitioner.")
         if connection.execute("SELECT 1 FROM users WHERE team_of = ?", (user_id,)).fetchone():
             abort(400, description="This account has its own team members; move them first.")
+        import lead_series  # loaded after this module
+        lead_series.requeue_pending(connection, "leads.practitioner_id = ?", (user_id,))
         moved = connection.execute("UPDATE leads SET practitioner_id = ?, updated_at = ? WHERE practitioner_id = ?",
                                    (owner_id, iso(now_utc()), user_id)).rowcount
         connection.execute("UPDATE calendars SET practitioner_id = ? WHERE practitioner_id = ?", (owner_id, user_id))

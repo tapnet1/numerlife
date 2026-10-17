@@ -216,6 +216,8 @@ def assign_lead(lead_id):
                                 (target,)).fetchone()
         if ok is None:
             abort(400, description="Choose a practitioner.")
+    import lead_series  # loaded after this module
+    lead_series.requeue_pending(connection, "leads.id = ?", (lead_id,))
     changed = connection.execute("UPDATE leads SET practitioner_id = ?, source = 'assigned', viewed_at = NULL,"
                                  " updated_at = ? WHERE id = ?", (target or None, iso(now_utc()), lead_id)).rowcount
     connection.execute("UPDATE calendars SET practitioner_id = ? WHERE lead_id = ?", (target or None, lead_id))

@@ -179,3 +179,14 @@ class LeadSeriesTest(IntakeTestCase):
         rows = self.series()
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["body_html"], "")                  # content dropped, record kept
+
+    def test_reassignment_rebuilds_pending_email(self):
+        self.turn_on()
+        lead = self.captured_lead(lang_header="en")
+        lead_series.run(later(2))
+        self.login("owner@example.com")
+        page = self.client.get(f"/leads/{lead['id']}").get_data(as_text=True)
+        self.client.post(f"/leads/{lead['id']}/assign", data={"csrf_token": token_from(page), "practitioner_id": ""})
+        self.assertIn("reassigned", self.series()[0]["last_error"])
+        self.assertEqual(self.leads()[-1]["series_step"], 0)
+        self.assertEqual(lead_series.run(later(2, 1))["sent"], 1)
