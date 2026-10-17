@@ -5,7 +5,7 @@
 <header class="app-head">
   <div>
     <p class="eyebrow">Personal calendars</p>
-    <h1>Your guidance for each number</h1>
+    <h1>{% if for_id %}{{ owner.display_name }}'s guidance{% else %}Your guidance for each number{% endif %}</h1>
   </div>
 </header>
 
@@ -13,6 +13,7 @@
   <p>Your clients' calendars show a short guide for each personal year, month and day number. Write it in your own words here; anything you leave empty uses numer.life's starter text (shown in grey). Changes apply straight away to every calendar in that language.</p>
   <form method="get" action="{{ url_for('edit_guidance') }}" class="inline-form">
     <label for="lang">Language</label>
+    {% if for_id %}<input type="hidden" name="for" value="{{ for_id }}">{% endif %}
     <select id="lang" name="lang">{% for code, name in languages.items() %}<option value="{{ code }}"{% if code == lang %} selected{% endif %}>{{ name }}</option>{% endfor %}</select>
     <button type="submit" class="btn-secondary">Switch</button>
   </form>
@@ -22,6 +23,7 @@
 <form method="post" action="{{ url_for('save_guidance') }}" class="panel">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="lang" value="{{ lang }}">
+  {% if for_id %}<input type="hidden" name="for" value="{{ for_id }}">{% endif %}
   <ul class="cal-days">
     {% for e in entries %}
     {% set mine = e.mine %}

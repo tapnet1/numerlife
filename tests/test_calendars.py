@@ -268,3 +268,30 @@ class GuidanceEditorTest(CalendarTestCase):
 
     def test_requires_login(self):
         self.assertEqual(self.client.get("/settings/calendar").status_code, 302)
+
+    def test_admin_edits_the_calendar_practitioners_guidance(self):
+        lead = self.lead_via_liliana()
+        self.login("liliana@example.com")
+        self.start(lead["id"], kind="numerology", lang="es")
+        page = self.client.get("/settings/calendar").get_data(as_text=True)
+        self.client.post("/logout", data={"csrf_token": token_from(page)})
+        self.login("owner@example.com")
+        editor = self.client.get(f"/leads/{lead['id']}/calendar").get_data(as_text=True)
+        self.assertIn(f"/settings/calendar?lang=es&amp;for={lead['practitioner_id']}", editor)
+        page = self.client.get(f"/settings/calendar?lang=es&for={lead['practitioner_id']}").get_data(as_text=True)
+        self.assertIn("Liliana", page)
+        self.client.post("/settings/calendar", data={"csrf_token": token_from(page), "lang": "es",
+                                                     "for": str(lead["practitioner_id"]), "2-title": "Unión"})
+        with numer.open_db() as connection:
+            row = connection.execute("SELECT practitioner_id, title FROM calendar_content").fetchone()
+        self.assertEqual((row["practitioner_id"], row["title"]), (lead["practitioner_id"], "Unión"))
+
+    def test_practitioner_cannot_edit_someone_elses_guidance(self):
+        self.login("liliana@example.com")
+        page = self.client.get(f"/settings/calendar?for={self.admin_id}").get_data(as_text=True)
+        self.assertNotIn("Owner's guidance", page)            # ignored: she edits her own
+        self.client.post("/settings/calendar", data={"csrf_token": token_from(page), "lang": "es",
+                                                     "for": str(self.admin_id), "2-title": "X"})
+        with numer.open_db() as connection:
+            self.assertEqual(connection.execute("SELECT practitioner_id FROM calendar_content").fetchone()[0],
+                             self.practitioner_id)

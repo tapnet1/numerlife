@@ -224,10 +224,26 @@ def save_calendar_month(lead_id, month_key):
 FIELD_LIMITS = {"title": 80, "focus": 300, "avoid": 300, "lucky": 60, "color": 40}
 
 
+def _guidance_owner(value) -> tuple[int, object]:
+    """Whose guidance is being edited: your own (your practitioner's, for a team member);
+    an admin can open any practitioner's from that practitioner's calendar."""
+    user = current_user()
+    owner_id = workspace_owner_id(user)
+    if user["role"] == "admin" and value:
+        try:
+            owner_id = int(value)
+        except (TypeError, ValueError):
+            abort(404)
+    owner = db().execute("SELECT id, display_name, team_of FROM users WHERE id = ?", (owner_id,)).fetchone()
+    if owner is None or owner["team_of"]:
+        abort(404)
+    return owner_id, owner
+
+
 @app.get("/settings/calendar")
 @login_required
 def edit_guidance():
-    owner_id = workspace_owner_id(current_user())
+    owner_id, owner = _guidance_owner(request.args.get("for"))
     lang = request.args.get("lang") or preferred_calendar_lang(owner_id)
     if lang not in content.LANGUAGES:
         lang = "es"
@@ -236,15 +252,16 @@ def edit_guidance():
                 "mine": {field: (overrides.get(number) or {}).get(field, "") for field in content.FIELDS}}
                for number in content.NUMBERS]
     customised = sum(1 for entry in entries if any(entry["mine"].values()))
+    editing_other = owner_id != workspace_owner_id(current_user())
     return render_template("guidance.html", lang=lang, languages=content.LANGUAGES, entries=entries,
                            fields=content.FIELDS, limits=FIELD_LIMITS, labels=content.LABELS[lang],
-                           customised=customised)
+                           customised=customised, owner=owner, for_id=owner_id if editing_other else None)
 
 
 @app.post("/settings/calendar")
 @login_required
 def save_guidance():
-    owner_id = workspace_owner_id(current_user())
+    owner_id, _owner = _guidance_owner(request.form.get("for"))
     lang = request.form.get("lang", "")
     if lang not in content.LANGUAGES:
         abort(400, description="Unknown language.")
@@ -252,7 +269,7 @@ def save_guidance():
         if request.form.get("action") == "reset":
             connection.execute("DELETE FROM calendar_content WHERE practitioner_id = ? AND lang = ?", (owner_id, lang))
             flash(f"{content.LANGUAGES[lang]}: back to the starter texts.", "info")
-            return redirect(url_for("edit_guidance", lang=lang))
+            return redirect(url_for("edit_guidance", lang=lang, **{"for": request.form.get("for") or None}))
         for number in content.NUMBERS:
             default = content.DEFAULTS[lang][number]
             values = {}
@@ -271,7 +288,7 @@ def save_guidance():
                                    (owner_id, lang, number))
     flash(f"Your {content.LANGUAGES[lang]} guidance is saved. Every calendar in {content.LANGUAGES[lang]} uses it now.",
           "info")
-    return redirect(url_for("edit_guidance", lang=lang))
+    return redirect(url_for("edit_guidance", lang=lang, **{"for": request.form.get("for") or None}))
 
 
 # --------------------------------------------------------------------------
