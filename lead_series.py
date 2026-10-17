@@ -28,7 +28,7 @@ STEPS = (  # (key, days after the report was unlocked)
     ("days", 11), ("harmony", 15), ("last", 21),
 )
 MIN_GAP = dt.timedelta(hours=40)        # never two series emails closer than this
-START_WINDOW = dt.timedelta(days=45)     # leads older than this never start the series
+START_WINDOW = dt.timedelta(days=30)     # leads older than this never start the series (report links last 90)
 STOP_STAGES = ("client", "archived")
 PIXEL = (b"GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00"
          b",\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;")
@@ -59,7 +59,9 @@ def tracked(track: str | None, url: str) -> str:
 
 def _record(track: str, event: str) -> None:
     with open_db() as connection:
-        if connection.execute("SELECT 1 FROM email_outbox WHERE track = ?", (track,)).fetchone():
+        # only while the recipient still agrees to hear from us: nothing is recorded after an opt-out
+        if connection.execute("SELECT 1 FROM email_outbox o JOIN leads l ON l.id = o.lead_id"
+                              " WHERE o.track = ? AND l.marketing_opt_in = 1", (track,)).fetchone():
             connection.execute("INSERT INTO email_events (track, event, created_at) VALUES (?, ?, ?)",
                                (track, event, iso(now_utc())))
 

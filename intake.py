@@ -44,7 +44,7 @@ RESERVED_SLUGS = frozenset("""
 
 PLATFORM_SLUGS = frozenset({"tapnet"})  # reserved for numer.life's own account, but a working link
 
-REPORT_LINK_DAYS = 30
+REPORT_LINK_DAYS = 90  # covers the follow-up series (starts within 30 days, runs 21+)
 SUBMIT_LIMIT_PER_HOUR = 10
 UNLOCK_LIMIT_PER_HOUR = 20
 EMAIL_RE = re.compile(r"^[^@\s]{1,64}@[^@\s]+\.[A-Za-z]{2,}$")

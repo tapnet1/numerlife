@@ -125,3 +125,17 @@ class LeadSeriesTest(IntakeTestCase):
         for lang in sc.LANGS:
             self.assertEqual(set(sc.TRAITS[lang]), set(sc.TRAITS["en"]))
             self.assertEqual(set(sc.TEXT[lang]), set(sc.TEXT["en"]))
+
+    def test_no_tracking_after_unsubscribe_and_links_outlast_series(self):
+        import intake
+        self.assertGreaterEqual(intake.REPORT_LINK_DAYS * 24,
+                                (lead_series.START_WINDOW.days + lead_series.STEPS[-1][1] + 7) * 24)
+        self.turn_on()
+        lead = self.captured_lead(lang_header="en")
+        lead_series.run(later(2))
+        row = self.series()[0]
+        with numer.open_db() as connection:
+            connection.execute("UPDATE leads SET marketing_opt_in = 0 WHERE id = ?", (lead["id"],))
+        self.client.get(f"/e/o/{row['track']}.gif")
+        with numer.open_db() as connection:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM email_events").fetchone()[0], 0)
