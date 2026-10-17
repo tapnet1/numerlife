@@ -512,11 +512,12 @@ def admin_email_test():
             built.append((kind, *practitioner_nudge_email(practitioner, rows)))
         elif kind == "lead_series":
             import lead_series  # loaded after this module
-            series_lead = {**lead, "email": to, "practitioner_id": practitioner["id"], "lang": "es"}
+            series_lead = {**lead, "email": to, "practitioner_id": practitioner["id"], "lang": "en"}
             for key, _day in lead_series.STEPS:
                 built.append((kind, *lead_series.build(series_lead, practitioner, key)))
-            series_lead["lang"] = "en"
-            built.append((kind, *lead_series.build(series_lead, practitioner, "expression")))
+            # one Spanish example: Spanish only goes to visitors whose browser is set to Spanish
+            subject, *rest = lead_series.build({**series_lead, "lang": "es"}, practitioner, "expression")
+            built.append((kind, f"(Spanish example) {subject}", *rest))
         elif kind.startswith("calendar_"):
             import calendar_mail  # loaded after this module
             built.append((kind, *calendar_mail.sample_email(kind, lead, practitioner)))

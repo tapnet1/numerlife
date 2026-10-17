@@ -170,7 +170,8 @@ def build(lead, practitioner, key: str, track: str | None = None, today: dt.date
     context = {"email_lang": lang, "hi": t["hi"].format(name=name), "paragraphs": paragraphs, "days": days,
                "extra_link": extra_link, "cta": cta, "secondary": secondary, "card": card,
                "card_label": t["card_label"], "card_book_label": t["card_book"], "card_about_label": t["card_about"],
-               "card_book_url": tracked(track, booking) if booking else None, "why": t["why"], "unsubscribe_label": t["unsubscribe"],
+               "card_book_url": tracked(track, booking) if booking else None,
+               "card_profile_url": tracked(track, card["about_url"]) if card and card.get("about_url") else None, "why": t["why"], "unsubscribe_label": t["unsubscribe"],
                "unsubscribe_url": unsubscribe,
                "pixel_url": f"{BASE_URL}/e/o/{track}.gif" if track else None}
     subject = t["subjects"][key].format(**fields)

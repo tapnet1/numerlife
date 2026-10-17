@@ -9,8 +9,8 @@ View your full report: {{ report_url }}
 {% if card %}
 Your numerologist: {{ card.name }}{% if card.headline %}, {{ card.headline }}{% endif %}
 {% if card.booking_url %}Book a reading: {{ card.booking_url }}
-{% endif %}{% if card.email %}Email: {{ card.email }}
-{% endif %}{% if card.phone %}Phone: {{ card.phone }}
+{% endif %}{% if card.about_url %}Profile: {{ card.about_url }}
+{% elif card.email %}Email: {{ card.email }}
 {% endif %}{% endif %}
 --
 You're receiving this because you asked for your report at {{ base_url.split('://')[-1] }}.

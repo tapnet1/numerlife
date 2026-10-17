@@ -1,15 +1,16 @@
 {% if card %}
+{% set profile_url = card_profile_url or card.about_url %}
+{% set first = card.name.split(' ')[0] %}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:26px 0 6px;background:#faf6ff;border:1px solid #e4dbf1;border-radius:14px;">
 <tr><td style="padding:22px;text-align:center;">
   <p style="margin:0 0 10px;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#7a7290;">{{ card_label or "Your numerologist" }}</p>
-  {% if card.photo %}<img src="{{ card.photo }}" width="84" height="84" alt="{{ card.name }}" style="border-radius:50%;border:3px solid #d4af5a;display:block;margin:0 auto 10px;">{% endif %}
-  <p style="margin:0;font-family:Georgia,serif;font-size:22px;color:#1b1038;">{{ card.name }}</p>
+  {% if card.photo %}{% if profile_url %}<a href="{{ profile_url }}">{% endif %}<img src="{{ card.photo }}" width="84" height="84" alt="{{ card.name }}" style="border-radius:50%;border:3px solid #d4af5a;display:block;margin:0 auto 10px;">{% if profile_url %}</a>{% endif %}{% endif %}
+  <p style="margin:0;font-family:Georgia,serif;font-size:22px;color:#1b1038;">{% if profile_url %}<a href="{{ profile_url }}" style="color:#1b1038;text-decoration:none;">{{ card.name }}</a>{% else %}{{ card.name }}{% endif %}</p>
   {% if card.headline %}<p style="margin:4px 0 0;color:#9a7a2c;font-size:14px;">{{ card.headline }}</p>{% endif %}
   {% if card.booking_url %}<p style="margin:16px 0 0;"><a href="{{ card_book_url or card.booking_url }}" style="display:inline-block;background:#d4af5a;color:#1b1038;font-weight:600;text-decoration:none;padding:12px 24px;border-radius:999px;">{{ card_book_label or "Book a reading" }}</a></p>{% endif %}
   <p style="margin:12px 0 0;font-size:14px;">
-    {% if card.email %}<a href="mailto:{{ card.email }}" style="color:#4b2d8f;">{{ card.email }}</a>{% endif %}
-    {% if card.phone %} · <a href="tel:{{ card.phone | replace(' ', '') }}" style="color:#4b2d8f;">{{ card.phone }}</a>{% endif %}
-    {% if card.about_url %} · <a href="{{ card.about_url }}" style="color:#4b2d8f;">{{ card_about_label or "About" }} {{ card.name.split(' ')[0] }}</a>{% endif %}
+    {% if profile_url %}<a href="{{ profile_url }}" style="color:#4b2d8f;">{{ (card_about_label or "{name}'s profile").replace("{name}", first) }}</a>
+    {% elif card.email %}<a href="mailto:{{ card.email }}" style="color:#4b2d8f;">{{ card.email }}</a>{% endif %}
   </p>
 </td></tr></table>
 {% endif %}
