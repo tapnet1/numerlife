@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Calendar · {{ lead.full_name }} | {{ site_name }}{% endblock %}
+{% block body_class %}app-page{% endblock %}
+{% block content %}
+<p class="crumb"><a href="{{ url_for('lead_detail', lead_id=lead.id) }}">← {{ lead.full_name }}</a></p>
+<header class="app-head">
+  <div>
+    <p class="eyebrow">{{ kinds[cal.kind] }} · {{ languages[lang] }}</p>
+    <h1>{{ month_name }} {{ year }}</h1>
+  </div>
+  <div class="actions">
+    <a class="btn-secondary" href="{{ url_for('edit_calendar', lead_id=lead.id, month=prev_key) }}">← {{ labels.prev }}</a>
+    <a class="btn-secondary" href="{{ url_for('edit_calendar', lead_id=lead.id, month=next_key) }}">{{ labels.next }} →</a>
+  </div>
+</header>
+
+<section class="panel cal-status">
+  {% if cal.kind == 'numerology' %}
+    <p><strong>Always available.</strong> Your client sees every month of this calendar automatically.</p>
+  {% elif published %}
+    <p><strong>Published.</strong> Your client can see this month.</p>
+  {% else %}
+    <p><strong>Draft.</strong> Your client can't see this month until you publish it.</p>
+  {% endif %}
+  <p class="small">Client link: <a href="{{ client_url }}" target="_blank" rel="noopener">{{ client_url.split('://')[-1] }}</a>
+    · <a href="{{ url_for('calendar_pdf', token=cal.token, month_key=key) }}" target="_blank" rel="noopener">PDF ↗</a></p>
+  <p class="muted small">Personal year {{ personal_year }} ({{ year_guide.title }}) · personal month {{ personal_month }} ({{ month_guide.title }}){% if life_path %} · Life Path {{ life_path }}{% endif %}</p>
+</section>
+
+<div class="app-grid">
+  <form method="post" action="{{ url_for('save_calendar_month', lead_id=lead.id, month_key=key) }}" class="panel">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <h2>This month</h2>
+    <label for="intro">Message for {{ client_first }} (optional)</label>
+    <textarea id="intro" name="intro" rows="4" maxlength="2000" placeholder="A few words about the month ahead">{{ intro }}</textarea>
+    <ul class="cal-days">
+      {% for d in days %}
+      <li class="cal-day{% if d.note %} has-note{% endif %}">
+        <details{% if d.note %} open{% endif %}>
+          <summary>
+            <span class="lp">{{ d.number }}</span>
+            <span class="cal-date">{{ labels.weekdays[d.date.weekday()] }} {{ d.date.day }}</span>
+            <span class="cal-title">{{ d.guide.title }}</span>
+            {% if d.moon %}<span class="cal-tag">{{ labels.moon[d.moon] }}</span>{% endif %}
+            {% if d.holiday %}<span class="cal-tag gold">{{ d.holiday }}</span>{% endif %}
+          </summary>
+          <p class="small"><strong>{{ labels.focus }}:</strong> {{ d.guide.focus }}<br><strong>{{ labels.avoid }}:</strong> {{ d.guide.avoid }}<br><span class="muted">{{ labels.lucky }}: {{ d.guide.lucky }} · {{ labels.color }}: {{ d.guide.color }}</span></p>
+          <label for="note-{{ d.date.isoformat() }}" class="small">Personal note for this day</label>
+          <textarea id="note-{{ d.date.isoformat() }}" name="note-{{ d.date.isoformat() }}" rows="2" maxlength="600">{{ d.note }}</textarea>
+        </details>
+      </li>
+      {% endfor %}
+    </ul>
+    <div class="actions">
+      <button type="submit" name="action" value="save" class="btn-secondary">Save draft</button>
+      {% if cal.kind == 'magialogia' %}
+        {% if published %}<button type="submit" name="action" value="unpublish" class="link">Unpublish</button>
+        {% else %}<button type="submit" name="action" value="publish" class="primary">Publish {{ month_name }}</button>{% endif %}
+      {% else %}<button type="submit" name="action" value="save" class="primary">Save</button>{% endif %}
+    </div>
+  </form>
+
+  <aside>
+    <form method="post" action="{{ url_for('save_calendar_settings', lead_id=lead.id) }}" class="panel">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="month" value="{{ key }}">
+      <h2>Settings</h2>
+      <label for="lang">Language</label>
+      <select id="lang" name="lang">{% for code, name in languages.items() %}<option value="{{ code }}"{% if code == lang %} selected{% endif %}>{{ name }}</option>{% endfor %}</select>
+      {% if cal.kind == 'magialogia' %}
+        <h3 class="mt">From the reading</h3>
+        <div class="grid-2">
+          {% for f in ('an', 'ac', 'ad', 'n') %}
+          <div><label for="p-{{ f }}">{{ f | upper }}</label><input id="p-{{ f }}" name="{{ f }}" maxlength="200" value="{{ params.get(f, '') }}"></div>
+          {% endfor %}
+        </div>
+        <label for="p-strong">{{ labels.strong }}</label><input id="p-strong" name="strong" maxlength="200" value="{{ params.get('strong', '') }}">
+        <label for="p-weak">{{ labels.weak }}</label><input id="p-weak" name="weak" maxlength="200" value="{{ params.get('weak', '') }}">
+        <label for="p-notes">Private notes (not shown to the client)</label>
+        <textarea id="p-notes" name="notes" rows="4" maxlength="2000">{{ params.get('notes', '') }}</textarea>
+      {% endif %}
+      <label class="check"><input type="checkbox" name="paused" value="yes"{% if not cal.active %} checked{% endif %}><span>Pause (the client link stops working)</span></label>
+      <button type="submit">Save settings</button>
+    </form>
+  </aside>
+</div>
+{% endblock %}
