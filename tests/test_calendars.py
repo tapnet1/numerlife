@@ -176,3 +176,39 @@ class CalendarReviewTest(CalendarTestCase):
     def test_today_is_local_not_utc(self):
         late_evening = dt.datetime(2026, 11, 1, 3, 0, tzinfo=dt.timezone.utc)  # Oct 31, 8 pm in Edmonton
         self.assertEqual(engine.local_today("America/Edmonton", late_evening), dt.date(2026, 10, 31))
+
+
+class LanguageTest(CalendarTestCase):
+    def test_every_language_is_complete(self):
+        reference = calendar_content.LABELS["en"]
+        for lang in calendar_content.LANGUAGES:
+            labels = calendar_content.LABELS[lang]
+            self.assertEqual(set(labels), set(reference), lang)
+            self.assertEqual(len(labels["weekdays"]), 7, lang)
+            self.assertEqual(set(labels["moon"]), set(reference["moon"]), lang)
+            self.assertEqual(len(calendar_content.MONTH_NAMES[lang]), 12, lang)
+            self.assertEqual(set(calendar_content.DEFAULTS[lang]), set(calendar_content.NUMBERS), lang)
+            for number, guide in calendar_content.DEFAULTS[lang].items():
+                self.assertTrue(all(guide[field] for field in calendar_content.FIELDS), (lang, number))
+            month = engine.build_month(dt.date(1990, 7, 15), 2025, 12, lang=lang)
+            self.assertNotEqual(month.days[24].holiday, None)
+
+    def test_french_calendar_page_and_pdf(self):
+        lead = self.lead_via_liliana()
+        self.login("liliana@example.com")
+        self.assertIn("Français", self.client.get(f"/leads/{lead['id']}").get_data(as_text=True))
+        self.start(lead["id"], kind="numerology", lang="fr")
+        cal = self.calendar()
+        html = self.client.get(f"/c/{cal['token']}/2025-12").get_data(as_text=True)
+        self.assertIn("Décembre 2025", html)
+        self.assertIn("Noël", html)
+        self.assertTrue(self.client.get(f"/c/{cal['token']}/2025-12.pdf").data.startswith(b"%PDF"))
+
+
+    def test_language_picker_defaults(self):
+        lead = self.lead_via_liliana()
+        self.login("liliana@example.com")
+        self.assertIn('<option value="es" selected>', self.client.get(f"/leads/{lead['id']}").get_data(as_text=True))
+        self.start(lead["id"], kind="numerology", lang="fr")
+        second = self.lead_via_liliana()
+        self.assertIn('<option value="fr" selected>', self.client.get(f"/leads/{second['id']}").get_data(as_text=True))

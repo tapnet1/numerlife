@@ -97,6 +97,16 @@ MONTH_NAMES = {
 }
 
 
+# Extra languages live in calendar_languages; merged here so every lookup sees them.
+import calendar_languages as _extra  # noqa: E402
+
+for _code, _name in _extra.LANGUAGES.items():
+    LANGUAGES[_code] = _name
+    LABELS[_code] = _extra.LABELS[_code]
+    MONTH_NAMES[_code] = _extra.MONTH_NAMES[_code]
+    DEFAULTS[_code] = _extra.DEFAULTS[_code]
+
+
 def reduce_to_digit(number: int) -> int:
     while number > 9:
         number = sum(int(d) for d in str(number))
