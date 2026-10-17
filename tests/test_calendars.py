@@ -203,3 +203,12 @@ class LanguageTest(CalendarTestCase):
         self.assertIn("Décembre 2025", html)
         self.assertIn("Noël", html)
         self.assertTrue(self.client.get(f"/c/{cal['token']}/2025-12.pdf").data.startswith(b"%PDF"))
+
+
+    def test_language_picker_defaults(self):
+        lead = self.lead_via_liliana()
+        self.login("liliana@example.com")
+        self.assertIn('<option value="es" selected>', self.client.get(f"/leads/{lead['id']}").get_data(as_text=True))
+        self.start(lead["id"], kind="numerology", lang="fr")
+        second = self.lead_via_liliana()
+        self.assertIn('<option value="fr" selected>', self.client.get(f"/leads/{second['id']}").get_data(as_text=True))

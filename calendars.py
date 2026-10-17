@@ -93,6 +93,16 @@ app.jinja_env.globals["calendar_kinds"] = KINDS
 app.jinja_env.globals["calendar_languages"] = content.LANGUAGES
 
 
+def preferred_calendar_lang(practitioner_id) -> str:
+    """The language this practitioner used for her latest calendar (Spanish if none yet)."""
+    row = db().execute("SELECT lang FROM calendars WHERE practitioner_id = ? ORDER BY id DESC LIMIT 1",
+                       (practitioner_id,)).fetchone() if practitioner_id else None
+    return row["lang"] if row and row["lang"] in content.LANGUAGES else "es"
+
+
+app.jinja_env.globals["preferred_calendar_lang"] = preferred_calendar_lang
+
+
 def _scoped_lead(lead_id: int):
     import workspace  # loaded before this module
     return workspace.scoped_lead(lead_id)
