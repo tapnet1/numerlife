@@ -177,8 +177,9 @@ def save_calendar_settings(lead_id):
         connection.execute("UPDATE calendars SET lang = ?, params = ?, active = ?, updated_at = ? WHERE id = ?",
                            (lang, json.dumps(params), 0 if request.form.get("paused") == "yes" else 1,
                             iso(now_utc()), cal["id"]))
-    if freq != cal["email_freq"]:
-        calendar_mail.set_frequency(cal["id"], freq)
+    if freq != cal["email_freq"] and not calendar_mail.set_frequency(cal["id"], freq):
+        flash("Your client turned off calendar emails, so only they can turn them back on"
+              " (from their calendar page).", "error")
     flash("Calendar settings saved.", "info")
     return redirect(url_for("edit_calendar", lead_id=lead_id, month=request.form.get("month")))
 
@@ -374,7 +375,7 @@ def report_calendar_signup(token):
             cal = connection.execute("SELECT * FROM calendars WHERE lead_id = ?", (lead["id"],)).fetchone()
     if not cal["active"]:
         abort(404)  # the practitioner paused this client's calendar
-    calendar_mail.set_frequency(cal["id"], freq)
+    calendar_mail.set_frequency(cal["id"], freq, by_client=True)
     return redirect(url_for("calendar_public", token=cal["token"]))
 
 

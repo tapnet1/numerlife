@@ -120,7 +120,7 @@ def _month_published(connection, cal, key: str):
                               " AND published_at IS NOT NULL", (cal["id"], key)).fetchone()
 
 
-def set_frequency(cal_id: int, freq: str, by_client: bool = False) -> None:
+def set_frequency(cal_id: int, freq: str, by_client: bool = False) -> bool:
     """Change how often a client gets their calendar; subscribing sends this month's overview now.
 
     "Sent" markers only move when something was actually sent for that day or month, so a change
@@ -135,16 +135,18 @@ def set_frequency(cal_id: int, freq: str, by_client: bool = False) -> None:
     with app.test_request_context("/", base_url=BASE_URL), open_db() as connection:
         cal = connection.execute("SELECT * FROM calendars WHERE id = ?", (cal_id,)).fetchone()
         if cal is None:
-            return
+            return False
         previous, marker = cal["email_freq"], cal["last_emailed"]
         opt_out = cal["email_opt_out"]
+        if opt_out and freq != "none" and not by_client:
+            return False  # only the client can turn their emails back on
         if freq == "none":
             opt_out = 1 if by_client else opt_out
         else:
             opt_out = 0
         if freq == previous:
             connection.execute("UPDATE calendars SET email_opt_out = ? WHERE id = ?", (opt_out, cal_id))
-            return
+            return True
         lead = _lead(connection, cal)
         welcome = (previous == "none" and freq != "none" and lead is not None and cal["active"]
                    and (cal["kind"] == "numerology" or _month_published(connection, cal, month_key) is not None))
@@ -156,10 +158,11 @@ def set_frequency(cal_id: int, freq: str, by_client: bool = False) -> None:
                            " WHERE id = ?", (freq, marker, opt_out, iso(now_utc()), cal_id))
         if freq == "none":
             emails.cancel_calendar_mail(connection, cal["lead_id"], include_published=bool(opt_out))
-            return
+            return True
         if welcome:
             _queue(connection, "calendar_monthly", cal, lead, _build(cal, lead, today.year, today.month, "welcome"))
     emails.kick()
+    return True
 
 
 def queue_published(cal_id: int, key: str) -> bool:

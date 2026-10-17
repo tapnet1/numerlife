@@ -186,3 +186,17 @@ class CalendarEmailTest(CalendarTestCase):
         self.client.post(f"/c/{cal['token']}/emails", data={"csrf_token": token_from(page), "freq": "daily"})
         self.assertEqual(calendar_mail.run(local_morning(0, hour=23))["daily"], 1)  # today's hasn't gone yet
         self.assertEqual(calendar_mail.run(local_morning(1))["daily"], 1)
+
+    def test_practitioner_cannot_override_client_opt_out(self):
+        lead = self.lead_via_liliana()
+        self.signup(lead, freq="daily", lang="en")
+        cal = self.calendar()
+        page = self.client.get(f"/c/{cal['token']}").get_data(as_text=True)
+        self.client.post(f"/c/{cal['token']}/emails", data={"csrf_token": token_from(page), "freq": "none"})
+        self.login("liliana@example.com")
+        editor = self.client.get(f"/leads/{lead['id']}/calendar").get_data(as_text=True)
+        response = self.client.post(f"/leads/{lead['id']}/calendar/settings", data={
+            "csrf_token": token_from(editor), "lang": "en", "email_freq": "daily"}, follow_redirects=True)
+        self.assertIn("only they can turn them back on", response.get_data(as_text=True))
+        self.assertEqual((self.calendar()["email_freq"], self.calendar()["email_opt_out"]), ("none", 1))
+        self.assertEqual(len(self.outbox("calendar_monthly")), 1)   # just the original welcome
