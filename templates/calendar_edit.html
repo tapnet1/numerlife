@@ -25,6 +25,7 @@
   <p class="small">Client link: <a href="{{ client_url }}" target="_blank" rel="noopener">{{ client_url.split('://')[-1] }}</a>
     · <a href="{{ url_for('calendar_pdf', token=cal.token, month_key=key) }}" target="_blank" rel="noopener">PDF ↗</a></p>
   <p class="muted small">Personal year {{ personal_year }} ({{ year_guide.title }}) · personal month {{ personal_month }} ({{ month_guide.title }}){% if life_path %} · Life Path {{ life_path }}{% endif %}</p>
+  <p class="small"><a href="{{ url_for('edit_guidance', lang=lang, **({'for': lead.practitioner_id} if user.role == 'admin' and lead.practitioner_id else {})) }}">Write your own guidance for each number →</a></p>
 </section>
 
 <div class="app-grid">

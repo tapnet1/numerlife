@@ -222,3 +222,84 @@ class LanguageTest(CalendarTestCase):
         self.start(lead["id"], kind="numerology", lang="fr")
         second = self.lead_via_liliana()
         self.assertIn('<option value="fr" selected>', self.client.get(f"/leads/{second['id']}").get_data(as_text=True))
+
+
+class GuidanceEditorTest(CalendarTestCase):
+    def save(self, lang, **fields):
+        page = self.client.get(f"/settings/calendar?lang={lang}").get_data(as_text=True)
+        return self.client.post("/settings/calendar", data={"csrf_token": token_from(page), "lang": lang, **fields})
+
+    def test_practitioner_wording_replaces_defaults_in_her_calendars(self):
+        lead = self.lead_via_liliana()
+        self.login("liliana@example.com")
+        page = self.client.get("/settings/calendar?lang=es").get_data(as_text=True)
+        self.assertIn("Nuevos comienzos", page)                     # starter text shown as placeholder
+        self.assertIn("0 of 12 numbers", page)
+        self.save("es", **{"5-title": "Libertad", "5-focus": "  Viaja   ligero  ",
+                           "1-title": calendar_content.DEFAULTS["es"][1]["title"]})  # unchanged text isn't stored
+        with numer.open_db() as connection:
+            rows = connection.execute("SELECT number, title, focus FROM calendar_content").fetchall()
+        self.assertEqual([(r["number"], r["title"], r["focus"]) for r in rows], [(5, "Libertad", "Viaja ligero")])
+        self.assertIn("1 of 12 numbers", self.client.get("/settings/calendar?lang=es").get_data(as_text=True))
+        self.start(lead["id"], kind="numerology", lang="es")
+        cal = self.calendar()
+        # find a month whose personal month is 5
+        birth = dt.date.fromisoformat(lead["birth_date"])
+        month = next(m for m in range(1, 13) if engine.personal_month(birth, 2026, m) == 5)
+        html = self.client.get(f"/c/{cal['token']}/2026-{month:02d}").get_data(as_text=True)
+        self.assertIn("Libertad", html)
+        self.assertIn("Viaja ligero", html)
+        # clearing the field goes back to the default; reset removes everything
+        self.save("es", **{"5-title": "", "5-focus": ""})
+        with numer.open_db() as connection:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM calendar_content").fetchone()[0], 0)
+        self.save("es", **{"7-color": "Azul"})
+        self.save("es", action="reset")
+        with numer.open_db() as connection:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM calendar_content").fetchone()[0], 0)
+
+    def test_languages_are_separate_and_unknown_rejected(self):
+        self.login("liliana@example.com")
+        self.save("en", **{"3-title": "Joy"})
+        page = self.client.get("/settings/calendar?lang=es").get_data(as_text=True)
+        self.assertNotIn('value="Joy"', page)
+        self.assertEqual(self.save("xx", **{"3-title": "Nope"}).status_code, 400)
+        self.assertEqual(self.client.get("/settings/calendar").status_code, 200)
+
+    def test_requires_login(self):
+        self.assertEqual(self.client.get("/settings/calendar").status_code, 302)
+
+    def test_admin_edits_the_calendar_practitioners_guidance(self):
+        lead = self.lead_via_liliana()
+        self.login("liliana@example.com")
+        self.start(lead["id"], kind="numerology", lang="es")
+        page = self.client.get("/settings/calendar").get_data(as_text=True)
+        self.client.post("/logout", data={"csrf_token": token_from(page)})
+        self.login("owner@example.com")
+        editor = self.client.get(f"/leads/{lead['id']}/calendar").get_data(as_text=True)
+        self.assertIn(f"/settings/calendar?lang=es&amp;for={lead['practitioner_id']}", editor)
+        page = self.client.get(f"/settings/calendar?lang=es&for={lead['practitioner_id']}").get_data(as_text=True)
+        self.assertIn("Liliana", page)
+        self.client.post("/settings/calendar", data={"csrf_token": token_from(page), "lang": "es",
+                                                     "for": str(lead["practitioner_id"]), "2-title": "Unión"})
+        with numer.open_db() as connection:
+            row = connection.execute("SELECT practitioner_id, title FROM calendar_content").fetchone()
+        self.assertEqual((row["practitioner_id"], row["title"]), (lead["practitioner_id"], "Unión"))
+
+    def test_practitioner_cannot_edit_someone_elses_guidance(self):
+        self.login("liliana@example.com")
+        page = self.client.get(f"/settings/calendar?for={self.admin_id}").get_data(as_text=True)
+        self.assertNotIn("Owner's guidance", page)            # ignored: she edits her own
+        self.client.post("/settings/calendar", data={"csrf_token": token_from(page), "lang": "es",
+                                                     "for": str(self.admin_id), "2-title": "X"})
+        with numer.open_db() as connection:
+            self.assertEqual(connection.execute("SELECT practitioner_id FROM calendar_content").fetchone()[0],
+                             self.practitioner_id)
+
+    def test_admin_without_practitioner_chooses_one(self):
+        self.login("owner@example.com")
+        page = self.client.get("/settings/calendar").get_data(as_text=True)
+        self.assertIn("Choose a practitioner", page)
+        self.assertIn(f"/settings/calendar?for={self.practitioner_id}", page)
+        self.assertEqual(self.client.post("/settings/calendar", data={
+            "csrf_token": token_from(page), "lang": "es", "2-title": "X"}).status_code, 400)
