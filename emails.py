@@ -314,6 +314,15 @@ def _still_wanted(connection, row) -> bool:
     return True
 
 
+def purge_old(connection) -> None:
+    """Drop email older than 90 days. Follow-up series rows stay as delivery records for the
+    results, without their content."""
+    cutoff = iso(now_utc() - dt.timedelta(days=90))
+    connection.execute("UPDATE email_outbox SET body_text = '', body_html = '', headers = '{}'"
+                       " WHERE created_at < ? AND kind = 'lead_series' AND body_text != ''", (cutoff,))
+    connection.execute("DELETE FROM email_outbox WHERE created_at < ? AND kind != 'lead_series'", (cutoff,))
+
+
 def send_pending(limit: int = 50, ids: list[int] | None = None, smtp_factory=None) -> dict:
     """Send queued email. Rows are claimed atomically, so overlapping runs never double-send."""
     stats = {"sent": 0, "failed": 0, "expired": 0}
@@ -374,7 +383,7 @@ def send_pending(limit: int = 50, ids: list[int] | None = None, smtp_factory=Non
                                (iso(now_utc()), row["id"]))
             connection.commit()
             stats["sent"] += 1
-        connection.execute("DELETE FROM email_outbox WHERE created_at < ?", (iso(now_utc() - dt.timedelta(days=90)),))
+        purge_old(connection)
         connection.commit()
     finally:
         if server is not None:

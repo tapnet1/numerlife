@@ -205,6 +205,9 @@ def run(now: dt.datetime | None = None, force: bool = False) -> dict:
         for lead in leads:
             if not still_wanted(connection, lead["id"]):
                 continue
+            if connection.execute("SELECT 1 FROM email_outbox WHERE kind = ? AND lead_id = ? AND sent_at IS NULL",
+                                  (KIND, lead["id"])).fetchone():
+                continue  # the previous email hasn't gone out yet; keep the gap between deliveries
             if lead["series_step"] == 0 and dt.datetime.fromisoformat(lead["captured_at"]) < now - START_WINDOW:
                 continue  # too old to start now
             practitioner = connection.execute("SELECT * FROM users WHERE id = ?", (lead["practitioner_id"],)).fetchone() \

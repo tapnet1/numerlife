@@ -50,6 +50,8 @@ class LeadSeriesTest(IntakeTestCase):
         sent = 0
         for day in range(1, 30):
             sent += lead_series.run(later(day, 1))["sent"]
+            with numer.open_db() as connection:  # delivered
+                connection.execute("UPDATE email_outbox SET sent_at = created_at WHERE sent_at IS NULL")
         rows = self.series()
         self.assertGreaterEqual(len(rows), 6)
         self.assertEqual(rows[0]["campaign"], "expression")
@@ -164,3 +166,16 @@ class LeadSeriesTest(IntakeTestCase):
             connection.execute("UPDATE leads SET created_at = ? WHERE id = ?",
                                ((numer.now_utc() - dt.timedelta(days=100)).isoformat(), lead["id"]))
         self.assertEqual(self.client.get(f"/r/{lead['token']}").status_code, 200)
+
+    def test_waits_for_previous_delivery_and_keeps_old_results(self):
+        self.turn_on()
+        self.captured_lead(lang_header="en")
+        self.assertEqual(lead_series.run(later(2))["sent"], 1)
+        self.assertEqual(lead_series.run(later(4))["sent"], 0)      # first one still waiting in the outbox
+        with numer.open_db() as connection:
+            connection.execute("UPDATE email_outbox SET sent_at = created_at, created_at = '2000-01-01T00:00:00+00:00'")
+        with numer.open_db() as connection:
+            emails.purge_old(connection)
+        rows = self.series()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["body_html"], "")                  # content dropped, record kept
