@@ -295,3 +295,11 @@ class GuidanceEditorTest(CalendarTestCase):
         with numer.open_db() as connection:
             self.assertEqual(connection.execute("SELECT practitioner_id FROM calendar_content").fetchone()[0],
                              self.practitioner_id)
+
+    def test_admin_without_practitioner_chooses_one(self):
+        self.login("owner@example.com")
+        page = self.client.get("/settings/calendar").get_data(as_text=True)
+        self.assertIn("Choose a practitioner", page)
+        self.assertIn(f"/settings/calendar?for={self.practitioner_id}", page)
+        self.assertEqual(self.client.post("/settings/calendar", data={
+            "csrf_token": token_from(page), "lang": "es", "2-title": "X"}).status_code, 400)

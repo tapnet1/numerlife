@@ -243,6 +243,11 @@ def _guidance_owner(value) -> tuple[int, object]:
 @app.get("/settings/calendar")
 @login_required
 def edit_guidance():
+    if current_user()["role"] == "admin" and not request.args.get("for"):
+        # an admin has no calendars of her own: choose whose guidance to edit
+        practitioners = db().execute("SELECT id, display_name, email FROM users WHERE role = 'practitioner'"
+                                     " AND team_of IS NULL AND is_active = 1 ORDER BY display_name").fetchall()
+        return render_template("guidance.html", practitioners=practitioners, owner=None, for_id=None)
     owner_id, owner = _guidance_owner(request.args.get("for"))
     lang = request.args.get("lang") or preferred_calendar_lang(owner_id)
     if lang not in content.LANGUAGES:
@@ -261,6 +266,8 @@ def edit_guidance():
 @app.post("/settings/calendar")
 @login_required
 def save_guidance():
+    if current_user()["role"] == "admin" and not request.form.get("for"):
+        abort(400, description="Choose a practitioner.")
     owner_id, _owner = _guidance_owner(request.form.get("for"))
     lang = request.form.get("lang", "")
     if lang not in content.LANGUAGES:
