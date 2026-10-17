@@ -1,0 +1,31 @@
+{{ el.hi.format(name=first_name) }}
+{% if mode == 'welcome' %}
+{{ el.welcome }}
+{% elif mode == 'published' and practitioner_name %}
+{{ el.published.format(name=practitioner_name, month=month_title) }}
+{% endif %}
+{% if mode == 'daily' %}
+{{ el.today }} · {{ labels.weekdays[today.date.weekday()] }} {{ today.date.day }} {{ month_name }}
+{{ labels.personal_day }} {{ today.number }}: {{ today.guide.title }}
+{% if today.note %}
+{{ today.note }}
+{% endif %}
+{{ labels.focus }}: {{ today.guide.focus }}
+{{ labels.avoid }}: {{ today.guide.avoid }}
+{{ labels.lucky }}: {{ today.guide.lucky }} · {{ labels.color }}: {{ today.guide.color }}{% if today.moon %} · {{ labels.moon[today.moon] }}{% endif %}{% if today.holiday %} · {{ today.holiday }}{% endif %}
+{% else %}
+{{ month_title }}
+{{ labels.personal_year }} {{ personal_year }}: {{ year_guide.title }}
+{{ labels.personal_month }} {{ personal_month }}: {{ month_guide.title }}
+{% if intro %}
+{{ intro }}
+{% endif %}
+{% endif %}
+{{ el.open_calendar }}: {{ client_url }}
+{{ labels.download_pdf }}: {{ pdf_url }}
+{% if card %}
+{{ labels.prepared_by }} {{ card.name }}{% if card.email %} · {{ card.email }}{% endif %}{% if card.phone %} · {{ card.phone }}{% endif %}
+{% endif %}
+--
+{{ el.why }}
+{{ el.unsubscribe }}: {{ unsubscribe_url }}

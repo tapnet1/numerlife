@@ -55,5 +55,16 @@
 {% else %}
   <section class="panel"><p>{{ labels.not_ready }}</p></section>
 {% endif %}
+{% if lead.email and not preview %}
+{% set el = calendar_email_labels(lang) %}
+<section class="panel" id="emails">
+  <form method="post" action="{{ url_for('calendar_email_settings', token=cal.token) }}" class="inline-form wrap">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="freq">{{ el.email_me }}</label>
+    <select id="freq" name="freq">{% for f in calendar_freqs %}<option value="{{ f }}"{% if f == cal.email_freq %} selected{% endif %}>{{ el[f] }}</option>{% endfor %}</select>
+    <button type="submit" class="btn-secondary">{{ el.save }}</button>
+  </form>
+</section>
+{% endif %}
 {% if card %}{% include "_contact_card.html" %}{% endif %}
 {% endblock %}

@@ -294,6 +294,10 @@ ADDED_COLUMNS = (
     ("leads", "notes", "TEXT NOT NULL DEFAULT ''"),       # practitioner's private notes
     ("leads", "viewed_at", "TEXT"),                       # first opened by the practitioner
     ("leads", "updated_at", "TEXT"),
+    ("calendars", "email_freq", "TEXT NOT NULL DEFAULT 'none'"),  # none | daily | monthly
+    ("calendars", "last_emailed", "TEXT"),                     # YYYY-MM-DD (daily) or YYYY-MM (monthly) last queued
+    ("calendar_months", "emailed_at", "TEXT"),                 # client told this month is published
+    ("calendars", "email_opt_out", "INTEGER NOT NULL DEFAULT 0"),  # client stopped all calendar email
 )
 
 REQUIRED_TABLES = {"users", "login_attempts", "leads", "form_attempts", "invites",
@@ -754,3 +758,4 @@ import billing  # noqa: E402,F401  (plans, referral tree, CAD credits ledger)
 import admin_accounts  # noqa: E402,F401  (add practitioners, passwords, team members)
 import calendars  # noqa: E402,F401  (personal calendars: editor, client page, PDF)
 import readings  # noqa: E402,F401  (client record: scheduled and logged readings)
+import calendar_mail  # noqa: E402,F401  (daily / monthly calendar emails)

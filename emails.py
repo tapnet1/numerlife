@@ -33,6 +33,9 @@ KINDS = {
     "lead_alert": "New-lead alert to practitioner",
     "practitioner_nudge": "Nudge: leads waiting (practitioner)",
     "client_nudge": "Nudge: book a reading (client)",
+    "calendar_daily": "Client calendar: daily",
+    "calendar_monthly": "Client calendar: monthly / welcome",
+    "calendar_published": "Client calendar: month published",
 }
 
 
@@ -76,18 +79,32 @@ def cancel_nudges(connection, kind: str, user_id: int | None = None, email: str 
                        f" WHERE sent_at IS NULL AND kind = ? AND {where}", (iso(now_utc()), kind, value))
 
 
+def cancel_calendar_mail(connection, lead_id: int, include_published: bool = False) -> None:
+    """Drop calendar emails still waiting once they're stopped (publish notices too on an opt-out)."""
+    kinds = "('calendar_daily', 'calendar_monthly', 'calendar_published')" if include_published \
+        else "('calendar_daily', 'calendar_monthly')"
+    connection.execute("UPDATE email_outbox SET sent_at = ?, last_error = 'cancelled: unsubscribed'"
+                       f" WHERE sent_at IS NULL AND kind IN {kinds} AND lead_id = ?", (iso(now_utc()), lead_id))
+
+
 @app.route("/unsubscribe/<token>", methods=["GET", "POST"])
 def unsubscribe(token):
     try:
         kind, ident = _signer().loads(token)
     except (BadSignature, ValueError, TypeError):
         abort(404)
-    if kind not in ("practitioner", "client"):
+    if kind not in ("practitioner", "client", "calendar"):
         abort(404)
     done = False
     if request.method == "POST":
         with open_db() as connection:
-            if kind == "practitioner":
+            if kind == "calendar":
+                cal = connection.execute("SELECT lead_id FROM calendars WHERE id = ?", (int(ident),)).fetchone()
+                connection.execute("UPDATE calendars SET email_freq = 'none', email_opt_out = 1 WHERE id = ?",
+                                   (int(ident),))
+                if cal:
+                    cancel_calendar_mail(connection, cal["lead_id"], include_published=True)
+            elif kind == "practitioner":
                 connection.execute("UPDATE users SET email_nudges = 0 WHERE id = ?", (int(ident),))
                 cancel_nudges(connection, "practitioner_nudge", user_id=int(ident))
             else:
@@ -140,6 +157,15 @@ def _card(practitioner) -> dict | None:
     card["photo"] = BASE_URL + photo if photo else None
     card["about_url"] = f"{BASE_URL}/{practitioner['slug']}/about" if practitioner["slug"] else None
     return card
+
+
+def _card_for_id(practitioner_id) -> dict | None:
+    if not practitioner_id:
+        return None
+    with open_db() as connection:
+        practitioner = connection.execute("SELECT * FROM users WHERE id = ? AND is_active = 1",
+                                          (practitioner_id,)).fetchone()
+    return _card(practitioner)
 
 
 def report_email(lead, practitioner, report_url: str | None = None) -> tuple[str, str, str]:
@@ -265,6 +291,12 @@ def _still_wanted(connection, row) -> bool:
     if row["kind"] == "practitioner_nudge":
         user = connection.execute("SELECT email_nudges, is_active FROM users WHERE id = ?", (row["user_id"],)).fetchone()
         return bool(user and user["email_nudges"] and user["is_active"])
+    if row["kind"] in ("calendar_daily", "calendar_monthly", "calendar_published"):
+        cal = connection.execute("SELECT active, email_freq, email_opt_out FROM calendars WHERE lead_id = ?",
+                                 (row["lead_id"],)).fetchone()
+        if cal is None or not cal["active"] or cal["email_opt_out"]:
+            return False
+        return row["kind"] == "calendar_published" or cal["email_freq"] != "none"
     if row["kind"] == "client_nudge":
         lead = connection.execute("SELECT marketing_opt_in FROM leads WHERE id = ?", (row["lead_id"],)).fetchone()
         return bool(lead and lead["marketing_opt_in"])
@@ -455,6 +487,9 @@ def admin_email_test():
             rows = [{"first_name": "Alex", "life_path": json.loads(lead["numbers"])["life_path"], "url": f"{BASE_URL}/leads"},
                     {"first_name": "Sam", "life_path": 7, "url": f"{BASE_URL}/leads"}]
             built.append((kind, *practitioner_nudge_email(practitioner, rows)))
+        elif kind.startswith("calendar_"):
+            import calendar_mail  # loaded after this module
+            built.append((kind, *calendar_mail.sample_email(kind, lead, practitioner)))
         else:
             built.append((kind, *client_nudge_email({**lead, "email": to}, practitioner)))
     with open_db() as connection:

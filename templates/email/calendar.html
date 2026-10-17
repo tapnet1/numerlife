@@ -1,0 +1,25 @@
+{% extends "email/_layout.html" %}
+{% set card_label = labels.prepared_by %}
+{% block preheader %}{% if mode == 'daily' %}{{ labels.personal_day }} {{ today.number }} · {{ today.guide.title }}{% else %}{{ month_title }} · {{ labels.personal_month }} {{ personal_month }}{% endif %}{% endblock %}
+{% block body %}
+<p style="margin:0 0 14px;">{{ el.hi.format(name=first_name) }}</p>
+{% if mode == 'welcome' %}<p style="margin:0 0 14px;">{{ el.welcome }}</p>
+{% elif mode == 'published' and practitioner_name %}<p style="margin:0 0 14px;">{{ el.published.format(name=practitioner_name, month=month_title) }}</p>{% endif %}
+{% if mode == 'daily' %}
+  <p style="margin:0 0 4px;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#7a7290;">{{ el.today }} · {{ labels.weekdays[today.date.weekday()] }} {{ today.date.day }} {{ month_name }}</p>
+  <p style="margin:0 0 12px;font-family:Georgia,serif;font-size:24px;color:#1b1038;"><span style="display:inline-block;width:40px;height:40px;line-height:40px;border-radius:50%;background:#1b1038;color:#f3dfa2;text-align:center;border:2px solid #d4af5a;margin-right:8px;">{{ today.number }}</span>{{ today.guide.title }}</p>
+  {% if today.note %}<p style="margin:0 0 12px;padding:10px 14px;background:#faf6ff;border-left:3px solid #d4af5a;">{{ today.note }}</p>{% endif %}
+  <p style="margin:0 0 8px;"><strong>{{ labels.focus }}:</strong> {{ today.guide.focus }}</p>
+  <p style="margin:0 0 8px;"><strong>{{ labels.avoid }}:</strong> {{ today.guide.avoid }}</p>
+  <p style="margin:0 0 8px;color:#7a7290;font-size:14px;">{{ labels.lucky }}: {{ today.guide.lucky }} · {{ labels.color }}: {{ today.guide.color }}{% if today.moon %} · {{ labels.moon[today.moon] }}{% endif %}{% if today.holiday %} · {{ today.holiday }}{% endif %}</p>
+{% else %}
+  <p style="margin:0 0 12px;font-family:Georgia,serif;font-size:24px;color:#1b1038;">{{ month_title }}</p>
+  <p style="margin:0 0 6px;"><strong>{{ labels.personal_year }} {{ personal_year }}</strong> · {{ year_guide.title }}</p>
+  <p style="margin:0 0 12px;"><strong>{{ labels.personal_month }} {{ personal_month }}</strong> · {{ month_guide.title }}</p>
+  {% if intro %}{% for para in intro.split('\n') if para.strip() %}<p style="margin:0 0 12px;">{{ para }}</p>{% endfor %}{% endif %}
+{% endif %}
+<p style="margin:20px 0 6px;"><a href="{{ client_url }}" style="display:inline-block;background:#4b2d8f;color:#ffffff;font-weight:600;text-decoration:none;padding:12px 24px;border-radius:999px;">{{ el.open_calendar }}</a></p>
+<p style="margin:0 0 6px;font-size:14px;"><a href="{{ pdf_url }}" style="color:#4b2d8f;">{{ labels.download_pdf }}</a></p>
+{% include "email/_card.html" %}
+{% endblock %}
+{% block footer %}<p style="margin:0;">{{ el.why }} <a href="{{ unsubscribe_url }}" style="color:#7a7290;">{{ el.unsubscribe }}</a></p>{% endblock %}

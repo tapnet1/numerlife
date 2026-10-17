@@ -34,6 +34,31 @@
       </section>
     {% endfor %}
   </div>
+  {% set cal = lead_calendar(lead.id) %}
+  <section class="card" id="calendar">
+    {% if cal and cal.active and cal.email_freq != 'none' %}
+      <h2>Your personal calendar</h2>
+      <p>Your calendar is on its way by email{% if cal.email_freq == 'daily' %} every morning{% else %} once a month{% endif %}.</p>
+      <p><a class="btn" href="{{ url_for('calendar_public', token=cal.token) }}">Open your calendar</a></p>
+    {% elif not cal or cal.active %}
+      <h2>Get your personal numerology calendar</h2>
+      <p>Every day carries its own number for you. Get a free calendar with your personal day, month and year, and what each one is good for.</p>
+      <form method="post" action="{{ url_for('report_calendar_signup', token=lead.token) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <fieldset>
+          <legend>Send it to {{ lead.email }}</legend>
+          <label class="check"><input type="radio" name="freq" value="daily" checked><span>Every morning: today's number and guidance</span></label>
+          <label class="check"><input type="radio" name="freq" value="monthly"><span>Once a month: the whole month at a glance</span></label>
+        </fieldset>
+        {% if cal %}<input type="hidden" name="lang" value="{{ cal.lang }}">{% else %}
+        <label for="cal-lang">Language</label>
+        {% set default_lang = request.accept_languages.best_match(calendar_languages.keys()) or 'en' %}
+        <select id="cal-lang" name="lang">{% for code, name in calendar_languages.items() %}<option value="{{ code }}"{% if code == default_lang %} selected{% endif %}>{{ name }}</option>{% endfor %}</select>{% endif %}
+        <button type="submit" class="primary">Send me my calendar</button>
+        <p class="muted small">Free. Stop any time with one click from any email.</p>
+      </form>
+    {% endif %}
+  </section>
 {% else %}
   <h2 class="section-title">Unlock the rest of your report</h2>
   <div class="numbers locked">
