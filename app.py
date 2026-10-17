@@ -297,6 +297,7 @@ ADDED_COLUMNS = (
     ("calendars", "email_freq", "TEXT NOT NULL DEFAULT 'none'"),  # none | daily | monthly
     ("calendars", "last_emailed", "TEXT"),                     # YYYY-MM-DD (daily) or YYYY-MM (monthly) last queued
     ("calendar_months", "emailed_at", "TEXT"),                 # client told this month is published
+    ("calendars", "email_opt_out", "INTEGER NOT NULL DEFAULT 0"),  # client stopped all calendar email
 )
 
 REQUIRED_TABLES = {"users", "login_attempts", "leads", "form_attempts", "invites",

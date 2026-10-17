@@ -120,26 +120,44 @@ def _month_published(connection, cal, key: str):
                               " AND published_at IS NOT NULL", (cal["id"], key)).fetchone()
 
 
-def set_frequency(cal_id: int, freq: str) -> None:
-    """Change how often a client gets their calendar; subscribing sends this month's overview now."""
+def set_frequency(cal_id: int, freq: str, by_client: bool = False) -> None:
+    """Change how often a client gets their calendar; subscribing sends this month's overview now.
+
+    "Sent" markers only move when something was actually sent for that day or month, so a change
+    never swallows an email that hasn't gone yet. A client choosing "no emails" (or unsubscribing)
+    is an opt-out from every calendar email, publish notices included, until they subscribe again.
+    """
     import emails
     if freq not in FREQS:
         raise ValueError(freq)
     today = engine.local_today()
+    day_key, month_key = today.isoformat(), today.strftime("%Y-%m")
     with app.test_request_context("/", base_url=BASE_URL), open_db() as connection:
         cal = connection.execute("SELECT * FROM calendars WHERE id = ?", (cal_id,)).fetchone()
         if cal is None:
             return
-        previous = cal["email_freq"]
-        marker = {"daily": today.isoformat(), "monthly": today.strftime("%Y-%m")}.get(freq)
-        connection.execute("UPDATE calendars SET email_freq = ?, last_emailed = ?, updated_at = ? WHERE id = ?",
-                           (freq, marker, iso(now_utc()), cal_id))
+        previous, marker = cal["email_freq"], cal["last_emailed"]
+        opt_out = cal["email_opt_out"]
         if freq == "none":
-            emails.cancel_calendar_mail(connection, cal["lead_id"])
+            opt_out = 1 if by_client else opt_out
+        else:
+            opt_out = 0
+        if freq == previous:
+            connection.execute("UPDATE calendars SET email_opt_out = ? WHERE id = ?", (opt_out, cal_id))
             return
         lead = _lead(connection, cal)
-        if previous == "none" and lead and cal["active"] and (
-                cal["kind"] == "numerology" or _month_published(connection, cal, today.strftime("%Y-%m"))):
+        welcome = (previous == "none" and freq != "none" and lead is not None and cal["active"]
+                   and (cal["kind"] == "numerology" or _month_published(connection, cal, month_key) is not None))
+        if welcome:
+            marker = day_key if freq == "daily" else month_key
+        elif freq == "monthly" and (marker or "").startswith(month_key):
+            marker = month_key  # this month's calendar already went out as a daily or welcome email
+        connection.execute("UPDATE calendars SET email_freq = ?, last_emailed = ?, email_opt_out = ?, updated_at = ?"
+                           " WHERE id = ?", (freq, marker, opt_out, iso(now_utc()), cal_id))
+        if freq == "none":
+            emails.cancel_calendar_mail(connection, cal["lead_id"], include_published=bool(opt_out))
+            return
+        if welcome:
             _queue(connection, "calendar_monthly", cal, lead, _build(cal, lead, today.year, today.month, "welcome"))
     emails.kick()
 
@@ -151,7 +169,7 @@ def queue_published(cal_id: int, key: str) -> bool:
     with app.test_request_context("/", base_url=BASE_URL), open_db() as connection:
         cal = connection.execute("SELECT * FROM calendars WHERE id = ?", (cal_id,)).fetchone()
         lead = _lead(connection, cal) if cal else None
-        if not lead or not cal["active"] or not _month_published(connection, cal, key):
+        if not lead or not cal["active"] or cal["email_opt_out"] or not _month_published(connection, cal, key):
             return False
         _queue(connection, "calendar_published", cal, lead, _build(cal, lead, year, month, "published"))
         connection.execute("UPDATE calendar_months SET emailed_at = ? WHERE calendar_id = ? AND month = ?",
@@ -202,6 +220,6 @@ def sample_email(kind: str, lead: dict, practitioner):
     mode, lang = SAMPLE_MODES[kind]
     today = engine.local_today()
     cal = {"id": 0, "lead_id": 0, "kind": "numerology", "lang": lang, "token": "sample", "params": "{}",
-           "active": 1, "email_freq": "daily"}
+           "active": 1, "email_freq": "daily", "email_opt_out": 0}
     lead = {**lead, "practitioner_id": practitioner["id"] if practitioner is not None else None}
     return _build(cal, lead, today.year, today.month, mode, day=today if mode == "daily" else None)

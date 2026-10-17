@@ -349,7 +349,7 @@ def calendar_email_settings(token):
     freq = request.form.get("freq", "")
     if freq not in calendar_mail.FREQS or not lead["email"]:
         abort(400)
-    calendar_mail.set_frequency(cal["id"], freq)
+    calendar_mail.set_frequency(cal["id"], freq, by_client=True)
     flash(calendar_mail.email_labels(cal["lang"])["saved"], "info")
     return redirect(url_for("calendar_public", token=token) + "#emails")
 

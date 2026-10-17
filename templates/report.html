@@ -50,9 +50,10 @@
           <label class="check"><input type="radio" name="freq" value="daily" checked><span>Every morning: today's number and guidance</span></label>
           <label class="check"><input type="radio" name="freq" value="monthly"><span>Once a month: the whole month at a glance</span></label>
         </fieldset>
+        {% if cal %}<input type="hidden" name="lang" value="{{ cal.lang }}">{% else %}
         <label for="cal-lang">Language</label>
         {% set default_lang = request.accept_languages.best_match(calendar_languages.keys()) or 'en' %}
-        <select id="cal-lang" name="lang">{% for code, name in calendar_languages.items() %}<option value="{{ code }}"{% if code == default_lang %} selected{% endif %}>{{ name }}</option>{% endfor %}</select>
+        <select id="cal-lang" name="lang">{% for code, name in calendar_languages.items() %}<option value="{{ code }}"{% if code == default_lang %} selected{% endif %}>{{ name }}</option>{% endfor %}</select>{% endif %}
         <button type="submit" class="primary">Send me my calendar</button>
         <p class="muted small">Free. Stop any time with one click from any email.</p>
       </form>

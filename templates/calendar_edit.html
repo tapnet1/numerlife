@@ -56,7 +56,7 @@
       <button type="submit" name="action" value="save" class="btn-secondary">Save draft</button>
       {% if cal.kind == 'magialogia' %}
         {% if published %}<button type="submit" name="action" value="unpublish" class="link">Unpublish</button>
-        {% else %}{% if lead.email %}<label class="check"><input type="checkbox" name="notify" value="yes" checked><span>Email {{ client_first }} the link when I publish</span></label>{% endif %}
+        {% else %}{% if cal.email_opt_out %}<p class="muted small">{{ client_first }} has turned off calendar emails.</p>{% elif lead.email %}<label class="check"><input type="checkbox" name="notify" value="yes" checked><span>Email {{ client_first }} the link when I publish</span></label>{% endif %}
         <button type="submit" name="action" value="publish" class="primary">Publish {{ month_name }}</button>{% endif %}
       {% else %}<button type="submit" name="action" value="save" class="primary">Save</button>{% endif %}
     </div>

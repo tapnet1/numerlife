@@ -79,11 +79,12 @@ def cancel_nudges(connection, kind: str, user_id: int | None = None, email: str 
                        f" WHERE sent_at IS NULL AND kind = ? AND {where}", (iso(now_utc()), kind, value))
 
 
-def cancel_calendar_mail(connection, lead_id: int) -> None:
-    """Drop scheduled calendar emails (daily / monthly) still waiting once the client stops them."""
+def cancel_calendar_mail(connection, lead_id: int, include_published: bool = False) -> None:
+    """Drop calendar emails still waiting once they're stopped (publish notices too on an opt-out)."""
+    kinds = "('calendar_daily', 'calendar_monthly', 'calendar_published')" if include_published \
+        else "('calendar_daily', 'calendar_monthly')"
     connection.execute("UPDATE email_outbox SET sent_at = ?, last_error = 'cancelled: unsubscribed'"
-                       " WHERE sent_at IS NULL AND kind IN ('calendar_daily', 'calendar_monthly') AND lead_id = ?",
-                       (iso(now_utc()), lead_id))
+                       f" WHERE sent_at IS NULL AND kind IN {kinds} AND lead_id = ?", (iso(now_utc()), lead_id))
 
 
 @app.route("/unsubscribe/<token>", methods=["GET", "POST"])
@@ -99,9 +100,10 @@ def unsubscribe(token):
         with open_db() as connection:
             if kind == "calendar":
                 cal = connection.execute("SELECT lead_id FROM calendars WHERE id = ?", (int(ident),)).fetchone()
-                connection.execute("UPDATE calendars SET email_freq = 'none' WHERE id = ?", (int(ident),))
+                connection.execute("UPDATE calendars SET email_freq = 'none', email_opt_out = 1 WHERE id = ?",
+                                   (int(ident),))
                 if cal:
-                    cancel_calendar_mail(connection, cal["lead_id"])
+                    cancel_calendar_mail(connection, cal["lead_id"], include_published=True)
             elif kind == "practitioner":
                 connection.execute("UPDATE users SET email_nudges = 0 WHERE id = ?", (int(ident),))
                 cancel_nudges(connection, "practitioner_nudge", user_id=int(ident))
@@ -290,8 +292,9 @@ def _still_wanted(connection, row) -> bool:
         user = connection.execute("SELECT email_nudges, is_active FROM users WHERE id = ?", (row["user_id"],)).fetchone()
         return bool(user and user["email_nudges"] and user["is_active"])
     if row["kind"] in ("calendar_daily", "calendar_monthly", "calendar_published"):
-        cal = connection.execute("SELECT active, email_freq FROM calendars WHERE lead_id = ?", (row["lead_id"],)).fetchone()
-        if cal is None or not cal["active"]:
+        cal = connection.execute("SELECT active, email_freq, email_opt_out FROM calendars WHERE lead_id = ?",
+                                 (row["lead_id"],)).fetchone()
+        if cal is None or not cal["active"] or cal["email_opt_out"]:
             return False
         return row["kind"] == "calendar_published" or cal["email_freq"] != "none"
     if row["kind"] == "client_nudge":

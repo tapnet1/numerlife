@@ -124,3 +124,56 @@ class CalendarEmailTest(CalendarTestCase):
         import calendar_content
         for lang in calendar_content.LANGUAGES:
             self.assertEqual(set(calendar_mail.EMAIL_LABELS[lang]), set(calendar_mail.EMAIL_LABELS["en"]), lang)
+
+    def magialogia_for(self, lead, notify=None, publish=True, email_freq=None):
+        self.login("liliana@example.com")
+        self.start(lead["id"])
+        page = self.client.get(f"/leads/{lead['id']}/calendar").get_data(as_text=True)
+        if email_freq:
+            self.client.post(f"/leads/{lead['id']}/calendar/settings",
+                             data={"csrf_token": token_from(page), "lang": "es", "email_freq": email_freq})
+        if publish:
+            data = {"csrf_token": token_from(page), "action": "publish"}
+            if notify:
+                data["notify"] = "yes"
+            self.client.post(f"/leads/{lead['id']}/calendar/{engine.local_today():%Y-%m}", data=data)
+        return page
+
+    def test_opt_out_stops_publish_notices(self):
+        lead = self.lead_via_liliana()
+        page = self.magialogia_for(lead, publish=False)
+        cal = self.calendar()
+        self.client.post(f"/c/{cal['token']}/emails", data={"csrf_token": token_from(page), "freq": "none"})
+        self.assertEqual(self.calendar()["email_opt_out"], 1)
+        editor = self.client.get(f"/leads/{lead['id']}/calendar").get_data(as_text=True)
+        self.assertIn("has turned off calendar emails", editor)
+        self.client.post(f"/leads/{lead['id']}/calendar/{engine.local_today():%Y-%m}",
+                         data={"csrf_token": token_from(editor), "action": "publish", "notify": "yes"})
+        self.assertEqual(self.outbox("calendar_published"), [])
+        # subscribing again lifts the opt-out
+        self.client.post(f"/c/{cal['token']}/emails", data={"csrf_token": token_from(page), "freq": "monthly"})
+        self.assertEqual(self.calendar()["email_opt_out"], 0)
+
+    def test_monthly_waits_for_publishing_without_notice(self):
+        lead = self.lead_via_liliana()
+        page = self.magialogia_for(lead, publish=False, email_freq="monthly")
+        self.assertIsNone(self.calendar()["last_emailed"])          # nothing sent, so nothing marked
+        self.client.post(f"/leads/{lead['id']}/calendar/{engine.local_today():%Y-%m}",
+                         data={"csrf_token": token_from(page), "action": "publish"})
+        self.assertEqual(calendar_mail.run(local_morning(0, hour=23))["monthly"], 1)
+
+    def test_resaving_settings_keeps_todays_daily_email(self):
+        lead = self.lead_via_liliana()
+        self.signup(lead, freq="daily", lang="en")
+        with numer.open_db() as connection:
+            connection.execute("UPDATE calendars SET last_emailed = '2000-01-01'")
+        calendar_mail.set_frequency(self.calendar()["id"], "daily")
+        self.assertEqual(self.calendar()["last_emailed"], "2000-01-01")
+
+    def test_signup_on_existing_calendar_keeps_its_language(self):
+        lead = self.lead_via_liliana()
+        page = self.magialogia_for(lead)                    # Spanish calendar, emails off
+        self.client.post("/logout", data={"csrf_token": token_from(page)})
+        report = self.client.get(f"/r/{lead['token']}").get_data(as_text=True)
+        self.assertIn('<input type="hidden" name="lang" value="es">', report)
+        self.assertNotIn('id="cal-lang"', report)
