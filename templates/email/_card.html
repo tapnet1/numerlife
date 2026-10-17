@@ -5,11 +5,11 @@
   {% if card.photo %}<img src="{{ card.photo }}" width="84" height="84" alt="{{ card.name }}" style="border-radius:50%;border:3px solid #d4af5a;display:block;margin:0 auto 10px;">{% endif %}
   <p style="margin:0;font-family:Georgia,serif;font-size:22px;color:#1b1038;">{{ card.name }}</p>
   {% if card.headline %}<p style="margin:4px 0 0;color:#9a7a2c;font-size:14px;">{{ card.headline }}</p>{% endif %}
-  {% if card.booking_url %}<p style="margin:16px 0 0;"><a href="{{ card.booking_url }}" style="display:inline-block;background:#d4af5a;color:#1b1038;font-weight:600;text-decoration:none;padding:12px 24px;border-radius:999px;">Book a reading</a></p>{% endif %}
+  {% if card.booking_url %}<p style="margin:16px 0 0;"><a href="{{ card_book_url or card.booking_url }}" style="display:inline-block;background:#d4af5a;color:#1b1038;font-weight:600;text-decoration:none;padding:12px 24px;border-radius:999px;">{{ card_book_label or "Book a reading" }}</a></p>{% endif %}
   <p style="margin:12px 0 0;font-size:14px;">
     {% if card.email %}<a href="mailto:{{ card.email }}" style="color:#4b2d8f;">{{ card.email }}</a>{% endif %}
     {% if card.phone %} · <a href="tel:{{ card.phone | replace(' ', '') }}" style="color:#4b2d8f;">{{ card.phone }}</a>{% endif %}
-    {% if card.about_url %} · <a href="{{ card.about_url }}" style="color:#4b2d8f;">About {{ card.name.split(' ')[0] }}</a>{% endif %}
+    {% if card.about_url %} · <a href="{{ card.about_url }}" style="color:#4b2d8f;">{{ card_about_label or "About" }} {{ card.name.split(' ')[0] }}</a>{% endif %}
   </p>
 </td></tr></table>
 {% endif %}

@@ -36,6 +36,7 @@ KINDS = {
     "calendar_daily": "Client calendar: daily",
     "calendar_monthly": "Client calendar: monthly / welcome",
     "calendar_published": "Client calendar: month published",
+    "lead_series": "Follow-up series (7 emails, client)",
 }
 
 
@@ -111,6 +112,12 @@ def unsubscribe(token):
                 connection.execute("UPDATE leads SET marketing_opt_in = 0 WHERE lower(email) = lower(?)",
                                    (str(ident),))
                 cancel_nudges(connection, "client_nudge", email=str(ident))
+                cancel_nudges(connection, "lead_series", email=str(ident))
+                track = request.args.get("t", "")
+                if track and len(track) <= 64 and connection.execute(
+                        "SELECT 1 FROM email_outbox WHERE track = ?", (track,)).fetchone():
+                    connection.execute("INSERT INTO email_events (track, event, created_at) VALUES (?, 'unsubscribe', ?)",
+                                       (track, iso(now_utc())))
         done = True
     return render_template("unsubscribe.html", kind=kind, done=done)
 
@@ -245,11 +252,12 @@ def queue_invite(inviter_id: int, invite_id: int) -> bool:
 # Outbox
 # --------------------------------------------------------------------------
 def enqueue(connection, kind: str, to: str, subject: str, text: str, html: str, headers: dict | None = None,
-            lead_id: int | None = None, user_id: int | None = None) -> int:
+            lead_id: int | None = None, user_id: int | None = None, campaign: str | None = None,
+            track: str | None = None) -> int:
     cursor = connection.execute(
-        "INSERT INTO email_outbox (kind, to_addr, subject, body_text, body_html, headers, lead_id, user_id, created_at)"
-        " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (kind, to, subject, text, html, json.dumps(headers or {}), lead_id, user_id, iso(now_utc())))
+        "INSERT INTO email_outbox (kind, to_addr, subject, body_text, body_html, headers, lead_id, user_id, created_at,"
+        " campaign, track) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (kind, to, subject, text, html, json.dumps(headers or {}), lead_id, user_id, iso(now_utc()), campaign, track))
     return cursor.lastrowid
 
 
@@ -297,10 +305,22 @@ def _still_wanted(connection, row) -> bool:
         if cal is None or not cal["active"] or cal["email_opt_out"]:
             return False
         return row["kind"] == "calendar_published" or cal["email_freq"] != "none"
+    if row["kind"] == "lead_series":
+        import lead_series  # loaded after this module
+        return lead_series.still_wanted(connection, row["lead_id"])
     if row["kind"] == "client_nudge":
         lead = connection.execute("SELECT marketing_opt_in FROM leads WHERE id = ?", (row["lead_id"],)).fetchone()
         return bool(lead and lead["marketing_opt_in"])
     return True
+
+
+def purge_old(connection) -> None:
+    """Drop email older than 90 days. Follow-up series rows stay as delivery records for the
+    results, without their content."""
+    cutoff = iso(now_utc() - dt.timedelta(days=90))
+    connection.execute("UPDATE email_outbox SET body_text = '', body_html = '', headers = '{}'"
+                       " WHERE created_at < ? AND kind = 'lead_series' AND body_text != ''", (cutoff,))
+    connection.execute("DELETE FROM email_outbox WHERE created_at < ? AND kind != 'lead_series'", (cutoff,))
 
 
 def send_pending(limit: int = 50, ids: list[int] | None = None, smtp_factory=None) -> dict:
@@ -363,7 +383,7 @@ def send_pending(limit: int = 50, ids: list[int] | None = None, smtp_factory=Non
                                (iso(now_utc()), row["id"]))
             connection.commit()
             stats["sent"] += 1
-        connection.execute("DELETE FROM email_outbox WHERE created_at < ?", (iso(now_utc() - dt.timedelta(days=90)),))
+        purge_old(connection)
         connection.commit()
     finally:
         if server is not None:
@@ -408,6 +428,9 @@ def run_nudges(force: bool = False) -> dict:
             " WHERE leads.status = 'captured' AND leads.marketing_opt_in = 1 AND leads.nudged_at IS NULL"
             " AND leads.stage = 'new' AND leads.captured_at < ? AND leads.captured_at > ? AND users.is_active = 1",
             (iso(now - CLIENT_NUDGE_AFTER), iso(now - CLIENT_NUDGE_WINDOW))).fetchall()
+        import lead_series  # loaded after this module
+        if lead_series.enabled():
+            leads = []  # the follow-up series replaces the single booking nudge
         for lead in leads:
             practitioner = connection.execute("SELECT * FROM users WHERE id = ?", (lead["practitioner_id"],)).fetchone()
             card = contact_card(practitioner)
@@ -487,6 +510,13 @@ def admin_email_test():
             rows = [{"first_name": "Alex", "life_path": json.loads(lead["numbers"])["life_path"], "url": f"{BASE_URL}/leads"},
                     {"first_name": "Sam", "life_path": 7, "url": f"{BASE_URL}/leads"}]
             built.append((kind, *practitioner_nudge_email(practitioner, rows)))
+        elif kind == "lead_series":
+            import lead_series  # loaded after this module
+            series_lead = {**lead, "email": to, "practitioner_id": practitioner["id"], "lang": "es"}
+            for key, _day in lead_series.STEPS:
+                built.append((kind, *lead_series.build(series_lead, practitioner, key)))
+            series_lead["lang"] = "en"
+            built.append((kind, *lead_series.build(series_lead, practitioner, "expression")))
         elif kind.startswith("calendar_"):
             import calendar_mail  # loaded after this module
             built.append((kind, *calendar_mail.sample_email(kind, lead, practitioner)))
@@ -508,5 +538,7 @@ def admin_email_test():
 @role_required("admin")
 def admin_email_settings():
     set_setting("auto_nudges", "on" if request.form.get("auto_nudges") == "on" else "off")
-    flash("Automatic nudges are " + ("on." if nudges_enabled() else "off."), "info")
+    set_setting("lead_series", "on" if request.form.get("lead_series") == "on" else "off")
+    flash("Automatic nudges are " + ("on" if nudges_enabled() else "off") + "; the follow-up series is "
+          + ("on." if get_setting("lead_series") == "on" else "off."), "info")
     return redirect(url_for("admin") + "#email")

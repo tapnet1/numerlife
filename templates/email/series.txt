@@ -1,0 +1,17 @@
+{{ hi }}
+{% for p in paragraphs %}
+{{ p }}
+{% if loop.first and days %}
+{% for d in days %}- {{ d.label }}: {{ d.why }}
+{% endfor %}{% endif %}{% endfor %}
+{% if extra_link %}
+{{ extra_link.intro }} {{ extra_link.url }}
+{% endif %}
+{{ cta.label }}: {{ cta.url }}
+{% if secondary %}{{ secondary.label }}: {{ secondary.url }}
+{% endif %}{% if card %}
+{{ card.name }}{% if card.email %} · {{ card.email }}{% endif %}{% if card.phone %} · {{ card.phone }}{% endif %}
+{% endif %}
+--
+{{ why }}
+{{ unsubscribe_label }}: {{ unsubscribe_url }}

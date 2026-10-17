@@ -1,0 +1,17 @@
+{% extends "email/_layout.html" %}
+{% block preheader %}{{ paragraphs[0] }}{% endblock %}
+{% block body %}
+<p style="margin:0 0 14px;">{{ hi }}</p>
+{% for p in paragraphs %}<p style="margin:0 0 14px;">{{ p }}</p>
+{% if loop.first and days %}
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 16px;width:100%;">
+{% for d in days %}<tr><td style="padding:6px 10px 6px 0;width:44px;vertical-align:top;"><span style="display:inline-block;width:32px;height:32px;line-height:32px;border-radius:50%;background:#1b1038;color:#f3dfa2;text-align:center;border:2px solid #d4af5a;font-family:Georgia,serif;">{{ d.number }}</span></td><td style="padding:6px 0;vertical-align:top;"><strong>{{ d.label }}</strong><br><span style="color:#5a5370;font-size:14px;">{{ d.why }}</span></td></tr>{% endfor %}
+</table>
+{% endif %}{% endfor %}
+{% if extra_link %}<p style="margin:0 0 14px;">{{ extra_link.intro }} <a href="{{ extra_link.url }}" style="color:#4b2d8f;">{{ extra_link.label }}</a></p>{% endif %}
+<p style="margin:22px 0 8px;"><a href="{{ cta.url }}" style="display:inline-block;background:#4b2d8f;color:#ffffff;font-weight:600;text-decoration:none;padding:12px 24px;border-radius:999px;">{{ cta.label }}</a></p>
+{% if secondary %}<p style="margin:0 0 6px;font-size:14px;"><a href="{{ secondary.url }}" style="color:#4b2d8f;">{{ secondary.label }}</a></p>{% endif %}
+{% include "email/_card.html" %}
+{% if pixel_url %}<img src="{{ pixel_url }}" width="1" height="1" alt="" style="display:block;border:0;width:1px;height:1px;">{% endif %}
+{% endblock %}
+{% block footer %}<p style="margin:0;">{{ why }} <a href="{{ unsubscribe_url }}" style="color:#7a7290;">{{ unsubscribe_label }}</a></p>{% endblock %}

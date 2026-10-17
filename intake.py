@@ -44,7 +44,7 @@ RESERVED_SLUGS = frozenset("""
 
 PLATFORM_SLUGS = frozenset({"tapnet"})  # reserved for numer.life's own account, but a working link
 
-REPORT_LINK_DAYS = 30
+REPORT_LINK_DAYS = 90  # covers the follow-up series (starts within 30 days, runs 21+)
 SUBMIT_LIMIT_PER_HOUR = 10
 UNLOCK_LIMIT_PER_HOUR = 20
 EMAIL_RE = re.compile(r"^[^@\s]{1,64}@[^@\s]+\.[A-Za-z]{2,}$")
@@ -214,11 +214,12 @@ def start_report():
     connection = db()
     connection.execute(
         "INSERT INTO leads (practitioner_id, ref_slug, source, token, full_name, birth_date, birth_city,"
-        " birth_region, birth_country, numbers, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        " birth_region, birth_country, numbers, created_at, lang) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (practitioner["id"] if practitioner else None,
          practitioner["slug"] if practitioner and source == "link" else None, source,
          token, data["full_name"], data["birth_date"], data["birth_city"], data["birth_region"],
-         data["birth_country"], json.dumps(numbers.as_dict()), iso(now_utc())),
+         data["birth_country"], json.dumps(numbers.as_dict()), iso(now_utc()),
+         request.accept_languages.best_match(["en", "es"]) or "en"),
     )
     connection.commit()
     return redirect(url_for("report", token=token))
@@ -257,7 +258,7 @@ def lead_for_token(token: str):
     lead = db().execute("SELECT * FROM leads WHERE token = ?", (token,)).fetchone()
     if lead is None:
         abort(404)
-    created = dt.datetime.fromisoformat(lead["created_at"])
+    created = dt.datetime.fromisoformat(lead["captured_at"] or lead["created_at"])  # unlocking restarts the clock
     if now_utc() - created > dt.timedelta(days=REPORT_LINK_DAYS):
         abort(404)
     return lead

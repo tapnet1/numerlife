@@ -182,6 +182,14 @@ CREATE TABLE IF NOT EXISTS email_outbox (
 );
 CREATE INDEX IF NOT EXISTS idx_email_outbox_pending ON email_outbox (sent_at, created_at);
 
+CREATE TABLE IF NOT EXISTS email_events (
+    id         INTEGER PRIMARY KEY,
+    track      TEXT NOT NULL,
+    event      TEXT NOT NULL CHECK (event IN ('open', 'click', 'unsubscribe')),
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_email_events_track ON email_events (track, event);
+
 CREATE TABLE IF NOT EXISTS ledger (
     id             INTEGER PRIMARY KEY,
     user_id        INTEGER NOT NULL REFERENCES users(id),
@@ -298,11 +306,17 @@ ADDED_COLUMNS = (
     ("calendars", "last_emailed", "TEXT"),                     # YYYY-MM-DD (daily) or YYYY-MM (monthly) last queued
     ("calendar_months", "emailed_at", "TEXT"),                 # client told this month is published
     ("calendars", "email_opt_out", "INTEGER NOT NULL DEFAULT 0"),  # client stopped all calendar email
+    ("leads", "lang", "TEXT"),                               # visitor's language for emails (en | es)
+    ("leads", "series_step", "INTEGER NOT NULL DEFAULT 0"),  # follow-up series: next step to send
+    ("leads", "series_sent_at", "TEXT"),
+    ("leads", "client_at", "TEXT"),                          # first time the lead was marked a client
+    ("email_outbox", "campaign", "TEXT"),                    # series step key
+    ("email_outbox", "track", "TEXT"),                       # open/click tracking token
 )
 
 REQUIRED_TABLES = {"users", "login_attempts", "leads", "form_attempts", "invites",
                    "push_subscriptions", "push_outbox", "avatars", "email_outbox", "settings", "ledger",
-                   "calendars", "calendar_months", "calendar_notes", "calendar_content", "readings"}
+                   "calendars", "calendar_months", "calendar_notes", "calendar_content", "readings", "email_events"}
 
 
 def now_utc() -> dt.datetime:
@@ -346,6 +360,7 @@ def initialize(path: str | None = None) -> None:
             if column not in existing:
                 connection.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
         connection.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_slug ON users (slug)")
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_email_outbox_track ON email_outbox (track)")
     try:
         db_path.chmod(0o600)
     except OSError:
@@ -759,3 +774,4 @@ import admin_accounts  # noqa: E402,F401  (add practitioners, passwords, team me
 import calendars  # noqa: E402,F401  (personal calendars: editor, client page, PDF)
 import readings  # noqa: E402,F401  (client record: scheduled and logged readings)
 import calendar_mail  # noqa: E402,F401  (daily / monthly calendar emails)
+import lead_series  # noqa: E402,F401  (follow-up email series with open/click tracking)

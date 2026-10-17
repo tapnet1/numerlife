@@ -99,11 +99,20 @@
         <select id="stage" name="stage">
           {% for key, label in stages.items() %}<option value="{{ key }}"{% if lead.stage == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
         </select>
+        <label for="lead-lang">Email language</label>
+        <select id="lead-lang" name="lang">{% for code, name in series_languages.items() %}<option value="{{ code }}"{% if (lead.lang or 'en') == code %} selected{% endif %}>{{ name }}</option>{% endfor %}</select>
         <label for="notes">Private notes</label>
         <textarea id="notes" name="notes" rows="8" maxlength="5000" placeholder="Only you can see these notes.">{{ lead.notes }}</textarea>
         <button type="submit">Save</button>
       </form>
       {% if lead.updated_at %}<p class="muted small">Last saved {{ lead.updated_at | friendly_time }}</p>{% endif %}
+      {% if lead.status == 'captured' %}{% set sp = series_lead_progress(lead.id) %}
+      <p class="small mt"><strong>Follow-up emails:</strong>
+        {% if not lead.marketing_opt_in %}not sent (didn't opt in or unsubscribed)
+        {% elif sp.sent %}{{ sp.sent }} of {{ sp.total }} sent · opened {{ sp.opened }} · clicked {{ sp.clicked }}{% if lead.stage in ('client', 'archived') %} · stopped{% endif %}
+        {% elif series_enabled() %}starting soon
+        {% else %}off (Admin → Email){% endif %}</p>
+      {% endif %}
     </section>
     {% set cal = lead_calendar(lead.id) %}
     <section class="panel">

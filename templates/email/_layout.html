@@ -15,7 +15,7 @@
     </td></tr>
     <tr><td style="padding:18px 24px;text-align:center;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;line-height:1.6;color:#7a7290;">
       {% block footer %}{% endblock %}
-      <p style="margin:6px 0 0;">{{ site_name }} is operated by TAPNET. Free numerology reports based on the Pythagorean system, for reflection and entertainment.</p>
+      <p style="margin:6px 0 0;">{% if email_lang == 'es' %}{{ site_name }} es un servicio de TAPNET. Informes de numerología gratuitos basados en el sistema pitagórico, para la reflexión y el entretenimiento.{% else %}{{ site_name }} is operated by TAPNET. Free numerology reports based on the Pythagorean system, for reflection and entertainment.{% endif %}</p>
     </td></tr>
   </table>
 </td></tr>
