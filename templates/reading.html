@@ -55,7 +55,7 @@
       <h2>Personal calendar</h2>
       {% if calendar and calendar.kind != 'magialogia' %}
         <p class="small">This client has a numerology calendar. Switch it to Magialogía Numérica to use this reading.</p>
-        <button type="submit" form="switch-cal" class="btn">Switch to Magialogía calendar</button>
+        <button type="submit" name="switch_calendar" value="yes" class="btn">Save and switch to Magialogía calendar</button>
       {% elif calendar %}<a class="btn" href="{{ url_for('edit_calendar', lead_id=lead.id) }}">Open calendar</a>
       {% else %}<p class="small">This client can now get a Magialogía Numérica calendar.</p>
       <a class="btn-secondary" href="{{ url_for('lead_detail', lead_id=lead.id) }}">Start it from the client page</a>{% endif %}
@@ -63,11 +63,4 @@
     {% endif %}
   </aside>
 </form>
-{% if calendar and calendar.kind != 'magialogia' %}
-<form id="switch-cal" method="post" action="{{ url_for('start_calendar', lead_id=lead.id) }}" hidden>
-  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-  <input type="hidden" name="kind" value="magialogia">
-  <input type="hidden" name="lang" value="{{ calendar.lang }}">
-</form>
-{% endif %}
 {% endblock %}

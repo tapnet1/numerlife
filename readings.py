@@ -144,5 +144,12 @@ def save_reading(lead_id, reading_id):
             "UPDATE readings SET kind = ?, mode = ?, scheduled_at = ?, duration_min = ?, status = ?, notes = ?,"
             " params = ?, completed_at = ?, updated_at = ? WHERE id = ?",
             (kind, mode, when, duration, status, notes, json.dumps(params), completed_at, iso(now_utc()), reading_id))
+    if request.form.get("switch_calendar") == "yes" and kind == "magialogia" and status == "completed":
+        with open_db() as connection:
+            switched = connection.execute("UPDATE calendars SET kind = 'magialogia', active = 1, updated_at = ?"
+                                          " WHERE lead_id = ?", (iso(now_utc()), lead_id)).rowcount
+        if switched:
+            flash("Reading saved and the calendar switched to Magialogía Numérica.", "info")
+            return redirect(url_for("edit_calendar", lead_id=lead_id))
     flash("Reading saved.", "info")
     return redirect(url_for("edit_reading", lead_id=lead_id, reading_id=reading_id))

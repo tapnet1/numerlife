@@ -108,7 +108,11 @@ class ReadingsReviewTest(ReadingsTest):
         self.log_reading(lead["id"], done=True)
         reading = self.readings()[-1]
         page = self.client.get(f"/leads/{lead['id']}/readings/{reading['id']}").get_data(as_text=True)
-        self.assertIn("Switch to Magialogía calendar", page)
-        self.client.post(f"/leads/{lead['id']}/calendar", data={
-            "csrf_token": token_from(page), "kind": "magialogia", "lang": "fr"})
+        self.assertIn("Save and switch to Magialogía calendar", page)
+        response = self.client.post(f"/leads/{lead['id']}/readings/{reading['id']}", data={
+            "csrf_token": token_from(page), "status": "completed", "kind": "magialogia", "mode": "online",
+            "date": "2025-11-20", "time": "18:30", "duration": "90", "notes": "Unsaved edit kept",
+            "switch_calendar": "yes"})
+        self.assertIn("/calendar", response.headers["Location"])
         self.assertEqual((self.calendar()["kind"], self.calendar()["lang"]), ("magialogia", "fr"))
+        self.assertEqual(self.readings()[-1]["notes"], "Unsaved edit kept")
