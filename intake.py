@@ -214,11 +214,12 @@ def start_report():
     connection = db()
     connection.execute(
         "INSERT INTO leads (practitioner_id, ref_slug, source, token, full_name, birth_date, birth_city,"
-        " birth_region, birth_country, numbers, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        " birth_region, birth_country, numbers, created_at, lang) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (practitioner["id"] if practitioner else None,
          practitioner["slug"] if practitioner and source == "link" else None, source,
          token, data["full_name"], data["birth_date"], data["birth_city"], data["birth_region"],
-         data["birth_country"], json.dumps(numbers.as_dict()), iso(now_utc())),
+         data["birth_country"], json.dumps(numbers.as_dict()), iso(now_utc()),
+         request.accept_languages.best_match(["en", "es"]) or "en"),
     )
     connection.commit()
     return redirect(url_for("report", token=token))

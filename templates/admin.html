@@ -151,8 +151,23 @@
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label class="check"><input type="checkbox" name="auto_nudges" value="on"{% if mail.nudges_on %} checked{% endif %}>
       <span>Send reminder emails once a day: practitioners with leads still "New" after 48 hours (at most every 3 days), and visitors who opted in, 2 days after their report, when their practitioner has a booking link.</span></label>
+    <label class="check"><input type="checkbox" name="lead_series" value="on"{% if series_enabled() %} checked{% endif %}>
+      <span>Follow-up series: 7 personalised emails over 3 weeks (days 1, 3, 5, 8, 11, 15 and 21 after the report) to visitors who opted in, in English or Spanish. Stops when they unsubscribe, book a reading or become a client. Replaces the single visitor reminder above. Send yourself the test version first.</span></label>
     <button type="submit">Save</button>
   </form>
+
+  <h3 class="mt">Follow-up series results</h3>
+  {% set conv = series_conversions() %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Email</th><th>Day</th><th>Sent</th><th>Opened</th><th>Clicked</th><th>Unsubscribed</th></tr></thead>
+    <tbody>{% for st in series_step_stats() %}
+      <tr><td>{{ st.number }}. {{ series_step_labels[st.key] }}</td><td>{{ st.day }}</td><td>{{ st.sent }}</td>
+        <td>{{ st.opened }}{% if st.open_rate is not none %} ({{ st.open_rate }}%){% endif %}</td>
+        <td>{{ st.clicked }}{% if st.click_rate is not none %} ({{ st.click_rate }}%){% endif %}</td>
+        <td>{{ st.unsubscribed }}</td></tr>{% endfor %}
+    </tbody></table></div>
+  <p class="small">{{ conv.reached }} visitor{{ '' if conv.reached == 1 else 's' }} received the series; {{ conv.converted }} then booked a reading or became a client.</p>
+  <p class="muted small">Clicks are the reliable number. Opens are approximate: Apple Mail and Gmail load images automatically, which counts some emails as opened, while other apps block images.</p>
 
   <h3 class="mt">Recent emails</h3>
   {% if mail.recent %}

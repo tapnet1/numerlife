@@ -190,9 +190,12 @@ def update_lead(lead_id):
         abort(400, description="Unknown stage.")
     notes = (request.form.get("notes") if "notes" in request.form else lead["notes"]) or ""
     notes = notes.replace("\r\n", "\n")[:MAX_NOTES]
+    lang = request.form.get("lang") or lead["lang"]
+    if lang not in (None, "en", "es"):
+        abort(400, description="Unknown language.")
     connection = db()
-    connection.execute("UPDATE leads SET stage = ?, notes = ?, updated_at = ? WHERE id = ?",
-                       (stage, notes, iso(now_utc()), lead["id"]))
+    connection.execute("UPDATE leads SET stage = ?, notes = ?, lang = ?, updated_at = ? WHERE id = ?",
+                       (stage, notes, lang, iso(now_utc()), lead["id"]))
     connection.commit()
     flash("Saved.", "info")
     return redirect(url_for("lead_detail", lead_id=lead["id"]))

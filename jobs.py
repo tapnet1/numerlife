@@ -47,7 +47,10 @@ def send_nudges() -> dict:
     """Queue reminder emails, if an admin has turned automatic nudges on."""
     import emails
 
+    import lead_series
+
     result = emails.run_nudges()
+    result["series"] = lead_series.run()
     return result
 
 
