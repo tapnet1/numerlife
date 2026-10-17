@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}{{ reading_kinds[reading.kind] }} · {{ lead.full_name }} | {{ site_name }}{% endblock %}
+{% block body_class %}app-page{% endblock %}
+{% block content %}
+<p class="crumb"><a href="{{ url_for('lead_detail', lead_id=lead.id) }}#readings">← {{ lead.full_name }}</a></p>
+<header class="app-head">
+  <div>
+    <p class="eyebrow">{{ reading_statuses[reading.status] }} · {{ reading.scheduled_at | reading_when }}</p>
+    <h1>{{ reading_kinds[reading.kind] }}</h1>
+  </div>
+  <span class="badge badge-r-{{ reading.status }} badge-lg">{{ reading_statuses[reading.status] }}</span>
+</header>
+
+<form method="post" action="{{ url_for('save_reading', lead_id=lead.id, reading_id=reading.id) }}" class="app-grid">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div>
+    <section class="panel">
+      <h2>Notes from the reading</h2>
+      <label for="notes" class="sr-only">Notes</label>
+      <textarea id="notes" name="notes" rows="12" maxlength="8000" placeholder="What came up, what you recommended, what to follow up on. Only you and your team can see this.">{{ reading.notes }}</textarea>
+    </section>
+    {% if reading.kind == 'magialogia' %}
+    <section class="panel">
+      <h2>Magialogía Numérica details</h2>
+      <p class="muted small">Used by the client's Magialogía calendar.</p>
+      <div class="grid-2">
+        {% for f in ('an', 'ac', 'ad', 'n') %}
+        <div><label for="p-{{ f }}">{{ f | upper }}</label><input id="p-{{ f }}" name="{{ f }}" maxlength="500" value="{{ params.get(f, '') }}"></div>
+        {% endfor %}
+      </div>
+      <label for="p-strong">Strong period</label><input id="p-strong" name="strong" maxlength="500" value="{{ params.get('strong', '') }}">
+      <label for="p-weak">Weak period</label><input id="p-weak" name="weak" maxlength="500" value="{{ params.get('weak', '') }}">
+      <label for="p-key">Key dates</label><textarea id="p-key" name="key_dates" rows="3" maxlength="500">{{ params.get('key_dates', '') }}</textarea>
+    </section>
+    {% endif %}
+  </div>
+  <aside>
+    <section class="panel">
+      <h2>Details</h2>
+      <label for="status">Status</label>
+      <select id="status" name="status">{% for k, label in reading_statuses.items() %}<option value="{{ k }}"{% if reading.status == k %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+      <label for="kind">Type</label>
+      <select id="kind" name="kind">{% for k, label in reading_kinds.items() %}<option value="{{ k }}"{% if reading.kind == k %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+      <div class="grid-2">
+        <div><label for="date">Date</label><input id="date" name="date" type="date" value="{{ reading.scheduled_at[:10] }}"></div>
+        <div><label for="time">Time</label><input id="time" name="time" type="time" value="{{ reading.scheduled_at[11:16] }}"></div>
+      </div>
+      <label for="duration">Minutes</label><input id="duration" name="duration" type="number" min="15" max="480" step="15" value="{{ reading.duration_min }}">
+      <label for="mode">Where</label>
+      <select id="mode" name="mode">{% for k, label in reading_modes.items() %}<option value="{{ k }}"{% if reading.mode == k %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+      <button type="submit" class="primary">Save</button>
+    </section>
+    {% if reading.kind == 'magialogia' and reading.status == 'completed' %}
+    <section class="panel">
+      <h2>Personal calendar</h2>
+      {% if calendar %}<a class="btn" href="{{ url_for('edit_calendar', lead_id=lead.id) }}">Open calendar</a>
+      {% else %}<p class="small">This client can now get a Magialogía Numérica calendar.</p>
+      <a class="btn-secondary" href="{{ url_for('lead_detail', lead_id=lead.id) }}">Start it from the client page</a>{% endif %}
+    </section>
+    {% endif %}
+  </aside>
+</form>
+{% endblock %}

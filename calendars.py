@@ -69,6 +69,9 @@ def month_view(cal, lead, year: int, month: int) -> dict:
     practitioner = connection.execute("SELECT * FROM users WHERE id = ?", (owner_id,)).fetchone() \
         if owner_id else None
     numbers = json.loads(lead["numbers"])
+    import readings  # loaded after this module
+    reading = readings.completed_magialogia(lead["id"]) if cal["kind"] == "magialogia" else None
+    params = readings.reading_params(reading) if reading else json.loads(cal["params"] or "{}")
     prev_y, prev_m = engine.shift_month(year, month, -1)
     next_y, next_m = engine.shift_month(year, month, 1)
     return {
@@ -77,7 +80,7 @@ def month_view(cal, lead, year: int, month: int) -> dict:
         "personal_year": built.personal_year, "personal_month": built.personal_month,
         "year_guide": content.guidance(built.personal_year, lang, overrides),
         "month_guide": content.guidance(built.personal_month, lang, overrides),
-        "days": days, "weeks": weeks, "params": json.loads(cal["params"] or "{}"),
+        "days": days, "weeks": weeks, "params": params, "reading": reading,
         "intro": month_row["intro"] if month_row else "",
         "published": bool(month_row and month_row["published_at"]),
         "visible": cal["kind"] == "numerology" or bool(month_row and month_row["published_at"]),
@@ -122,6 +125,12 @@ def start_calendar(lead_id):
     if lead["status"] != "captured":
         flash("This visitor hasn't unlocked their report yet, so there's no email to send a calendar to.", "error")
         return redirect(url_for("lead_detail", lead_id=lead_id))
+    if kind == "magialogia":
+        import readings  # loaded after this module
+        if readings.completed_magialogia(lead_id) is None:
+            flash("Log a completed Magialogía Numérica reading for this client first: the calendar uses its details.",
+                  "error")
+            return redirect(url_for("lead_detail", lead_id=lead_id) + "#readings")
     with open_db() as connection:
         existing = connection.execute("SELECT id FROM calendars WHERE lead_id = ?", (lead_id,)).fetchone()
         if existing:

@@ -34,6 +34,21 @@
   <p class="notice">Make your reports work for you: <a href="{{ url_for('edit_profile') }}">add your booking link and contact details</a> so every client can reach you in one tap.</p>
 {% endif %}
 
+{% set upcoming = upcoming_readings(user) %}
+{% if upcoming %}
+<section class="panel upcoming">
+  <div class="panel-head"><h2>Upcoming readings</h2></div>
+  <ul class="reading-list">
+    {% for r in upcoming %}
+    <li><a href="{{ url_for('edit_reading', lead_id=r.lead_id, reading_id=r.id) }}">
+      <strong>{{ r.scheduled_at | reading_when }}</strong> · {{ r.full_name }}
+      <span class="muted small">{{ reading_kinds[r.kind] }} · {{ r.duration_min }} min · {{ reading_modes[r.mode] }}</span>
+    </a></li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
 <div class="app-grid">
   <section class="panel">
     <div class="panel-head">
