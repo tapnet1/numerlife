@@ -143,3 +143,31 @@ class CalendarFlowTest(CalendarTestCase):
         page = self.client.get(f"/leads/{lead['id']}/calendar").get_data(as_text=True)
         self.assertEqual(self.client.post(f"/leads/{lead['id']}/calendar/2025-13", data={
             "csrf_token": token_from(page)}).status_code, 404)
+
+
+class CalendarReviewTest(CalendarTestCase):
+    def test_master_33_has_its_own_guidance(self):
+        self.assertEqual(calendar_content.guidance(33, "es")["title"], "Maestro sanador")
+        for lang in calendar_content.DEFAULTS:
+            self.assertEqual(set(calendar_content.DEFAULTS[lang]), set(calendar_content.NUMBERS))
+
+    def test_calendar_follows_lead_reassignment(self):
+        lead = self.lead_via_liliana()
+        maria = numer.create_user("maria@example.com", PASSWORD, "practitioner", "Maria Lopez", slug="maria")
+        self.login("liliana@example.com")
+        self.start(lead["id"])
+        cal = self.calendar()
+        page = self.client.get("/dashboard").get_data(as_text=True)
+        self.client.post("/logout", data={"csrf_token": token_from(page)})
+        self.login("owner@example.com")
+        page = self.client.get(f"/leads/{lead['id']}").get_data(as_text=True)
+        self.client.post(f"/leads/{lead['id']}/assign", data={"csrf_token": token_from(page), "practitioner_id": maria})
+        self.assertEqual(self.calendar()["practitioner_id"], maria)
+        self.client.post("/logout", data={"csrf_token": token_from(page)})
+        self.login("maria@example.com")
+        html = self.client.get(f"/c/{cal['token']}/2025-12").get_data(as_text=True)
+        self.assertIn("Maria Lopez", html)
+        self.assertIn("Preview", html)               # new practitioner can preview
+        self.client.post("/logout", data={"csrf_token": token_from(html)})
+        self.login("liliana@example.com")
+        self.assertNotIn("Preview", self.client.get(f"/c/{cal['token']}/2025-12").get_data(as_text=True))

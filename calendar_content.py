@@ -5,7 +5,7 @@ her own wording (calendar_content table); her version always wins.
 """
 from __future__ import annotations
 
-NUMBERS = (1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 22)
+NUMBERS = (1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 22, 33)
 FIELDS = ("title", "focus", "avoid", "lucky", "color")
 
 DEFAULTS = {
@@ -32,6 +32,8 @@ DEFAULTS = {
              "avoid": "Nervous overthinking; ground yourself.", "lucky": "11, 2, 29", "color": "Pearl"},
         22: {"title": "Master builder", "focus": "Think big and lay one solid brick towards it.",
              "avoid": "Overwhelm; break the vision into steps.", "lucky": "22, 4, 13", "color": "Coral"},
+        33: {"title": "Master teacher", "focus": "Serve with love: teach, heal, encourage someone.",
+             "avoid": "Self-sacrifice to the point of exhaustion.", "lucky": "33, 6, 15", "color": "Rose gold"},
     },
     "es": {
         1: {"title": "Nuevos comienzos", "focus": "Inicia algo, toma la iniciativa, da el primer paso.",
@@ -56,6 +58,8 @@ DEFAULTS = {
              "avoid": "Darle demasiadas vueltas; conéctate con la tierra.", "lucky": "11, 2, 29", "color": "Perla"},
         22: {"title": "Maestro constructor", "focus": "Piensa en grande y pon hoy un ladrillo firme.",
              "avoid": "Agobiarte; divide la visión en pasos.", "lucky": "22, 4, 13", "color": "Coral"},
+        33: {"title": "Maestro sanador", "focus": "Sirve con amor: enseña, sana, anima a alguien.",
+             "avoid": "Sacrificarte hasta el agotamiento.", "lucky": "33, 6, 15", "color": "Oro rosa"},
     },
 }
 
@@ -93,10 +97,16 @@ MONTH_NAMES = {
 }
 
 
+def reduce_to_digit(number: int) -> int:
+    while number > 9:
+        number = sum(int(d) for d in str(number))
+    return number or 9
+
+
 def guidance(number: int, lang: str, overrides: dict | None = None) -> dict:
     """The text for a personal day number: the practitioner's version, else the default."""
     lang = lang if lang in DEFAULTS else "en"
-    base = dict(DEFAULTS[lang].get(number) or DEFAULTS[lang][9])
+    base = dict(DEFAULTS[lang].get(number) or DEFAULTS[lang][reduce_to_digit(number)])
     for key, value in ((overrides or {}).get(number) or {}).items():
         if value:
             base[key] = value

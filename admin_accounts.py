@@ -96,6 +96,7 @@ def admin_set_team():
             abort(400, description="This account has its own team members; move them first.")
         moved = connection.execute("UPDATE leads SET practitioner_id = ?, updated_at = ? WHERE practitioner_id = ?",
                                    (owner_id, iso(now_utc()), user_id)).rowcount
+        connection.execute("UPDATE calendars SET practitioner_id = ? WHERE practitioner_id = ?", (owner_id, user_id))
         connection.execute("UPDATE users SET team_of = ?, slug = NULL, round_robin = 0 WHERE id = ?",
                            (owner_id, user_id))
         connection.execute("UPDATE invites SET revoked_at = ? WHERE inviter_id = ? AND used_by IS NULL"

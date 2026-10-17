@@ -52,7 +52,8 @@ def month_view(cal, lead, year: int, month: int) -> dict:
     lang = cal["lang"] if cal["lang"] in content.LANGUAGES else "en"
     birth = dt.date.fromisoformat(lead["birth_date"])
     built = engine.build_month(birth, year, month, lang=lang)
-    overrides = practitioner_overrides(cal["practitioner_id"], lang)
+    owner_id = lead["practitioner_id"]  # the lead's current practitioner, even after reassignment
+    overrides = practitioner_overrides(owner_id, lang)
     connection = db()
     notes = {row["day"]: row["text"] for row in connection.execute(
         "SELECT day, text FROM calendar_notes WHERE calendar_id = ? AND day LIKE ?", (cal["id"], f"{built.key}-%"))}
@@ -65,8 +66,8 @@ def month_view(cal, lead, year: int, month: int) -> dict:
                      "guide": content.guidance(day.personal_day, lang, overrides)})
     by_date = {d["date"]: d for d in days}
     weeks = [[by_date[cell.date] if cell else None for cell in week] for week in built.weeks()]
-    practitioner = connection.execute("SELECT * FROM users WHERE id = ?", (cal["practitioner_id"],)).fetchone() \
-        if cal["practitioner_id"] else None
+    practitioner = connection.execute("SELECT * FROM users WHERE id = ?", (owner_id,)).fetchone() \
+        if owner_id else None
     numbers = json.loads(lead["numbers"])
     prev_y, prev_m = engine.shift_month(year, month, -1)
     next_y, next_m = engine.shift_month(year, month, 1)
@@ -212,14 +213,14 @@ def _public_calendar(token: str):
     return cal, lead
 
 
-def _can_preview(cal) -> bool:
+def _can_preview(lead) -> bool:
     user = current_user()
     if user is None:
         return False
     if user["role"] == "admin":
         return True
     from app import workspace_owner_id
-    return cal["practitioner_id"] == workspace_owner_id(user)
+    return lead["practitioner_id"] is not None and lead["practitioner_id"] == workspace_owner_id(user)
 
 
 @app.get("/c/<token>")
@@ -228,7 +229,7 @@ def calendar_public(token, month_key=None):
     cal, lead = _public_calendar(token)
     year, month = engine.parse_month(month_key, now_utc().date())
     view = month_view(cal, lead, year, month)
-    preview = not view["visible"] and _can_preview(cal)
+    preview = not view["visible"] and _can_preview(lead)
     return render_template("calendar_public.html", preview=preview, **view)
 
 
@@ -239,7 +240,7 @@ def calendar_pdf(token, month_key):
     if f"{year:04d}-{month:02d}" != month_key:
         abort(404)
     view = month_view(cal, lead, year, month)
-    if not view["visible"] and not _can_preview(cal):
+    if not view["visible"] and not _can_preview(lead):
         abort(404)
     pdf = render_pdf(view)
     filename = f"calendar-{view['client_first'].lower() or 'client'}-{view['key']}.pdf"
