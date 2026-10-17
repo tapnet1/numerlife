@@ -190,3 +190,12 @@ class LeadSeriesTest(IntakeTestCase):
         self.assertIn("reassigned", self.series()[0]["last_error"])
         self.assertEqual(self.leads()[-1]["series_step"], 0)
         self.assertEqual(lead_series.run(later(2, 1))["sent"], 1)
+
+    def test_card_links_to_profile_instead_of_email(self):
+        self.turn_on()
+        self.captured_lead(lang_header="")
+        lead_series.run(later(2))
+        row = self.series()[0]
+        self.assertIn("your Expression", row["subject"])              # English unless the browser asks for Spanish
+        self.assertNotIn("liliana@example.com", row["body_html"])
+        self.assertIn("Liliana&#39;s profile", row["body_html"])

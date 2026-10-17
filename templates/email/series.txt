@@ -10,7 +10,7 @@
 {{ cta.label }}: {{ cta.url }}
 {% if secondary %}{{ secondary.label }}: {{ secondary.url }}
 {% endif %}{% if card %}
-{{ card.name }}{% if card.email %} · {{ card.email }}{% endif %}{% if card.phone %} · {{ card.phone }}{% endif %}
+{{ card.name }}{% if card_profile_url or card.about_url %} · {{ card_profile_url or card.about_url }}{% elif card.email %} · {{ card.email }}{% endif %}
 {% endif %}
 --
 {{ why }}

@@ -24,7 +24,7 @@
 {{ el.open_calendar }}: {{ client_url }}
 {{ labels.download_pdf }}: {{ pdf_url }}
 {% if card %}
-{{ labels.prepared_by }} {{ card.name }}{% if card.email %} · {{ card.email }}{% endif %}{% if card.phone %} · {{ card.phone }}{% endif %}
+{{ labels.prepared_by }} {{ card.name }}{% if card.about_url %} · {{ card.about_url }}{% elif card.email %} · {{ card.email }}{% endif %}
 {% endif %}
 --
 {{ el.why }}

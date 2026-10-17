@@ -74,7 +74,7 @@ TRAITS = {
 TEXT = {
     "en": {
         "hi": "Hi {name},",
-        "card_label": "Your numerologist", "card_book": "Book a reading", "card_about": "About",
+        "card_label": "Your numerologist", "card_book": "Book a reading", "card_about": "{name}'s profile",
         "revisit": "Revisit your report",
         "book": "Book a reading with {pfirst}",
         "see_report": "See your report",
@@ -131,7 +131,7 @@ TEXT = {
     },
     "es": {
         "hi": "Hola {name}:",
-        "card_label": "Tu guía en numerología", "card_book": "Reservar una lectura", "card_about": "Sobre",
+        "card_label": "Tu guía en numerología", "card_book": "Reservar una lectura", "card_about": "Perfil de {name}",
         "revisit": "Volver a tu informe",
         "book": "Reserva una lectura con {pfirst}",
         "see_report": "Ver tu informe",
