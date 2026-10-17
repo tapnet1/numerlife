@@ -171,3 +171,8 @@ class CalendarReviewTest(CalendarTestCase):
         self.client.post("/logout", data={"csrf_token": token_from(html)})
         self.login("liliana@example.com")
         self.assertNotIn("Preview", self.client.get(f"/c/{cal['token']}/2025-12").get_data(as_text=True))
+
+
+    def test_today_is_local_not_utc(self):
+        late_evening = dt.datetime(2026, 11, 1, 3, 0, tzinfo=dt.timezone.utc)  # Oct 31, 8 pm in Edmonton
+        self.assertEqual(engine.local_today("America/Edmonton", late_evening), dt.date(2026, 10, 31))

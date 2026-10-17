@@ -130,7 +130,7 @@ def edit_calendar(lead_id):
     cal = calendar_for_lead(lead_id)
     if cal is None:
         return redirect(url_for("lead_detail", lead_id=lead_id))
-    year, month = engine.parse_month(request.args.get("month"), now_utc().date())
+    year, month = engine.parse_month(request.args.get("month"), engine.local_today())
     view = month_view(cal, lead, year, month)
     return render_template("calendar_edit.html", kinds=KINDS, languages=content.LANGUAGES, **view)
 
@@ -227,7 +227,7 @@ def _can_preview(lead) -> bool:
 @app.get("/c/<token>/<month_key>")
 def calendar_public(token, month_key=None):
     cal, lead = _public_calendar(token)
-    year, month = engine.parse_month(month_key, now_utc().date())
+    year, month = engine.parse_month(month_key, engine.local_today())
     view = month_view(cal, lead, year, month)
     preview = not view["visible"] and _can_preview(lead)
     return render_template("calendar_public.html", preview=preview, **view)

@@ -151,6 +151,12 @@ def build_month(birth: dt.date, year: int, month: int, lang: str = "en", tz: str
     return result
 
 
+def local_today(tz: str = DEFAULT_TZ, now: dt.datetime | None = None) -> dt.date:
+    """Today's date where the calendar is used (not UTC), so month boundaries are right."""
+    now = now or dt.datetime.now(dt.timezone.utc)
+    return now.astimezone(ZoneInfo(tz)).date()
+
+
 def parse_month(value: str | None, today: dt.date | None = None) -> tuple[int, int]:
     """'YYYY-MM' -> (year, month); anything invalid falls back to the current month."""
     today = today or dt.date.today()
