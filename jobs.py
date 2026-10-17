@@ -5,6 +5,7 @@
     .venv/bin/python jobs.py send-email
     .venv/bin/python jobs.py send-nudges
     .venv/bin/python jobs.py accrue-referrals
+    .venv/bin/python jobs.py calendar-emails
 
 Jobs load .env through passenger_wsgi.py, like the deploy, and never print secrets.
 """
@@ -57,8 +58,19 @@ def accrue_referrals() -> dict:
     return billing.accrue_referrals()
 
 
+def calendar_emails() -> dict:
+    """Queue clients' daily and monthly calendar emails once their local morning has started."""
+    import calendar_mail
+    import emails
+
+    result = calendar_mail.run()
+    emails.send_pending()
+    return result
+
+
 JOBS = {"purge-attempts": purge_attempts, "send-push": send_push, "send-email": send_email,
-        "send-nudges": send_nudges, "accrue-referrals": accrue_referrals}
+        "send-nudges": send_nudges, "accrue-referrals": accrue_referrals,
+        "calendar-emails": calendar_emails}
 
 
 def main(argv: list[str]) -> int:

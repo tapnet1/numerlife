@@ -22,6 +22,7 @@ from flask import Response, abort, flash, redirect, render_template, request, ur
 
 import calendar_content as content
 import calendar_engine as engine
+import calendar_mail
 from app import BASE_URL, app, current_user, db, iso, login_required, now_utc, open_db, workspace_owner_id
 from practitioner_profile import contact_card
 
@@ -169,10 +170,15 @@ def save_calendar_settings(lead_id):
     for field in PARAM_FIELDS:
         value = (request.form.get(field) or "").replace("\r\n", "\n").strip()
         params[field] = value[:PARAM_LIMITS.get(field, 200)]
+    freq = request.form.get("email_freq", cal["email_freq"])
+    if freq not in calendar_mail.FREQS:
+        abort(400)
     with open_db() as connection:
         connection.execute("UPDATE calendars SET lang = ?, params = ?, active = ?, updated_at = ? WHERE id = ?",
                            (lang, json.dumps(params), 0 if request.form.get("paused") == "yes" else 1,
                             iso(now_utc()), cal["id"]))
+    if freq != cal["email_freq"]:
+        calendar_mail.set_frequency(cal["id"], freq)
     flash("Calendar settings saved.", "info")
     return redirect(url_for("edit_calendar", lead_id=lead_id, month=request.form.get("month")))
 
@@ -213,6 +219,9 @@ def save_calendar_month(lead_id, month_key):
                            " ON CONFLICT(calendar_id, month) DO UPDATE SET intro = excluded.intro"
                            + ("" if published == "keep" else ", published_at = excluded.published_at"),
                            (cal["id"], key, intro, None if published == "keep" else published))
+    if action == "publish" and request.form.get("notify") == "yes":
+        if calendar_mail.queue_published(cal["id"], key):
+            flash("We've emailed your client the link.", "info")
     flash({"publish": "Published: your client can now see this month.",
            "unpublish": "Unpublished: your client can no longer see this month."}.get(action, "Saved."), "info")
     return redirect(url_for("edit_calendar", lead_id=lead_id, month=key))
@@ -331,6 +340,42 @@ def calendar_public(token, month_key=None):
     view = month_view(cal, lead, year, month)
     preview = not view["visible"] and _can_preview(lead)
     return render_template("calendar_public.html", preview=preview, **view)
+
+
+@app.post("/c/<token>/emails")
+def calendar_email_settings(token):
+    """The client chooses how often to get their calendar by email."""
+    cal, lead = _public_calendar(token)
+    freq = request.form.get("freq", "")
+    if freq not in calendar_mail.FREQS or not lead["email"]:
+        abort(400)
+    calendar_mail.set_frequency(cal["id"], freq)
+    flash(calendar_mail.email_labels(cal["lang"])["saved"], "info")
+    return redirect(url_for("calendar_public", token=token) + "#emails")
+
+
+@app.post("/r/<token>/calendar")
+def report_calendar_signup(token):
+    """A visitor with an unlocked report asks for the free numerology calendar by email."""
+    import intake  # loaded before this module
+    lead = intake.lead_for_token(token)
+    freq = request.form.get("freq", "monthly")
+    lang = request.form.get("lang", "")
+    if lead["status"] != "captured" or not lead["email"] or freq not in ("daily", "monthly") \
+            or lang not in content.LANGUAGES:
+        abort(400)
+    with open_db() as connection:
+        cal = connection.execute("SELECT * FROM calendars WHERE lead_id = ?", (lead["id"],)).fetchone()
+        if cal is None:
+            connection.execute(
+                "INSERT INTO calendars (lead_id, practitioner_id, kind, lang, token, created_at)"
+                " VALUES (?, ?, 'numerology', ?, ?, ?)",
+                (lead["id"], lead["practitioner_id"], lang, secrets.token_urlsafe(18), iso(now_utc())))
+            cal = connection.execute("SELECT * FROM calendars WHERE lead_id = ?", (lead["id"],)).fetchone()
+    if not cal["active"]:
+        abort(404)  # the practitioner paused this client's calendar
+    calendar_mail.set_frequency(cal["id"], freq)
+    return redirect(url_for("calendar_public", token=cal["token"]))
 
 
 @app.get("/c/<token>/<month_key>.pdf")

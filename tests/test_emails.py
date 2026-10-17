@@ -191,7 +191,7 @@ class AdminTestSendTest(EmailTestCase):
         self.login("owner@example.com")
         with mock.patch.object(mailer, "connect", self.smtp):
             response = self.post_test(to="tapnet1@gmail.com")
-        self.assertIn("Sent 5 test emails to tapnet1@gmail.com", response.get_data(as_text=True))
+        self.assertIn("Sent 8 test emails to tapnet1@gmail.com", response.get_data(as_text=True))
         self.assertEqual({m["To"] for m in self.smtp.sent}, {"tapnet1@gmail.com"})
         self.assertTrue(all(m["Subject"].startswith("[Test] ") for m in self.smtp.sent))
         self.assertIn("Alex", body(self.smtp.sent[1], "html"))  # [0] is the invitation sample
@@ -204,7 +204,7 @@ class AdminTestSendTest(EmailTestCase):
         with mock.patch.object(mailer, "connect", self.smtp):
             response = self.post_test(to="tapnet1@gmail.com")
         self.assertEqual(response.status_code, 200)
-        self.assertIn("Sent 5 test emails", response.get_data(as_text=True))
+        self.assertIn("Sent 8 test emails", response.get_data(as_text=True))
 
     def test_reports_problems(self):
         self.login("owner@example.com")

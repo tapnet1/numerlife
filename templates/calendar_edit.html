@@ -56,7 +56,8 @@
       <button type="submit" name="action" value="save" class="btn-secondary">Save draft</button>
       {% if cal.kind == 'magialogia' %}
         {% if published %}<button type="submit" name="action" value="unpublish" class="link">Unpublish</button>
-        {% else %}<button type="submit" name="action" value="publish" class="primary">Publish {{ month_name }}</button>{% endif %}
+        {% else %}{% if lead.email %}<label class="check"><input type="checkbox" name="notify" value="yes" checked><span>Email {{ client_first }} the link when I publish</span></label>{% endif %}
+        <button type="submit" name="action" value="publish" class="primary">Publish {{ month_name }}</button>{% endif %}
       {% else %}<button type="submit" name="action" value="save" class="primary">Save</button>{% endif %}
     </div>
   </form>
@@ -89,6 +90,9 @@
         <label for="p-notes">Private notes (not shown to the client)</label>
         <textarea id="p-notes" name="notes" rows="4" maxlength="2000">{{ params.get('notes', '') }}</textarea>
       {% endif %}
+      <label for="email_freq">Emails to {{ client_first }}</label>
+      <select id="email_freq" name="email_freq">{% for f in calendar_freqs %}<option value="{{ f }}"{% if f == cal.email_freq %} selected{% endif %}>{{ {'none': 'None', 'daily': 'Every morning (today\'s guidance)', 'monthly': 'Once a month (start of the month)'}[f] }}</option>{% endfor %}</select>
+      <p class="muted small">Only turn this on if {{ client_first }} asked for it. Clients can change it themselves from their calendar page or any email.</p>
       <label class="check"><input type="checkbox" name="paused" value="yes"{% if not cal.active %} checked{% endif %}><span>Pause (the client link stops working)</span></label>
       <button type="submit">Save settings</button>
     </form>

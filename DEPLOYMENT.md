@@ -101,6 +101,11 @@ each deploy rewrites, so re-runs stay idempotent:
 | Schedule | Job | What it does |
 |---|---|---|
 | hourly at :23 | `jobs.py purge-attempts` | deletes hashed sign-in/form attempt records older than a day |
+| every minute | `jobs.py send-push` | sends queued push notifications |
+| every minute | `jobs.py send-email` | sends queued email, retrying failures with backoff |
+| daily 15:41 | `jobs.py send-nudges` | queues reminder emails (only if an admin turned them on) |
+| daily 07:13 | `jobs.py accrue-referrals` | credits monthly referral rewards |
+| hourly at :17 | `jobs.py calendar-emails` | queues clients' daily / monthly calendar emails once it's 7 am in Edmonton |
 
 Output goes to `logs/jobs.log`.
 
