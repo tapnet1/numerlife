@@ -53,6 +53,7 @@
     <nav id="account-nav" aria-label="Account">
       <a href="{{ url_for('dashboard') }}"{% if request.endpoint == 'dashboard' %} aria-current="page"{% endif %}>Dashboard</a>
       <a href="{{ url_for('leads_list') }}"{% if request.endpoint in ('leads_list', 'lead_detail') %} aria-current="page"{% endif %}>Leads</a>
+      <a href="{{ url_for('edit_guidance') }}"{% if request.endpoint == 'edit_guidance' %} aria-current="page"{% endif %}>Guidance</a>
       {% if is_team_member(user) %}
       <a href="{{ url_for('change_password') }}"{% if request.endpoint == 'change_password' %} aria-current="page"{% endif %}>Password</a>
       {% else %}

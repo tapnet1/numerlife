@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Calendar guidance | {{ site_name }}{% endblock %}
+{% block body_class %}app-page{% endblock %}
+{% block content %}
+<header class="app-head">
+  <div>
+    <p class="eyebrow">Personal calendars</p>
+    <h1>Your guidance for each number</h1>
+  </div>
+</header>
+
+<section class="panel">
+  <p>Your clients' calendars show a short guide for each personal year, month and day number. Write it in your own words here; anything you leave empty uses numer.life's starter text (shown in grey). Changes apply straight away to every calendar in that language.</p>
+  <form method="get" action="{{ url_for('edit_guidance') }}" class="inline-form">
+    <label for="lang">Language</label>
+    <select id="lang" name="lang">{% for code, name in languages.items() %}<option value="{{ code }}"{% if code == lang %} selected{% endif %}>{{ name }}</option>{% endfor %}</select>
+    <button type="submit" class="btn-secondary">Switch</button>
+  </form>
+  <p class="muted small">{{ customised }} of {{ entries | length }} numbers use your wording in {{ languages[lang] }}.</p>
+</section>
+
+<form method="post" action="{{ url_for('save_guidance') }}" class="panel">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="lang" value="{{ lang }}">
+  <ul class="cal-days">
+    {% for e in entries %}
+    {% set mine = e.mine %}
+    <li class="cal-day{% if mine.values() | select | list %} has-note{% endif %}">
+      <details>
+        <summary>
+          <span class="lp">{{ e.number }}</span>
+          <span class="cal-title">{{ mine.title or e.default.title }}</span>
+        </summary>
+        {% for f in fields %}
+        {% set label = {'title': 'Title', 'focus': labels.focus, 'avoid': labels.avoid, 'lucky': labels.lucky, 'color': labels.color}[f] %}
+        <label for="g-{{ e.number }}-{{ f }}" class="small">{{ label }}</label>
+        {% if f in ('focus', 'avoid') %}
+        <textarea id="g-{{ e.number }}-{{ f }}" name="{{ e.number }}-{{ f }}" rows="2" maxlength="{{ limits[f] }}" placeholder="{{ e.default[f] }}">{{ mine[f] }}</textarea>
+        {% else %}
+        <input id="g-{{ e.number }}-{{ f }}" name="{{ e.number }}-{{ f }}" maxlength="{{ limits[f] }}" placeholder="{{ e.default[f] }}" value="{{ mine[f] }}">
+        {% endif %}
+        {% endfor %}
+      </details>
+    </li>
+    {% endfor %}
+  </ul>
+  <div class="actions">
+    <button type="submit" name="action" value="save" class="primary">Save {{ languages[lang] }} guidance</button>
+    {% if customised %}<button type="submit" name="action" value="reset" class="link" formnovalidate>Go back to the starter texts</button>{% endif %}
+  </div>
+</form>
+{% endblock %}
