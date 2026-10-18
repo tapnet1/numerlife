@@ -13,6 +13,7 @@ import json
 
 from flask import Response, abort, flash, redirect, render_template, request, url_for
 
+import intake
 import numerology
 from app import BASE_URL, app, current_user, db, iso, login_required, now_utc, role_required, workspace_owner_id
 
@@ -202,6 +203,35 @@ def update_lead(lead_id):
     connection.commit()
     flash("Saved.", "info")
     return redirect(url_for("lead_detail", lead_id=lead["id"]))
+
+
+@app.post("/leads/<int:lead_id>/birth")
+@login_required
+def update_lead_birth(lead_id):
+    """Correct a lead's birth name, date or place (visitors sometimes mix the boxes up) and
+    recompute their numbers. Reports, emails and calendars read the corrected values from here on."""
+    lead = scoped_lead(lead_id)
+    form = {key: request.form.get(key, "") for key in
+            ("full_name", "birth_date", "birth_city", "birth_region", "birth_country")}
+    form["recent_ok"] = "yes"  # the practitioner is entering it deliberately
+    data, errors = intake.parse_birth_form(form, check_region=False)  # they know e.g. Georgia, USA
+    if errors:
+        for error in errors:
+            flash(error, "error")
+        return redirect(url_for("lead_detail", lead_id=lead["id"]) + "#birth")
+    numbers = numerology.core_numbers(data["full_name"], dt.date.fromisoformat(data["birth_date"]))
+    connection = db()
+    connection.execute(
+        "UPDATE leads SET full_name = ?, birth_date = ?, birth_city = ?, birth_region = ?, birth_country = ?,"
+        " numbers = ?, updated_at = ? WHERE id = ?",
+        (data["full_name"], data["birth_date"], data["birth_city"], data["birth_region"], data["birth_country"],
+         json.dumps(numbers.as_dict()), iso(now_utc()), lead["id"]),
+    )
+    import emails  # loaded after this module
+    emails.rebuild_pending_for_lead(connection, lead["id"])
+    connection.commit()
+    flash("Birth details corrected and numbers recalculated.", "info")
+    return redirect(url_for("lead_detail", lead_id=lead["id"]) + "#birth")
 
 
 @app.post("/leads/<int:lead_id>/assign")

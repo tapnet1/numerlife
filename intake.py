@@ -19,6 +19,7 @@ import click
 from flask import abort, redirect, render_template, request, session, url_for
 
 import content
+import countries
 import numerology
 from app import (
     BASE_URL,
@@ -136,29 +137,59 @@ def clean(value: str | None, limit: int) -> str:
     return " ".join((value or "").split())[:limit]
 
 
-def parse_birth_form(form) -> tuple[dict, list[str]]:
+def one_year_before(day: dt.date) -> dt.date:
+    """Same calendar day a year earlier (29 February -> 28 February). A birth date after it is less
+    than a year ago: usually a date picker left on today, so the form asks to confirm."""
+    try:
+        return day.replace(year=day.year - 1)
+    except ValueError:
+        return day.replace(year=day.year - 1, day=28)
+
+
+def looks_like_country(value: str) -> bool:
+    return countries.is_country(value)
+
+
+def parse_birth_form(form, today: dt.date | None = None, check_region: bool = True) -> tuple[dict, list[str]]:
+    """Validate the public birth form. data["confirm_recent"] asks the page to show the
+    "yes, this date is right" box when the birth date is within the last year."""
+    today = today or dt.date.today()
     data = {
         "full_name": clean(form.get("full_name"), MAX_NAME),
         "birth_date": (form.get("birth_date") or "").strip(),
         "birth_city": clean(form.get("birth_city"), MAX_PLACE),
         "birth_region": clean(form.get("birth_region"), MAX_PLACE),
         "birth_country": clean(form.get("birth_country"), MAX_PLACE),
+        "confirm_recent": False,
+        "recent_ok": False,
     }
     errors = []
-    if numerology.unsupported_letters(data["full_name"]):
+    if any(ch.isdigit() for ch in data["full_name"]):
+        errors.append("Please enter your name only, without numbers. Your date of birth goes in its own box.")
+    elif numerology.unsupported_letters(data["full_name"]):
         errors.append("Please write your name in Latin letters (A-Z, accents are fine).")
     elif not numerology.letters_of(data["full_name"]):
         errors.append("Enter your full birth name.")
     try:
         born = dt.date.fromisoformat(data["birth_date"])
-        if not dt.date(1900, 1, 1) <= born <= dt.date.today():
-            raise ValueError
     except ValueError:
-        errors.append("Enter a valid date of birth.")
+        born = None
+    if born is None or not dt.date(1900, 1, 1) <= born <= today:
+        errors.append("Enter a valid date of birth (day, month and year).")
+    elif born > one_year_before(today):
+        data["confirm_recent"] = True  # keep the box on the page (ticked if it was) while other fields are fixed
+        data["recent_ok"] = form.get("recent_ok") == "yes"
+    if data["confirm_recent"] and not data.get("recent_ok"):
+        errors.append(f"Please check your date of birth: {born.isoformat()} is less than a year ago. "
+                      "If it is right (for example, a baby's report), tick the box below the date.")
     if not data["birth_city"]:
         errors.append("Enter the city you were born in.")
     if not data["birth_country"]:
         errors.append("Enter the country you were born in.")
+    elif (check_region and data["birth_region"] and looks_like_country(data["birth_region"])
+          and countries.normalize(data["birth_region"]) != countries.normalize(data["birth_country"])):
+        errors.append(f"\"{data['birth_region']}\" looks like a country. Please put the country you were born "
+                      "in under Country of birth, and leave State / province empty if there isn't one.")
     return data, errors
 
 
@@ -171,6 +202,7 @@ def share_url_for(practitioner) -> str:
 def render_form(practitioner, data=None, errors=None, status=200):
     return render_template("home.html", practitioner=practitioner, form=data or {},
                            errors=errors or [], share_url=share_url_for(practitioner),
+                           today_iso=dt.date.today().isoformat(),
                            **content.home_context()), status
 
 

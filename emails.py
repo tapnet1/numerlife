@@ -291,6 +291,70 @@ def queue_unlock_emails(lead_id: int) -> None:
     kick()
 
 
+# An outbox row is being delivered right now when a sender claimed it in the last few minutes and
+# hasn't recorded a failure since (a claim clears last_error; a failure sets it and holds the claim
+# as retry backoff). Rows matching NOT_IN_DELIVERY are safe to rewrite or cancel. Takes one
+# parameter: the "stale" cut-off, 5 minutes ago.
+NOT_IN_DELIVERY = "(claimed_at IS NULL OR claimed_at < ? OR last_error != '')"
+
+
+def rebuild_pending_for_lead(connection, lead_id: int) -> None:
+    """After a lead's birth details are corrected, refresh their not-yet-sent emails, which hold
+    rendered snapshots: report, lead alerts, nudges and the practitioner's nudge digest are
+    re-rendered in place; follow-up series
+    emails are stepped back and rebuilt by the next run; a "month published" notice is re-rendered;
+    daily and monthly calendar emails are cancelled and their markers cleared, so the next hourly run
+    sends fresh ones the same day. Rows being delivered right now are left alone; rows waiting in
+    retry backoff are refreshed like any other."""
+    import lead_series  # loaded after this module
+    lead_series.requeue_pending(connection, "leads.id = ?", (lead_id,), reason="birth details corrected")
+    lead = connection.execute("SELECT * FROM leads WHERE id = ?", (lead_id,)).fetchone()
+    if lead is None:
+        return
+    stale = iso(now_utc() - dt.timedelta(minutes=5))
+    rows = list(connection.execute("SELECT * FROM email_outbox WHERE lead_id = ? AND sent_at IS NULL"
+                                   f" AND {NOT_IN_DELIVERY}", (lead_id, stale)).fetchall())
+    practitioner = None
+    if lead["practitioner_id"]:
+        practitioner = connection.execute("SELECT * FROM users WHERE id = ?", (lead["practitioner_id"],)).fetchone()
+    active = practitioner if practitioner is not None and practitioner["is_active"] else None
+    if practitioner is not None:  # the practitioner's nudge digest lists this lead by name and Life Path
+        rows += connection.execute("SELECT * FROM email_outbox WHERE kind = 'practitioner_nudge' AND user_id = ?"
+                                   f" AND sent_at IS NULL AND {NOT_IN_DELIVERY}",
+                                   (practitioner["id"], stale)).fetchall()
+    for row in rows:
+        built = None
+        if row["kind"] == "report":
+            built = (*report_email(lead, active), json.loads(row["headers"] or "{}"))
+        elif row["kind"] == "lead_alert" and row["user_id"]:
+            recipient = connection.execute("SELECT * FROM users WHERE id = ?", (row["user_id"],)).fetchone()
+            if recipient is not None:
+                built = (*lead_alert_email(lead, recipient), json.loads(row["headers"] or "{}"))
+        elif row["kind"] == "client_nudge" and practitioner is not None:
+            built = client_nudge_email(lead, practitioner)
+        elif row["kind"] == "practitioner_nudge":
+            waiting = _waiting_leads(connection, practitioner["id"], dt.datetime.fromisoformat(row["created_at"]))
+            if waiting:
+                built = practitioner_nudge_email(practitioner, waiting)
+        elif row["kind"] == "calendar_published":
+            import calendar_mail  # loaded after this module
+            built = calendar_mail.rebuild_published(connection, lead, row["subject"])
+        guard = f" AND sent_at IS NULL AND {NOT_IN_DELIVERY}"
+        if built is None:
+            cancelled = connection.execute(
+                "UPDATE email_outbox SET sent_at = ?, last_error = 'cancelled: birth details corrected'"
+                " WHERE id = ?" + guard, (iso(now_utc()), row["id"], stale)).rowcount
+            if cancelled and row["kind"].startswith("calendar_"):
+                import calendar_mail  # loaded after this module
+                calendar_mail.allow_resend(connection, lead_id, row["kind"], row["created_at"])
+        else:
+            subject, text, html, headers = built
+            connection.execute("UPDATE email_outbox SET subject = ?, body_text = ?, body_html = ?, headers = ?"
+                               " WHERE id = ?" + guard, (subject, text, html, json.dumps(headers), row["id"], stale))
+    import notify  # loaded before this module
+    notify.refresh_pending_for_lead(connection, lead)
+
+
 def _still_wanted(connection, row) -> bool:
     """Re-check consent right before delivery, so an opt-out during a send run still wins."""
     current = connection.execute("SELECT sent_at FROM email_outbox WHERE id = ?", (row["id"],)).fetchone()
@@ -347,11 +411,16 @@ def send_pending(limit: int = 50, ids: list[int] | None = None, smtp_factory=Non
         connection.commit()
         for row in rows:
             claimed = connection.execute(
-                "UPDATE email_outbox SET claimed_at = ?, attempts = attempts + 1 WHERE id = ? AND sent_at IS NULL"
+                "UPDATE email_outbox SET claimed_at = ?, attempts = attempts + 1, last_error = '' WHERE id = ?"
+                " AND sent_at IS NULL"
                 " AND (claimed_at IS NULL OR claimed_at < ?)", (iso(now_utc()), row["id"], stale)).rowcount
             connection.commit()
             if not claimed:
                 continue
+            # Re-read after claiming: the row may have been rebuilt (e.g. a birth-details correction)
+            # between the SELECT above and our claim, and the claim now stops further rewrites.
+            row = connection.execute("SELECT * FROM email_outbox WHERE id = ?", (row["id"],)).fetchone()
+            connection.commit()
             if not _still_wanted(connection, row):
                 connection.execute("UPDATE email_outbox SET sent_at = ?, last_error = 'cancelled: unsubscribed'"
                                    " WHERE id = ? AND sent_at IS NULL", (iso(now_utc()), row["id"]))
@@ -366,7 +435,7 @@ def send_pending(limit: int = 50, ids: list[int] | None = None, smtp_factory=Non
             except Exception as exc:  # recorded and retried by the next run
                 error = mailer.describe_error(exc)
                 # Hold the claim so the row waits before its next try (until EXPIRE_AFTER ends retries).
-                delay = min(dt.timedelta(minutes=2 ** min(row["attempts"] + 1, 10)), RETRY_MAX_DELAY)
+                delay = min(dt.timedelta(minutes=2 ** min(row["attempts"], 10)), RETRY_MAX_DELAY)  # row re-read after the claim
                 retry_from = now_utc() + delay - dt.timedelta(minutes=5)
                 connection.execute("UPDATE email_outbox SET claimed_at = ?, last_error = ? WHERE id = ?",
                                    (iso(retry_from), error[:200], row["id"]))
@@ -398,6 +467,17 @@ def send_pending(limit: int = 50, ids: list[int] | None = None, smtp_factory=Non
 # --------------------------------------------------------------------------
 # Nudges (cron: send-nudges)
 # --------------------------------------------------------------------------
+def _waiting_leads(connection, practitioner_id: int, now: dt.datetime) -> list[dict]:
+    """New, unlocked leads a practitioner hasn't followed up yet: the practitioner nudge digest."""
+    waiting = connection.execute(
+        "SELECT id, full_name, numbers, captured_at FROM leads WHERE practitioner_id = ?"
+        " AND status = 'captured' AND stage = 'new' AND captured_at < ? AND captured_at > ?"
+        " ORDER BY captured_at DESC LIMIT 20",
+        (practitioner_id, iso(now - LEAD_WAITING), iso(now - dt.timedelta(days=30)))).fetchall()
+    return [{"first_name": _first_name(w["full_name"]), "life_path": json.loads(w["numbers"])["life_path"],
+             "url": f"{BASE_URL}/leads/{w['id']}"} for w in waiting]
+
+
 def run_nudges(force: bool = False) -> dict:
     stats = {"practitioners": 0, "clients": 0}
     if not force and not nudges_enabled():
@@ -409,15 +489,9 @@ def run_nudges(force: bool = False) -> dict:
             "SELECT * FROM users WHERE role = 'practitioner' AND is_active = 1 AND email_nudges = 1"
             " AND (nudged_at IS NULL OR nudged_at < ?)", (iso(now - PRACTITIONER_NUDGE_EVERY),)).fetchall()
         for practitioner in practitioners:
-            waiting = connection.execute(
-                "SELECT id, full_name, numbers, captured_at FROM leads WHERE practitioner_id = ?"
-                " AND status = 'captured' AND stage = 'new' AND captured_at < ? AND captured_at > ?"
-                " ORDER BY captured_at DESC LIMIT 20",
-                (practitioner["id"], iso(now - LEAD_WAITING), iso(now - dt.timedelta(days=30)))).fetchall()
-            if not waiting:
+            rows = _waiting_leads(connection, practitioner["id"], now)
+            if not rows:
                 continue
-            rows = [{"first_name": _first_name(w["full_name"]), "life_path": json.loads(w["numbers"])["life_path"],
-                     "url": f"{BASE_URL}/leads/{w['id']}"} for w in waiting]
             subject, text, html, headers = practitioner_nudge_email(practitioner, rows)
             enqueue(connection, "practitioner_nudge", practitioner["email"], subject, text, html, headers,
                     user_id=practitioner["id"])

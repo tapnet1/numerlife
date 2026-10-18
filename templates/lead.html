@@ -64,13 +64,31 @@
       </details>
     </section>
 
-    <section class="panel">
+    <section class="panel" id="birth">
       <h2>Birth details</h2>
       <dl class="facts">
         <dt>Full birth name</dt><dd>{{ lead.full_name }}</dd>
         <dt>Date of birth</dt><dd>{{ lead.birth_date }}</dd>
         <dt>Place of birth</dt><dd>{{ lead | birth_place }}</dd>
       </dl>
+      <details class="mt">
+        <summary class="btn-secondary">Correct birth details</summary>
+        <p class="muted small">If they mixed up the boxes (a year in the name, a country under State / province), fix it here. The numbers are recalculated and their report, emails and calendar use the corrected details.</p>
+        <form method="post" action="{{ url_for('update_lead_birth', lead_id=lead.id) }}" class="stack">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <label for="b-name">Full birth name</label>
+          <input id="b-name" name="full_name" type="text" required maxlength="100" value="{{ lead.full_name }}">
+          <label for="b-date">Date of birth</label>
+          <input id="b-date" name="birth_date" type="date" required min="1900-01-01" value="{{ lead.birth_date }}">
+          <label for="b-city">City of birth</label>
+          <input id="b-city" name="birth_city" type="text" required maxlength="80" value="{{ lead.birth_city }}">
+          <label for="b-region">State / province (if any)</label>
+          <input id="b-region" name="birth_region" type="text" maxlength="80" value="{{ lead.birth_region or '' }}">
+          <label for="b-country">Country of birth</label>
+          <input id="b-country" name="birth_country" type="text" required maxlength="80" value="{{ lead.birth_country }}">
+          <button type="submit">Save and recalculate</button>
+        </form>
+      </details>
     </section>
 
     <section class="panel">

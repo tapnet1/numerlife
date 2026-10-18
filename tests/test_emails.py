@@ -242,6 +242,9 @@ class ReviewFollowupTest(EmailTestCase):
         self.unlocked_lead()
         failing = FakeSMTP(fail=OSError("down"))
         self.assertEqual(emails.send_pending(smtp_factory=failing)["failed"], 2)
+        retry_from = dt.datetime.fromisoformat(self.outbox()[0]["claimed_at"])  # first failure: wait 2 minutes
+        expected = numer.now_utc() + dt.timedelta(minutes=2) - dt.timedelta(minutes=5)
+        self.assertLess(abs((retry_from - expected).total_seconds()), 30)
         self.assertEqual(emails.send_pending(smtp_factory=self.smtp)["sent"], 0)  # waiting out the back-off
         for attempt in range(8):  # many failures: rows are never abandoned before expiry
             with numer.open_db() as connection:

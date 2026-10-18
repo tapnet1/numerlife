@@ -126,6 +126,48 @@ def _overview_sent(connection, cal_id: int, key: str) -> bool:
     return bool(row and row["emailed_at"])
 
 
+def rebuild_published(connection, lead, subject: str):
+    """Re-render a queued "month published" notice with the lead's current details (after a
+    birth-details correction). The month is the published one named in the old subject (in any
+    calendar language), or the only published month. None when that can't be told."""
+    cal = connection.execute("SELECT * FROM calendars WHERE lead_id = ?", (lead["id"],)).fetchone()
+    if cal is None:
+        return None
+    months = [r["month"] for r in connection.execute(
+        "SELECT month FROM calendar_months WHERE calendar_id = ? AND published_at IS NOT NULL"
+        " ORDER BY published_at DESC", (cal["id"],))]
+    if not months:
+        return None
+    def named(key: str) -> bool:  # the subject may be in an earlier calendar language
+        year, month = engine.parse_month(key)
+        return any(f"{names[month - 1]} {year}" in subject for names in content.MONTH_NAMES.values())
+
+    matches = [m for m in months if named(m)]
+    if len(matches) != 1 and len(months) != 1:
+        return None  # can't tell which month it announced: cancel rather than announce the wrong one
+    year, month = engine.parse_month(matches[0] if len(matches) == 1 else months[0])
+    return _build(cal, lead, year, month, "published")
+
+
+def allow_resend(connection, lead_id: int, kind: str, queued_at: str) -> None:
+    """A queued calendar email for this lead was cancelled (birth details corrected): clear the
+    markers that stop the next hourly run from building it again."""
+    cal_ids = [r["id"] for r in connection.execute("SELECT id FROM calendars WHERE lead_id = ?", (lead_id,))]
+    if not cal_ids:
+        return
+    marks = ",".join("?" * len(cal_ids))
+    if kind == "calendar_daily":
+        connection.execute(f"UPDATE calendars SET last_emailed = NULL WHERE email_freq = 'daily' AND id IN ({marks})",
+                           cal_ids)
+        return
+    key = dt.datetime.fromisoformat(queued_at).astimezone(ZoneInfo(engine.DEFAULT_TZ)).strftime("%Y-%m")
+    connection.execute(f"UPDATE calendar_months SET emailed_at = NULL WHERE month = ? AND calendar_id IN ({marks})",
+                       [key, *cal_ids])
+    # A welcome is queued as calendar_monthly for daily subscribers too (marker holds a day), so clear
+    # the marker whatever the frequency: the next run sends today's daily or this month's overview.
+    connection.execute(f"UPDATE calendars SET last_emailed = NULL WHERE id IN ({marks})", cal_ids)
+
+
 def _mark_overview(connection, cal_id: int, key: str) -> None:
     """Record that this month's overview (welcome, monthly or publish notice) has gone to the client."""
     connection.execute("INSERT INTO calendar_months (calendar_id, month, emailed_at) VALUES (?, ?, ?)"
