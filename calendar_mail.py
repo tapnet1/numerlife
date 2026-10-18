@@ -159,8 +159,9 @@ def allow_resend(connection, lead_id: int, kind: str, queued_at: str) -> None:
     key = dt.datetime.fromisoformat(queued_at).astimezone(ZoneInfo(engine.DEFAULT_TZ)).strftime("%Y-%m")
     connection.execute(f"UPDATE calendar_months SET emailed_at = NULL WHERE month = ? AND calendar_id IN ({marks})",
                        [key, *cal_ids])
-    connection.execute(f"UPDATE calendars SET last_emailed = NULL WHERE email_freq = 'monthly' AND id IN ({marks})",
-                       cal_ids)
+    # A welcome is queued as calendar_monthly for daily subscribers too (marker holds a day), so clear
+    # the marker whatever the frequency: the next run sends today's daily or this month's overview.
+    connection.execute(f"UPDATE calendars SET last_emailed = NULL WHERE id IN ({marks})", cal_ids)
 
 
 def _mark_overview(connection, cal_id: int, key: str) -> None:
