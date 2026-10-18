@@ -294,8 +294,9 @@ def queue_unlock_emails(lead_id: int) -> None:
 def rebuild_pending_for_lead(connection, lead_id: int) -> None:
     """After a lead's birth details are corrected, refresh their not-yet-sent emails, which hold
     rendered snapshots: report, lead alerts and nudges are re-rendered in place; follow-up series
-    emails are stepped back and rebuilt by the next run; calendar emails are cancelled and their
-    markers cleared, so the next hourly run sends fresh ones the same day. Rows a sender has claimed in the last minutes are left
+    emails are stepped back and rebuilt by the next run; a "month published" notice is re-rendered;
+    daily and monthly calendar emails are cancelled and their markers cleared, so the next hourly run
+    sends fresh ones the same day. Rows a sender has claimed in the last minutes are left
     alone because they are being delivered right now."""
     import lead_series  # loaded after this module
     lead_series.requeue_pending(connection, "leads.id = ?", (lead_id,), reason="birth details corrected")
@@ -319,6 +320,9 @@ def rebuild_pending_for_lead(connection, lead_id: int) -> None:
                 built = (*lead_alert_email(lead, recipient), json.loads(row["headers"] or "{}"))
         elif row["kind"] == "client_nudge" and practitioner is not None:
             built = client_nudge_email(lead, practitioner)
+        elif row["kind"] == "calendar_published":
+            import calendar_mail  # loaded after this module
+            built = calendar_mail.rebuild_published(connection, lead, row["subject"])
         guard = " AND sent_at IS NULL AND (claimed_at IS NULL OR claimed_at < ?)"
         if built is None:
             cancelled = connection.execute(

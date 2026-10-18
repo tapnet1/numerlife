@@ -126,6 +126,25 @@ def _overview_sent(connection, cal_id: int, key: str) -> bool:
     return bool(row and row["emailed_at"])
 
 
+def rebuild_published(connection, lead, subject: str):
+    """Re-render a queued "month published" notice with the lead's current details (after a
+    birth-details correction). The month is the published one named in the old subject, else the
+    latest published month. None when there is no published month any more."""
+    cal = connection.execute("SELECT * FROM calendars WHERE lead_id = ?", (lead["id"],)).fetchone()
+    if cal is None:
+        return None
+    months = [r["month"] for r in connection.execute(
+        "SELECT month FROM calendar_months WHERE calendar_id = ? AND published_at IS NOT NULL"
+        " ORDER BY published_at DESC", (cal["id"],))]
+    if not months:
+        return None
+    names = content.MONTH_NAMES.get(cal["lang"], content.MONTH_NAMES["en"])
+    key = next((m for m in months
+                if f"{names[engine.parse_month(m)[1] - 1]} {engine.parse_month(m)[0]}" in subject), months[0])
+    year, month = engine.parse_month(key)
+    return _build(cal, lead, year, month, "published")
+
+
 def allow_resend(connection, lead_id: int, kind: str, queued_at: str) -> None:
     """A queued calendar email for this lead was cancelled (birth details corrected): clear the
     markers that stop the next hourly run from building it again."""

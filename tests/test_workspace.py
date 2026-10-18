@@ -224,6 +224,24 @@ class BirthCorrectionTest(WorkspaceTestCase):
             marker = connection.execute("SELECT last_emailed FROM calendars WHERE id = ?", (cal,)).fetchone()[0]
         self.assertIsNone(marker)
 
+    def test_queued_publish_notice_is_rerendered_not_lost(self):
+        import calendar_mail
+        now = numer.iso(numer.now_utc())
+        with numer.open_db() as connection:
+            cal = connection.execute(
+                "INSERT INTO calendars (lead_id, practitioner_id, kind, token, created_at)"
+                " VALUES (?, ?, 'magialogia', 'tok-mag', ?)", (self.mine, self.practitioner_id, now)).lastrowid
+            connection.execute("INSERT INTO calendar_months (calendar_id, month, published_at) VALUES (?, '2026-10', ?)",
+                               (cal, now))
+        self.assertTrue(calendar_mail.queue_published(cal, "2026-10"))
+        self.login("liliana@example.com")
+        self.correct(self.mine)
+        with numer.open_db() as connection:
+            row = connection.execute("SELECT * FROM email_outbox WHERE kind = 'calendar_published'").fetchone()
+        self.assertIsNone(row["sent_at"])
+        self.assertIn("Violetta", row["body_text"])
+        self.assertIn("October 2026", row["body_text"])
+
     def test_series_email_being_sent_is_not_rewound(self):
         now = numer.iso(numer.now_utc())
         with numer.open_db() as connection:
