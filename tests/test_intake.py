@@ -122,6 +122,10 @@ class FormTest(IntakeTestCase):
                                      birth_country="United States").status_code, 302)
         self.assertEqual(self.submit(birth_city="Cardiff", birth_region="Wales",
                                      birth_country="United Kingdom").status_code, 302)
+        self.assertEqual(self.submit(birth_city="Thessaloniki", birth_region="Macedonia",
+                                     birth_country="Greece").status_code, 302)
+        for region in ("Luxembourg", "Niger", "Holland", "Bosnia", "Trinidad"):
+            self.assertFalse(intake.looks_like_country(region), region)
 
     def test_form_asks_for_country_of_birth_without_autofill(self):
         html = self.client.get("/").get_data(as_text=True)
