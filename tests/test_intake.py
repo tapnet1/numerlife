@@ -70,12 +70,43 @@ class FormTest(IntakeTestCase):
         self.assertEqual(page.headers["Cache-Control"], "no-store")
 
     def test_validation_errors(self):
-        response = self.submit(full_name="123", birth_date="2999-01-01", birth_city="", birth_country="")
+        response = self.submit(full_name="", birth_date="2999-01-01", birth_city="", birth_country="")
         self.assertEqual(response.status_code, 400)
         html = response.get_data(as_text=True)
         for message in ("full birth name", "valid date of birth", "city you were born", "country you were born"):
             self.assertIn(message, html)
         self.assertEqual(self.leads(), [])
+
+    def test_year_in_the_name_is_rejected(self):
+        response = self.submit(full_name="Violetta Maria Stokowska 1965")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("without numbers", response.get_data(as_text=True))
+        self.assertEqual(self.leads(), [])
+
+    def test_recent_birth_date_needs_confirmation(self):
+        yesterday = (dt.date.today() - dt.timedelta(days=1)).isoformat()
+        response = self.submit(birth_date=yesterday)
+        self.assertEqual(response.status_code, 400)
+        html = response.get_data(as_text=True)
+        self.assertIn("less than a year ago", html)
+        self.assertIn('name="recent_ok"', html)
+        self.assertEqual(self.leads(), [])
+        self.assertEqual(self.submit(birth_date=yesterday, recent_ok="yes").status_code, 302)  # a baby's report
+        self.assertEqual(self.leads()[0]["birth_date"], yesterday)
+
+    def test_country_typed_under_state_province_is_caught(self):
+        response = self.submit(birth_city="Warszawa", birth_region="Poland", birth_country="Canada")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("looks like a country", response.get_data(as_text=True))
+        self.assertEqual(self.leads(), [])
+        self.assertEqual(self.submit(birth_city="Warszawa", birth_region="", birth_country="Poland").status_code, 302)
+
+    def test_form_asks_for_country_of_birth_without_autofill(self):
+        html = self.client.get("/").get_data(as_text=True)
+        self.assertIn("Country of birth", html)
+        self.assertIn("not where you live now", html)
+        self.assertNotIn('autocomplete="country-name"', html)
+        self.assertIn(f'max="{dt.date.today().isoformat()}"', html)
 
     def test_rejected_submission_is_not_cached(self):
         response = self.submit(birth_country="")

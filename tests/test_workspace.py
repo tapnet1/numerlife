@@ -168,5 +168,47 @@ class LeadColumnsMigrationTest(unittest.TestCase):
         self.assertTrue({"stage", "notes", "viewed_at", "updated_at"} <= columns)
 
 
+
+class BirthCorrectionTest(WorkspaceTestCase):
+    def correct(self, lead_id, **fields):
+        data = {"full_name": "Violetta Maria Stokowska", "birth_date": "1965-03-14", "birth_city": "Warszawa",
+                "birth_region": "", "birth_country": "Poland"}
+        data.update(fields)
+        data["csrf_token"] = self.csrf(f"/leads/{lead_id}") if lead_id != self.theirs else self.csrf("/leads")
+        return self.client.post(f"/leads/{lead_id}/birth", data=data)
+
+    def test_practitioner_corrects_birth_details_and_numbers_are_recalculated(self):
+        self.login("liliana@example.com")
+        response = self.correct(self.mine)
+        self.assertEqual(response.status_code, 302)
+        with numer.open_db() as connection:
+            lead = connection.execute("SELECT * FROM leads WHERE id = ?", (self.mine,)).fetchone()
+        self.assertEqual((lead["full_name"], lead["birth_date"], lead["birth_region"], lead["birth_country"]),
+                         ("Violetta Maria Stokowska", "1965-03-14", "", "Poland"))
+        expected = numer_numbers("Violetta Maria Stokowska", "1965-03-14")
+        self.assertEqual(json.loads(lead["numbers"]), expected)
+        self.assertIn("Correct birth details", self.client.get(f"/leads/{self.mine}").get_data(as_text=True))
+
+    def test_invalid_correction_is_not_saved(self):
+        self.login("liliana@example.com")
+        self.correct(self.mine, full_name="Ana Lopez 1990")
+        with numer.open_db() as connection:
+            lead = connection.execute("SELECT full_name, birth_date FROM leads WHERE id = ?", (self.mine,)).fetchone()
+        self.assertEqual((lead["full_name"], lead["birth_date"]), ("Ana Lopez", "1990-07-15"))
+
+    def test_cannot_correct_another_practitioners_lead(self):
+        self.login("liliana@example.com")
+        self.assertEqual(self.correct(self.theirs).status_code, 404)
+        with numer.open_db() as connection:
+            name = connection.execute("SELECT full_name FROM leads WHERE id = ?", (self.theirs,)).fetchone()[0]
+        self.assertEqual(name, "Carla Ruiz")
+
+
+def numer_numbers(name, born):
+    import datetime as dt
+    import numerology
+    return numerology.core_numbers(name, dt.date.fromisoformat(born)).as_dict()
+
+
 if __name__ == "__main__":
     unittest.main()

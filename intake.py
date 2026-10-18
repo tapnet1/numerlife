@@ -51,6 +51,23 @@ EMAIL_RE = re.compile(r"^[^@\s]{1,64}@[^@\s]+\.[A-Za-z]{2,}$")
 PHONE_RE = re.compile(r"^\+?[0-9 ().-]{7,25}$")
 MAX_NAME = 100
 MAX_PLACE = 80
+RECENT_BIRTH_DAYS = 366  # dates this recent are usually a forgotten date picker, so we ask to confirm
+
+# Country names people sometimes type into "State / province" (e.g. "Warszawa, Poland" with Country
+# left as Canada). Lower-case, accents kept as typed by most visitors; checked case-insensitively.
+COUNTRY_NAMES = frozenset("""
+    afghanistan albania algeria argentina armenia australia austria bangladesh belarus belgium bolivia
+    bosnia brazil bulgaria cameroon canada chile china colombia congo croatia cuba cyprus czechia
+    denmark ecuador egypt england eritrea estonia ethiopia finland france georgia germany ghana greece
+    guatemala haiti honduras hungary iceland india indonesia iran iraq ireland israel italy jamaica japan
+    jordan kazakhstan kenya korea latvia lebanon libya lithuania mexico moldova morocco nepal netherlands
+    nicaragua nigeria norway pakistan palestine panama paraguay peru philippines poland polska portugal
+    romania russia rwanda scotland senegal serbia slovakia slovenia somalia spain sudan sweden
+    switzerland syria taiwan tanzania thailand trinidad tunisia turkey uganda ukraine uruguay usa
+    venezuela vietnam wales yemen zimbabwe españa méxico perú brasil deutschland italia
+    """.split()) | {"el salvador", "costa rica", "dominican republic", "republica dominicana",
+                     "united states", "united kingdom", "south africa", "south korea", "sri lanka",
+                     "new zealand", "hong kong", "puerto rico", "saudi arabia", "united arab emirates"}
 
 
 # --------------------------------------------------------------------------
@@ -136,29 +153,47 @@ def clean(value: str | None, limit: int) -> str:
     return " ".join((value or "").split())[:limit]
 
 
-def parse_birth_form(form) -> tuple[dict, list[str]]:
+def looks_like_country(value: str) -> bool:
+    return value.strip().strip(".").lower() in COUNTRY_NAMES
+
+
+def parse_birth_form(form, today: dt.date | None = None) -> tuple[dict, list[str]]:
+    """Validate the public birth form. data["confirm_recent"] asks the page to show the
+    "yes, this date is right" box when the birth date is within the last year."""
+    today = today or dt.date.today()
     data = {
         "full_name": clean(form.get("full_name"), MAX_NAME),
         "birth_date": (form.get("birth_date") or "").strip(),
         "birth_city": clean(form.get("birth_city"), MAX_PLACE),
         "birth_region": clean(form.get("birth_region"), MAX_PLACE),
         "birth_country": clean(form.get("birth_country"), MAX_PLACE),
+        "confirm_recent": False,
     }
     errors = []
-    if numerology.unsupported_letters(data["full_name"]):
+    if any(ch.isdigit() for ch in data["full_name"]):
+        errors.append("Please enter your name only, without numbers. Your date of birth goes in its own box.")
+    elif numerology.unsupported_letters(data["full_name"]):
         errors.append("Please write your name in Latin letters (A-Z, accents are fine).")
     elif not numerology.letters_of(data["full_name"]):
         errors.append("Enter your full birth name.")
     try:
         born = dt.date.fromisoformat(data["birth_date"])
-        if not dt.date(1900, 1, 1) <= born <= dt.date.today():
-            raise ValueError
     except ValueError:
-        errors.append("Enter a valid date of birth.")
+        born = None
+    if born is None or not dt.date(1900, 1, 1) <= born <= today:
+        errors.append("Enter a valid date of birth (day, month and year).")
+    elif (today - born).days < RECENT_BIRTH_DAYS and form.get("recent_ok") != "yes":
+        data["confirm_recent"] = True
+        errors.append(f"Please check your date of birth: {born.isoformat()} is less than a year ago. "
+                      "If it is right (for example, a baby's report), tick the box below the date.")
     if not data["birth_city"]:
         errors.append("Enter the city you were born in.")
     if not data["birth_country"]:
         errors.append("Enter the country you were born in.")
+    elif (data["birth_region"] and looks_like_country(data["birth_region"])
+          and data["birth_region"].lower() != data["birth_country"].lower()):
+        errors.append(f"\"{data['birth_region']}\" looks like a country. Please put the country you were born "
+                      "in under Country of birth, and leave State / province empty if there isn't one.")
     return data, errors
 
 
@@ -171,6 +206,7 @@ def share_url_for(practitioner) -> str:
 def render_form(practitioner, data=None, errors=None, status=200):
     return render_template("home.html", practitioner=practitioner, form=data or {},
                            errors=errors or [], share_url=share_url_for(practitioner),
+                           today_iso=dt.date.today().isoformat(),
                            **content.home_context()), status
 
 
