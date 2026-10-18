@@ -101,6 +101,12 @@ class FormTest(IntakeTestCase):
         self.assertEqual(self.leads(), [])
         self.assertEqual(self.submit(birth_city="Warszawa", birth_region="", birth_country="Poland").status_code, 302)
 
+    def test_regions_that_share_a_country_name_are_accepted(self):
+        self.assertEqual(self.submit(birth_city="Atlanta", birth_region="Georgia",
+                                     birth_country="United States").status_code, 302)
+        self.assertEqual(self.submit(birth_city="Cardiff", birth_region="Wales",
+                                     birth_country="United Kingdom").status_code, 302)
+
     def test_form_asks_for_country_of_birth_without_autofill(self):
         html = self.client.get("/").get_data(as_text=True)
         self.assertIn("Country of birth", html)

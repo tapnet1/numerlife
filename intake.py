@@ -54,20 +54,21 @@ MAX_PLACE = 80
 RECENT_BIRTH_DAYS = 366  # dates this recent are usually a forgotten date picker, so we ask to confirm
 
 # Country names people sometimes type into "State / province" (e.g. "Warszawa, Poland" with Country
-# left as Canada). Lower-case, accents kept as typed by most visitors; checked case-insensitively.
+# left as Canada). Lower-case, checked case-insensitively. Names that are also states or regions
+# (Georgia, England, Scotland, Wales, Puerto Rico, Hong Kong, Taiwan) are deliberately left out.
 COUNTRY_NAMES = frozenset("""
     afghanistan albania algeria argentina armenia australia austria bangladesh belarus belgium bolivia
     bosnia brazil bulgaria cameroon canada chile china colombia congo croatia cuba cyprus czechia
-    denmark ecuador egypt england eritrea estonia ethiopia finland france georgia germany ghana greece
+    denmark ecuador egypt eritrea estonia ethiopia finland france germany ghana greece
     guatemala haiti honduras hungary iceland india indonesia iran iraq ireland israel italy jamaica japan
     jordan kazakhstan kenya korea latvia lebanon libya lithuania mexico moldova morocco nepal netherlands
     nicaragua nigeria norway pakistan palestine panama paraguay peru philippines poland polska portugal
-    romania russia rwanda scotland senegal serbia slovakia slovenia somalia spain sudan sweden
-    switzerland syria taiwan tanzania thailand trinidad tunisia turkey uganda ukraine uruguay usa
-    venezuela vietnam wales yemen zimbabwe españa méxico perú brasil deutschland italia
+    romania russia rwanda senegal serbia slovakia slovenia somalia spain sudan sweden
+    switzerland syria tanzania thailand trinidad tunisia turkey uganda ukraine uruguay usa
+    venezuela vietnam yemen zimbabwe españa méxico perú brasil deutschland italia
     """.split()) | {"el salvador", "costa rica", "dominican republic", "republica dominicana",
                      "united states", "united kingdom", "south africa", "south korea", "sri lanka",
-                     "new zealand", "hong kong", "puerto rico", "saudi arabia", "united arab emirates"}
+                     "new zealand", "saudi arabia", "united arab emirates"}
 
 
 # --------------------------------------------------------------------------
@@ -157,7 +158,7 @@ def looks_like_country(value: str) -> bool:
     return value.strip().strip(".").lower() in COUNTRY_NAMES
 
 
-def parse_birth_form(form, today: dt.date | None = None) -> tuple[dict, list[str]]:
+def parse_birth_form(form, today: dt.date | None = None, check_region: bool = True) -> tuple[dict, list[str]]:
     """Validate the public birth form. data["confirm_recent"] asks the page to show the
     "yes, this date is right" box when the birth date is within the last year."""
     today = today or dt.date.today()
@@ -190,7 +191,7 @@ def parse_birth_form(form, today: dt.date | None = None) -> tuple[dict, list[str
         errors.append("Enter the city you were born in.")
     if not data["birth_country"]:
         errors.append("Enter the country you were born in.")
-    elif (data["birth_region"] and looks_like_country(data["birth_region"])
+    elif (check_region and data["birth_region"] and looks_like_country(data["birth_region"])
           and data["birth_region"].lower() != data["birth_country"].lower()):
         errors.append(f"\"{data['birth_region']}\" looks like a country. Please put the country you were born "
                       "in under Country of birth, and leave State / province empty if there isn't one.")

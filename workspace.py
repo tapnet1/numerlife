@@ -214,7 +214,7 @@ def update_lead_birth(lead_id):
     form = {key: request.form.get(key, "") for key in
             ("full_name", "birth_date", "birth_city", "birth_region", "birth_country")}
     form["recent_ok"] = "yes"  # the practitioner is entering it deliberately
-    data, errors = intake.parse_birth_form(form)
+    data, errors = intake.parse_birth_form(form, check_region=False)  # they know e.g. Georgia, USA
     if errors:
         for error in errors:
             flash(error, "error")
@@ -227,6 +227,8 @@ def update_lead_birth(lead_id):
         (data["full_name"], data["birth_date"], data["birth_city"], data["birth_region"], data["birth_country"],
          json.dumps(numbers.as_dict()), iso(now_utc()), lead["id"]),
     )
+    import emails  # loaded after this module
+    emails.rebuild_pending_for_lead(connection, lead["id"])
     connection.commit()
     flash("Birth details corrected and numbers recalculated.", "info")
     return redirect(url_for("lead_detail", lead_id=lead["id"]) + "#birth")

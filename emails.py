@@ -291,6 +291,44 @@ def queue_unlock_emails(lead_id: int) -> None:
     kick()
 
 
+def rebuild_pending_for_lead(connection, lead_id: int) -> None:
+    """After a lead's birth details are corrected, refresh their not-yet-sent emails, which hold
+    rendered snapshots: report, lead alerts and nudges are re-rendered in place; follow-up series
+    emails are stepped back and rebuilt by the next run; calendar emails are cancelled (the next
+    daily or monthly run sends fresh ones). Rows a sender has claimed in the last minutes are left
+    alone because they are being delivered right now."""
+    import lead_series  # loaded after this module
+    lead_series.requeue_pending(connection, "leads.id = ?", (lead_id,))
+    lead = connection.execute("SELECT * FROM leads WHERE id = ?", (lead_id,)).fetchone()
+    if lead is None:
+        return
+    stale = iso(now_utc() - dt.timedelta(minutes=5))
+    rows = connection.execute("SELECT * FROM email_outbox WHERE lead_id = ? AND sent_at IS NULL"
+                              " AND (claimed_at IS NULL OR claimed_at < ?)", (lead_id, stale)).fetchall()
+    practitioner = None
+    if lead["practitioner_id"]:
+        practitioner = connection.execute("SELECT * FROM users WHERE id = ?", (lead["practitioner_id"],)).fetchone()
+    active = practitioner if practitioner is not None and practitioner["is_active"] else None
+    for row in rows:
+        built = None
+        if row["kind"] == "report":
+            built = (*report_email(lead, active), json.loads(row["headers"] or "{}"))
+        elif row["kind"] == "lead_alert" and row["user_id"]:
+            recipient = connection.execute("SELECT * FROM users WHERE id = ?", (row["user_id"],)).fetchone()
+            if recipient is not None:
+                built = (*lead_alert_email(lead, recipient), json.loads(row["headers"] or "{}"))
+        elif row["kind"] == "client_nudge" and practitioner is not None:
+            built = client_nudge_email(lead, practitioner)
+        guard = " AND sent_at IS NULL AND (claimed_at IS NULL OR claimed_at < ?)"
+        if built is None:
+            connection.execute("UPDATE email_outbox SET sent_at = ?, last_error = 'cancelled: birth details corrected'"
+                               " WHERE id = ?" + guard, (iso(now_utc()), row["id"], stale))
+        else:
+            subject, text, html, headers = built
+            connection.execute("UPDATE email_outbox SET subject = ?, body_text = ?, body_html = ?, headers = ?"
+                               " WHERE id = ?" + guard, (subject, text, html, json.dumps(headers), row["id"], stale))
+
+
 def _still_wanted(connection, row) -> bool:
     """Re-check consent right before delivery, so an opt-out during a send run still wins."""
     current = connection.execute("SELECT sent_at FROM email_outbox WHERE id = ?", (row["id"],)).fetchone()

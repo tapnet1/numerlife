@@ -189,6 +189,32 @@ class BirthCorrectionTest(WorkspaceTestCase):
         self.assertEqual(json.loads(lead["numbers"]), expected)
         self.assertIn("Correct birth details", self.client.get(f"/leads/{self.mine}").get_data(as_text=True))
 
+    def test_pending_emails_are_rebuilt_with_the_corrected_details(self):
+        import emails
+        emails.queue_unlock_emails(self.mine)
+        with numer.open_db() as connection:
+            connection.execute("INSERT INTO email_outbox (kind, to_addr, subject, body_text, body_html, lead_id,"
+                               " created_at) VALUES ('calendar_daily', 'ana@example.com', 'old', 'old', 'old', ?, ?)",
+                               (self.mine, numer.iso(numer.now_utc())))
+        self.login("liliana@example.com")
+        self.correct(self.mine)
+        with numer.open_db() as connection:
+            rows = connection.execute("SELECT kind, subject, body_text, sent_at, last_error FROM email_outbox"
+                                      " WHERE lead_id = ?", (self.mine,)).fetchall()
+        report = next(r for r in rows if r["kind"] == "report")
+        self.assertIsNone(report["sent_at"])
+        self.assertIn("Violetta", report["subject"])
+        self.assertNotIn("Ana", report["body_text"])
+        calendar = next(r for r in rows if r["kind"] == "calendar_daily")
+        self.assertEqual(calendar["last_error"], "cancelled: birth details corrected")
+
+    def test_practitioner_can_save_a_us_state_that_is_also_a_country(self):
+        self.login("liliana@example.com")
+        self.correct(self.mine, birth_city="Atlanta", birth_region="Georgia", birth_country="United States")
+        with numer.open_db() as connection:
+            region = connection.execute("SELECT birth_region FROM leads WHERE id = ?", (self.mine,)).fetchone()[0]
+        self.assertEqual(region, "Georgia")
+
     def test_invalid_correction_is_not_saved(self):
         self.login("liliana@example.com")
         self.correct(self.mine, full_name="Ana Lopez 1990")
