@@ -351,6 +351,8 @@ def rebuild_pending_for_lead(connection, lead_id: int) -> None:
             subject, text, html, headers = built
             connection.execute("UPDATE email_outbox SET subject = ?, body_text = ?, body_html = ?, headers = ?"
                                " WHERE id = ?" + guard, (subject, text, html, json.dumps(headers), row["id"], stale))
+    import notify  # loaded before this module
+    notify.refresh_pending_for_lead(connection, lead)
 
 
 def _still_wanted(connection, row) -> bool:
@@ -415,6 +417,10 @@ def send_pending(limit: int = 50, ids: list[int] | None = None, smtp_factory=Non
             connection.commit()
             if not claimed:
                 continue
+            # Re-read after claiming: the row may have been rebuilt (e.g. a birth-details correction)
+            # between the SELECT above and our claim, and the claim now stops further rewrites.
+            row = connection.execute("SELECT * FROM email_outbox WHERE id = ?", (row["id"],)).fetchone()
+            connection.commit()
             if not _still_wanted(connection, row):
                 connection.execute("UPDATE email_outbox SET sent_at = ?, last_error = 'cancelled: unsubscribed'"
                                    " WHERE id = ? AND sent_at IS NULL", (iso(now_utc()), row["id"]))

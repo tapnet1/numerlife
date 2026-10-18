@@ -146,11 +146,33 @@ def queue_new_lead(lead_id: int) -> None:
         else:
             recipients = [r[0] for r in connection.execute(
                 "SELECT id FROM users WHERE role = 'admin' AND is_active = 1")]
+    queue(recipients, new_lead_payload(lead))
+
+
+def new_lead_payload(lead) -> dict:
     first_name = (lead["full_name"].split() or ["Someone"])[0]
     life_path = json.loads(lead["numbers"]).get("life_path")
-    queue(recipients, {"title": f"New lead: {first_name}",
-                       "body": f"Life Path {life_path} · unlocked their full report. Tap to see their numbers.",
-                       "url": f"/leads/{lead['id']}", "tag": f"lead-{lead['id']}"})
+    return {"title": f"New lead: {first_name}",
+            "body": f"Life Path {life_path} · unlocked their full report. Tap to see their numbers.",
+            "url": f"/leads/{lead['id']}", "tag": f"lead-{lead['id']}"}
+
+
+def refresh_pending_for_lead(connection, lead) -> None:
+    """After a lead's birth details are corrected, rewrite their not-yet-delivered new-lead alerts
+    (including ones waiting to retry). A row a sender is delivering right now is left alone."""
+    stale = iso(now_utc() - dt.timedelta(minutes=5))
+    payload = new_lead_payload(lead)
+    rows = connection.execute("SELECT id, payload FROM push_outbox WHERE sent_at IS NULL"
+                              " AND (claimed_at IS NULL OR claimed_at < ?)", (stale,)).fetchall()
+    for row in rows:
+        try:
+            old = json.loads(row["payload"])
+        except ValueError:
+            continue
+        if old.get("tag") != payload["tag"]:
+            continue
+        connection.execute("UPDATE push_outbox SET payload = ? WHERE id = ? AND sent_at IS NULL"
+                           " AND (claimed_at IS NULL OR claimed_at < ?)", (json.dumps({**old, **payload}), row["id"], stale))
 
 
 def send_pending(limit: int = 50, post=None) -> dict:
@@ -173,6 +195,8 @@ def send_pending(limit: int = 50, post=None) -> dict:
             connection.commit()
             if not claimed:
                 continue
+            row = connection.execute("SELECT id, user_id, payload FROM push_outbox WHERE id = ?",
+                                     (row["id"],)).fetchone()  # may have been refreshed before our claim
             subscriptions = connection.execute(
                 "SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = ?",
                 (row["user_id"],)).fetchall()

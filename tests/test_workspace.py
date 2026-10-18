@@ -310,6 +310,56 @@ class BirthCorrectionTest(WorkspaceTestCase):
         self.assertEqual(step, 1)
         self.assertEqual(row["last_error"], "cancelled: birth details corrected")
 
+    def test_pending_push_alert_shows_the_corrected_name(self):
+        import notify
+        notify.queue_new_lead(self.mine)
+        self.login("liliana@example.com")
+        self.correct(self.mine)
+        with numer.open_db() as connection:
+            payload = json.loads(connection.execute("SELECT payload FROM push_outbox WHERE user_id = ?",
+                                                    (self.practitioner_id,)).fetchone()[0])
+        self.assertEqual(payload["title"], "New lead: Violetta")
+        self.assertEqual(payload["tag"], f"lead-{self.mine}")
+
+    def test_sender_uses_the_rebuilt_email_not_its_earlier_snapshot(self):
+        from unittest import mock
+        import emails
+        emails.queue_unlock_emails(self.mine)
+        with numer.open_db() as connection:
+            report_id = connection.execute("SELECT id FROM email_outbox WHERE kind = 'report'").fetchone()[0]
+        sent = []
+
+        class FakeSMTP:
+            def send_message(self, message):
+                sent.append(message["Subject"])
+
+            def quit(self):
+                pass
+
+        real_connect = emails.connect
+
+        class RacingConnection:
+            """Lets a correction rewrite the row after the sender's SELECT, just before its claim."""
+            def __init__(self):
+                self.inner = real_connect()
+                self.raced = False
+
+            def execute(self, sql, *args):
+                if not self.raced and sql.startswith("UPDATE email_outbox SET claimed_at"):
+                    self.raced = True
+                    with numer.open_db() as other:
+                        other.execute("UPDATE email_outbox SET subject = 'Corrected subject' WHERE id = ?",
+                                      (report_id,))
+                return self.inner.execute(sql, *args)
+
+            def __getattr__(self, name):
+                return getattr(self.inner, name)
+
+        with mock.patch.object(emails, "connect", RacingConnection), \
+                mock.patch.object(emails.mailer, "configured", return_value=True):
+            emails.send_pending(smtp_factory=FakeSMTP, ids=[report_id])
+        self.assertEqual(sent, ["Corrected subject"])
+
     def test_practitioner_can_save_a_us_state_that_is_also_a_country(self):
         self.login("liliana@example.com")
         self.correct(self.mine, birth_city="Atlanta", birth_region="Georgia", birth_country="United States")
