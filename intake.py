@@ -51,7 +51,6 @@ EMAIL_RE = re.compile(r"^[^@\s]{1,64}@[^@\s]+\.[A-Za-z]{2,}$")
 PHONE_RE = re.compile(r"^\+?[0-9 ().-]{7,25}$")
 MAX_NAME = 100
 MAX_PLACE = 80
-RECENT_BIRTH_DAYS = 366  # dates this recent are usually a forgotten date picker, so we ask to confirm
 
 # Country names people sometimes type into "State / province" (e.g. "Warszawa, Poland" with Country
 # left as Canada). Lower-case, checked case-insensitively. Names that are also states or regions
@@ -154,6 +153,15 @@ def clean(value: str | None, limit: int) -> str:
     return " ".join((value or "").split())[:limit]
 
 
+def one_year_before(day: dt.date) -> dt.date:
+    """Same calendar day a year earlier (29 February -> 28 February). A birth date after it is less
+    than a year ago: usually a date picker left on today, so the form asks to confirm."""
+    try:
+        return day.replace(year=day.year - 1)
+    except ValueError:
+        return day.replace(year=day.year - 1, day=28)
+
+
 def looks_like_country(value: str) -> bool:
     return value.strip().strip(".").lower() in COUNTRY_NAMES
 
@@ -183,7 +191,7 @@ def parse_birth_form(form, today: dt.date | None = None, check_region: bool = Tr
         born = None
     if born is None or not dt.date(1900, 1, 1) <= born <= today:
         errors.append("Enter a valid date of birth (day, month and year).")
-    elif (today - born).days < RECENT_BIRTH_DAYS and form.get("recent_ok") != "yes":
+    elif born > one_year_before(today) and form.get("recent_ok") != "yes":
         data["confirm_recent"] = True
         errors.append(f"Please check your date of birth: {born.isoformat()} is less than a year ago. "
                       "If it is right (for example, a baby's report), tick the box below the date.")

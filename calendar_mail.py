@@ -128,8 +128,8 @@ def _overview_sent(connection, cal_id: int, key: str) -> bool:
 
 def rebuild_published(connection, lead, subject: str):
     """Re-render a queued "month published" notice with the lead's current details (after a
-    birth-details correction). The month is the published one named in the old subject, else the
-    latest published month. None when there is no published month any more."""
+    birth-details correction). The month is the published one named in the old subject (in any
+    calendar language), or the only published month. None when that can't be told."""
     cal = connection.execute("SELECT * FROM calendars WHERE lead_id = ?", (lead["id"],)).fetchone()
     if cal is None:
         return None
@@ -138,10 +138,14 @@ def rebuild_published(connection, lead, subject: str):
         " ORDER BY published_at DESC", (cal["id"],))]
     if not months:
         return None
-    names = content.MONTH_NAMES.get(cal["lang"], content.MONTH_NAMES["en"])
-    key = next((m for m in months
-                if f"{names[engine.parse_month(m)[1] - 1]} {engine.parse_month(m)[0]}" in subject), months[0])
-    year, month = engine.parse_month(key)
+    def named(key: str) -> bool:  # the subject may be in an earlier calendar language
+        year, month = engine.parse_month(key)
+        return any(f"{names[month - 1]} {year}" in subject for names in content.MONTH_NAMES.values())
+
+    matches = [m for m in months if named(m)]
+    if len(matches) != 1 and len(months) != 1:
+        return None  # can't tell which month it announced: cancel rather than announce the wrong one
+    year, month = engine.parse_month(matches[0] if len(matches) == 1 else months[0])
     return _build(cal, lead, year, month, "published")
 
 

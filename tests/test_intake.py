@@ -94,6 +94,13 @@ class FormTest(IntakeTestCase):
         self.assertEqual(self.submit(birth_date=yesterday, recent_ok="yes").status_code, 302)  # a baby's report
         self.assertEqual(self.leads()[0]["birth_date"], yesterday)
 
+    def test_one_year_ago_exactly_needs_no_confirmation(self):
+        data, errors = intake.parse_birth_form(form_data(birth_date="2025-10-18"), today=dt.date(2026, 10, 18))
+        self.assertEqual(errors, [])
+        data, errors = intake.parse_birth_form(form_data(birth_date="2025-10-19"), today=dt.date(2026, 10, 18))
+        self.assertTrue(data["confirm_recent"])
+        self.assertEqual(intake.one_year_before(dt.date(2028, 2, 29)), dt.date(2027, 2, 28))
+
     def test_country_typed_under_state_province_is_caught(self):
         response = self.submit(birth_city="Warszawa", birth_region="Poland", birth_country="Canada")
         self.assertEqual(response.status_code, 400)

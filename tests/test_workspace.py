@@ -279,6 +279,27 @@ class BirthCorrectionTest(WorkspaceTestCase):
         self.assertIn("Violetta", row["body_text"])
         self.assertIn("October 2026", row["body_text"])
 
+    def test_publish_notice_keeps_its_month_after_a_language_change(self):
+        import calendar_mail
+        now = numer.iso(numer.now_utc())
+        with numer.open_db() as connection:
+            cal = connection.execute(
+                "INSERT INTO calendars (lead_id, practitioner_id, kind, token, created_at, lang)"
+                " VALUES (?, ?, 'magialogia', 'tok-lang', ?, 'es')", (self.mine, self.practitioner_id, now)).lastrowid
+            for month in ("2026-09", "2026-10"):
+                connection.execute("INSERT INTO calendar_months (calendar_id, month, published_at) VALUES (?, ?, ?)",
+                                   (cal, month, now))
+        self.assertTrue(calendar_mail.queue_published(cal, "2026-09"))
+        with numer.open_db() as connection:
+            connection.execute("UPDATE calendars SET lang = 'en' WHERE id = ?", (cal,))
+        self.login("liliana@example.com")
+        self.correct(self.mine)
+        with numer.open_db() as connection:
+            row = connection.execute("SELECT body_text, sent_at FROM email_outbox WHERE kind = 'calendar_published'").fetchone()
+        self.assertIsNone(row["sent_at"])
+        self.assertIn("September 2026", row["body_text"])
+        self.assertNotIn("October 2026", row["body_text"])
+
     def test_series_email_being_sent_is_not_rewound(self):
         now = numer.iso(numer.now_utc())
         with numer.open_db() as connection:
