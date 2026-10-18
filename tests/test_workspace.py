@@ -240,6 +240,27 @@ class BirthCorrectionTest(WorkspaceTestCase):
             marker = connection.execute("SELECT last_emailed FROM calendars WHERE id = ?", (cal,)).fetchone()[0]
         self.assertIsNone(marker)
 
+    def test_queued_practitioner_digest_shows_the_corrected_name(self):
+        import datetime as dt
+        import emails
+        earlier = numer.iso(numer.now_utc() - dt.timedelta(days=3))
+        with numer.open_db() as connection:
+            connection.execute("UPDATE leads SET captured_at = ? WHERE id = ?", (earlier, self.mine))
+        emails.run_nudges(force=True)
+        with numer.open_db() as connection:
+            before = connection.execute("SELECT body_text FROM email_outbox WHERE kind = 'practitioner_nudge'"
+                                        " AND user_id = ?", (self.practitioner_id,)).fetchone()
+        self.assertIsNotNone(before)
+        self.assertIn("Ana", before["body_text"])
+        self.login("liliana@example.com")
+        self.correct(self.mine)
+        with numer.open_db() as connection:
+            after = connection.execute("SELECT body_text, sent_at FROM email_outbox WHERE kind = 'practitioner_nudge'"
+                                       " AND user_id = ?", (self.practitioner_id,)).fetchone()
+        self.assertIsNone(after["sent_at"])
+        self.assertIn("Violetta", after["body_text"])
+        self.assertNotIn("Ana", after["body_text"])
+
     def test_queued_publish_notice_is_rerendered_not_lost(self):
         import calendar_mail
         now = numer.iso(numer.now_utc())

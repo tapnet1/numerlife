@@ -293,7 +293,8 @@ def queue_unlock_emails(lead_id: int) -> None:
 
 def rebuild_pending_for_lead(connection, lead_id: int) -> None:
     """After a lead's birth details are corrected, refresh their not-yet-sent emails, which hold
-    rendered snapshots: report, lead alerts and nudges are re-rendered in place; follow-up series
+    rendered snapshots: report, lead alerts, nudges and the practitioner's nudge digest are
+    re-rendered in place; follow-up series
     emails are stepped back and rebuilt by the next run; a "month published" notice is re-rendered;
     daily and monthly calendar emails are cancelled and their markers cleared, so the next hourly run
     sends fresh ones the same day. Rows a sender has claimed in the last minutes are left
@@ -304,12 +305,16 @@ def rebuild_pending_for_lead(connection, lead_id: int) -> None:
     if lead is None:
         return
     stale = iso(now_utc() - dt.timedelta(minutes=5))
-    rows = connection.execute("SELECT * FROM email_outbox WHERE lead_id = ? AND sent_at IS NULL"
-                              " AND (claimed_at IS NULL OR claimed_at < ?)", (lead_id, stale)).fetchall()
+    rows = list(connection.execute("SELECT * FROM email_outbox WHERE lead_id = ? AND sent_at IS NULL"
+                                   " AND (claimed_at IS NULL OR claimed_at < ?)", (lead_id, stale)).fetchall())
     practitioner = None
     if lead["practitioner_id"]:
         practitioner = connection.execute("SELECT * FROM users WHERE id = ?", (lead["practitioner_id"],)).fetchone()
     active = practitioner if practitioner is not None and practitioner["is_active"] else None
+    if practitioner is not None:  # the practitioner's nudge digest lists this lead by name and Life Path
+        rows += connection.execute("SELECT * FROM email_outbox WHERE kind = 'practitioner_nudge' AND user_id = ?"
+                                   " AND sent_at IS NULL AND (claimed_at IS NULL OR claimed_at < ?)",
+                                   (practitioner["id"], stale)).fetchall()
     for row in rows:
         built = None
         if row["kind"] == "report":
@@ -320,6 +325,10 @@ def rebuild_pending_for_lead(connection, lead_id: int) -> None:
                 built = (*lead_alert_email(lead, recipient), json.loads(row["headers"] or "{}"))
         elif row["kind"] == "client_nudge" and practitioner is not None:
             built = client_nudge_email(lead, practitioner)
+        elif row["kind"] == "practitioner_nudge":
+            waiting = _waiting_leads(connection, practitioner["id"], dt.datetime.fromisoformat(row["created_at"]))
+            if waiting:
+                built = practitioner_nudge_email(practitioner, waiting)
         elif row["kind"] == "calendar_published":
             import calendar_mail  # loaded after this module
             built = calendar_mail.rebuild_published(connection, lead, row["subject"])
@@ -444,6 +453,17 @@ def send_pending(limit: int = 50, ids: list[int] | None = None, smtp_factory=Non
 # --------------------------------------------------------------------------
 # Nudges (cron: send-nudges)
 # --------------------------------------------------------------------------
+def _waiting_leads(connection, practitioner_id: int, now: dt.datetime) -> list[dict]:
+    """New, unlocked leads a practitioner hasn't followed up yet: the practitioner nudge digest."""
+    waiting = connection.execute(
+        "SELECT id, full_name, numbers, captured_at FROM leads WHERE practitioner_id = ?"
+        " AND status = 'captured' AND stage = 'new' AND captured_at < ? AND captured_at > ?"
+        " ORDER BY captured_at DESC LIMIT 20",
+        (practitioner_id, iso(now - LEAD_WAITING), iso(now - dt.timedelta(days=30)))).fetchall()
+    return [{"first_name": _first_name(w["full_name"]), "life_path": json.loads(w["numbers"])["life_path"],
+             "url": f"{BASE_URL}/leads/{w['id']}"} for w in waiting]
+
+
 def run_nudges(force: bool = False) -> dict:
     stats = {"practitioners": 0, "clients": 0}
     if not force and not nudges_enabled():
@@ -455,15 +475,9 @@ def run_nudges(force: bool = False) -> dict:
             "SELECT * FROM users WHERE role = 'practitioner' AND is_active = 1 AND email_nudges = 1"
             " AND (nudged_at IS NULL OR nudged_at < ?)", (iso(now - PRACTITIONER_NUDGE_EVERY),)).fetchall()
         for practitioner in practitioners:
-            waiting = connection.execute(
-                "SELECT id, full_name, numbers, captured_at FROM leads WHERE practitioner_id = ?"
-                " AND status = 'captured' AND stage = 'new' AND captured_at < ? AND captured_at > ?"
-                " ORDER BY captured_at DESC LIMIT 20",
-                (practitioner["id"], iso(now - LEAD_WAITING), iso(now - dt.timedelta(days=30)))).fetchall()
-            if not waiting:
+            rows = _waiting_leads(connection, practitioner["id"], now)
+            if not rows:
                 continue
-            rows = [{"first_name": _first_name(w["full_name"]), "life_path": json.loads(w["numbers"])["life_path"],
-                     "url": f"{BASE_URL}/leads/{w['id']}"} for w in waiting]
             subject, text, html, headers = practitioner_nudge_email(practitioner, rows)
             enqueue(connection, "practitioner_nudge", practitioner["email"], subject, text, html, headers,
                     user_id=practitioner["id"])
