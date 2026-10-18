@@ -294,11 +294,11 @@ def queue_unlock_emails(lead_id: int) -> None:
 def rebuild_pending_for_lead(connection, lead_id: int) -> None:
     """After a lead's birth details are corrected, refresh their not-yet-sent emails, which hold
     rendered snapshots: report, lead alerts and nudges are re-rendered in place; follow-up series
-    emails are stepped back and rebuilt by the next run; calendar emails are cancelled (the next
-    daily or monthly run sends fresh ones). Rows a sender has claimed in the last minutes are left
+    emails are stepped back and rebuilt by the next run; calendar emails are cancelled and their
+    markers cleared, so the next hourly run sends fresh ones the same day. Rows a sender has claimed in the last minutes are left
     alone because they are being delivered right now."""
     import lead_series  # loaded after this module
-    lead_series.requeue_pending(connection, "leads.id = ?", (lead_id,))
+    lead_series.requeue_pending(connection, "leads.id = ?", (lead_id,), reason="birth details corrected")
     lead = connection.execute("SELECT * FROM leads WHERE id = ?", (lead_id,)).fetchone()
     if lead is None:
         return
@@ -321,8 +321,12 @@ def rebuild_pending_for_lead(connection, lead_id: int) -> None:
             built = client_nudge_email(lead, practitioner)
         guard = " AND sent_at IS NULL AND (claimed_at IS NULL OR claimed_at < ?)"
         if built is None:
-            connection.execute("UPDATE email_outbox SET sent_at = ?, last_error = 'cancelled: birth details corrected'"
-                               " WHERE id = ?" + guard, (iso(now_utc()), row["id"], stale))
+            cancelled = connection.execute(
+                "UPDATE email_outbox SET sent_at = ?, last_error = 'cancelled: birth details corrected'"
+                " WHERE id = ?" + guard, (iso(now_utc()), row["id"], stale)).rowcount
+            if cancelled and row["kind"].startswith("calendar_"):
+                import calendar_mail  # loaded after this module
+                calendar_mail.allow_resend(connection, lead_id, row["kind"], row["created_at"])
         else:
             subject, text, html, headers = built
             connection.execute("UPDATE email_outbox SET subject = ?, body_text = ?, body_html = ?, headers = ?"

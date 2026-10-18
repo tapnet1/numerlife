@@ -208,6 +208,37 @@ class BirthCorrectionTest(WorkspaceTestCase):
         calendar = next(r for r in rows if r["kind"] == "calendar_daily")
         self.assertEqual(calendar["last_error"], "cancelled: birth details corrected")
 
+    def test_cancelled_calendar_email_can_be_sent_again_today(self):
+        now = numer.iso(numer.now_utc())
+        with numer.open_db() as connection:
+            cal = connection.execute(
+                "INSERT INTO calendars (lead_id, practitioner_id, kind, token, created_at, email_freq, last_emailed)"
+                " VALUES (?, ?, 'numerology', 'tok-cal', ?, 'daily', '2026-10-18')",
+                (self.mine, self.practitioner_id, now)).lastrowid
+            connection.execute("INSERT INTO email_outbox (kind, to_addr, subject, body_text, body_html, lead_id,"
+                               " created_at) VALUES ('calendar_daily', 'ana@example.com', 'old', 'old', 'old', ?, ?)",
+                               (self.mine, now))
+        self.login("liliana@example.com")
+        self.correct(self.mine)
+        with numer.open_db() as connection:
+            marker = connection.execute("SELECT last_emailed FROM calendars WHERE id = ?", (cal,)).fetchone()[0]
+        self.assertIsNone(marker)
+
+    def test_series_email_being_sent_is_not_rewound(self):
+        now = numer.iso(numer.now_utc())
+        with numer.open_db() as connection:
+            connection.execute("UPDATE leads SET series_step = 2 WHERE id = ?", (self.mine,))
+            connection.execute("INSERT INTO email_outbox (kind, to_addr, subject, body_text, body_html, lead_id,"
+                               " created_at, claimed_at) VALUES ('lead_series', 'ana@example.com', 's', 's', 's', ?, ?, ?)",
+                               (self.mine, now, now))
+        self.login("liliana@example.com")
+        self.correct(self.mine)
+        with numer.open_db() as connection:
+            step = connection.execute("SELECT series_step FROM leads WHERE id = ?", (self.mine,)).fetchone()[0]
+            row = connection.execute("SELECT sent_at FROM email_outbox WHERE kind = 'lead_series'").fetchone()
+        self.assertEqual(step, 2)
+        self.assertIsNone(row["sent_at"])
+
     def test_practitioner_can_save_a_us_state_that_is_also_a_country(self):
         self.login("liliana@example.com")
         self.correct(self.mine, birth_city="Atlanta", birth_region="Georgia", birth_country="United States")

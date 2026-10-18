@@ -126,6 +126,24 @@ def _overview_sent(connection, cal_id: int, key: str) -> bool:
     return bool(row and row["emailed_at"])
 
 
+def allow_resend(connection, lead_id: int, kind: str, queued_at: str) -> None:
+    """A queued calendar email for this lead was cancelled (birth details corrected): clear the
+    markers that stop the next hourly run from building it again."""
+    cal_ids = [r["id"] for r in connection.execute("SELECT id FROM calendars WHERE lead_id = ?", (lead_id,))]
+    if not cal_ids:
+        return
+    marks = ",".join("?" * len(cal_ids))
+    if kind == "calendar_daily":
+        connection.execute(f"UPDATE calendars SET last_emailed = NULL WHERE email_freq = 'daily' AND id IN ({marks})",
+                           cal_ids)
+        return
+    key = dt.datetime.fromisoformat(queued_at).astimezone(ZoneInfo(engine.DEFAULT_TZ)).strftime("%Y-%m")
+    connection.execute(f"UPDATE calendar_months SET emailed_at = NULL WHERE month = ? AND calendar_id IN ({marks})",
+                       [key, *cal_ids])
+    connection.execute(f"UPDATE calendars SET last_emailed = NULL WHERE email_freq = 'monthly' AND id IN ({marks})",
+                       cal_ids)
+
+
 def _mark_overview(connection, cal_id: int, key: str) -> None:
     """Record that this month's overview (welcome, monthly or publish notice) has gone to the client."""
     connection.execute("INSERT INTO calendar_months (calendar_id, month, emailed_at) VALUES (?, ?, ?)"
