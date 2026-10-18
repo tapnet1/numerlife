@@ -101,6 +101,12 @@ class FormTest(IntakeTestCase):
         self.assertTrue(data["confirm_recent"])
         self.assertEqual(intake.one_year_before(dt.date(2028, 2, 29)), dt.date(2027, 2, 28))
 
+    def test_recent_date_confirmation_stays_ticked_while_other_fields_are_fixed(self):
+        yesterday = (dt.date.today() - dt.timedelta(days=1)).isoformat()
+        html = self.submit(birth_date=yesterday, recent_ok="yes", birth_city="").get_data(as_text=True)
+        self.assertIn('name="recent_ok" value="yes" checked', html)
+        self.assertNotIn("less than a year ago", html)
+
     def test_country_typed_under_state_province_is_caught(self):
         response = self.submit(birth_city="Warszawa", birth_region="Poland", birth_country="Canada")
         self.assertEqual(response.status_code, 400)

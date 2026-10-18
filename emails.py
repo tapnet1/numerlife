@@ -435,7 +435,7 @@ def send_pending(limit: int = 50, ids: list[int] | None = None, smtp_factory=Non
             except Exception as exc:  # recorded and retried by the next run
                 error = mailer.describe_error(exc)
                 # Hold the claim so the row waits before its next try (until EXPIRE_AFTER ends retries).
-                delay = min(dt.timedelta(minutes=2 ** min(row["attempts"] + 1, 10)), RETRY_MAX_DELAY)
+                delay = min(dt.timedelta(minutes=2 ** min(row["attempts"], 10)), RETRY_MAX_DELAY)  # row re-read after the claim
                 retry_from = now_utc() + delay - dt.timedelta(minutes=5)
                 connection.execute("UPDATE email_outbox SET claimed_at = ?, last_error = ? WHERE id = ?",
                                    (iso(retry_from), error[:200], row["id"]))

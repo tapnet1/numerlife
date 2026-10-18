@@ -177,6 +177,7 @@ def parse_birth_form(form, today: dt.date | None = None, check_region: bool = Tr
         "birth_region": clean(form.get("birth_region"), MAX_PLACE),
         "birth_country": clean(form.get("birth_country"), MAX_PLACE),
         "confirm_recent": False,
+        "recent_ok": False,
     }
     errors = []
     if any(ch.isdigit() for ch in data["full_name"]):
@@ -191,8 +192,10 @@ def parse_birth_form(form, today: dt.date | None = None, check_region: bool = Tr
         born = None
     if born is None or not dt.date(1900, 1, 1) <= born <= today:
         errors.append("Enter a valid date of birth (day, month and year).")
-    elif born > one_year_before(today) and form.get("recent_ok") != "yes":
-        data["confirm_recent"] = True
+    elif born > one_year_before(today):
+        data["confirm_recent"] = True  # keep the box on the page (ticked if it was) while other fields are fixed
+        data["recent_ok"] = form.get("recent_ok") == "yes"
+    if data["confirm_recent"] and not data.get("recent_ok"):
         errors.append(f"Please check your date of birth: {born.isoformat()} is less than a year ago. "
                       "If it is right (for example, a baby's report), tick the box below the date.")
     if not data["birth_city"]:
