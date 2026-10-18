@@ -113,6 +113,9 @@ class FormTest(IntakeTestCase):
         self.assertIn("looks like a country", response.get_data(as_text=True))
         self.assertEqual(self.leads(), [])
         self.assertEqual(self.submit(birth_city="Warszawa", birth_region="", birth_country="Poland").status_code, 302)
+        for region in ("Cambodia", "Bosnia and Herzegovina", "Trinidad and Tobago", "méxico", "Côte d'Ivoire"):
+            response = self.submit(birth_city="X", birth_region=region, birth_country="Canada")
+            self.assertEqual(response.status_code, 400, region)
 
     def test_regions_that_share_a_country_name_are_accepted(self):
         self.assertEqual(self.submit(birth_city="Atlanta", birth_region="Georgia",

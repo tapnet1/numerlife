@@ -19,6 +19,7 @@ import click
 from flask import abort, redirect, render_template, request, session, url_for
 
 import content
+import countries
 import numerology
 from app import (
     BASE_URL,
@@ -51,23 +52,6 @@ EMAIL_RE = re.compile(r"^[^@\s]{1,64}@[^@\s]+\.[A-Za-z]{2,}$")
 PHONE_RE = re.compile(r"^\+?[0-9 ().-]{7,25}$")
 MAX_NAME = 100
 MAX_PLACE = 80
-
-# Country names people sometimes type into "State / province" (e.g. "Warszawa, Poland" with Country
-# left as Canada). Lower-case, checked case-insensitively. Names that are also states or regions
-# (Georgia, England, Scotland, Wales, Puerto Rico, Hong Kong, Taiwan) are deliberately left out.
-COUNTRY_NAMES = frozenset("""
-    afghanistan albania algeria argentina armenia australia austria bangladesh belarus belgium bolivia
-    bosnia brazil bulgaria cameroon canada chile china colombia congo croatia cuba cyprus czechia
-    denmark ecuador egypt eritrea estonia ethiopia finland france germany ghana greece
-    guatemala haiti honduras hungary iceland india indonesia iran iraq ireland israel italy jamaica japan
-    jordan kazakhstan kenya korea latvia lebanon libya lithuania mexico moldova morocco nepal netherlands
-    nicaragua nigeria norway pakistan palestine panama paraguay peru philippines poland polska portugal
-    romania russia rwanda senegal serbia slovakia slovenia somalia spain sudan sweden
-    switzerland syria tanzania thailand trinidad tunisia turkey uganda ukraine uruguay usa
-    venezuela vietnam yemen zimbabwe españa méxico perú brasil deutschland italia
-    """.split()) | {"el salvador", "costa rica", "dominican republic", "republica dominicana",
-                     "united states", "united kingdom", "south africa", "south korea", "sri lanka",
-                     "new zealand", "saudi arabia", "united arab emirates"}
 
 
 # --------------------------------------------------------------------------
@@ -163,7 +147,7 @@ def one_year_before(day: dt.date) -> dt.date:
 
 
 def looks_like_country(value: str) -> bool:
-    return value.strip().strip(".").lower() in COUNTRY_NAMES
+    return countries.is_country(value)
 
 
 def parse_birth_form(form, today: dt.date | None = None, check_region: bool = True) -> tuple[dict, list[str]]:
@@ -203,7 +187,7 @@ def parse_birth_form(form, today: dt.date | None = None, check_region: bool = Tr
     if not data["birth_country"]:
         errors.append("Enter the country you were born in.")
     elif (check_region and data["birth_region"] and looks_like_country(data["birth_region"])
-          and data["birth_region"].lower() != data["birth_country"].lower()):
+          and countries.normalize(data["birth_region"]) != countries.normalize(data["birth_country"])):
         errors.append(f"\"{data['birth_region']}\" looks like a country. Please put the country you were born "
                       "in under Country of birth, and leave State / province empty if there isn't one.")
     return data, errors
