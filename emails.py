@@ -291,14 +291,21 @@ def queue_unlock_emails(lead_id: int) -> None:
     kick()
 
 
+# An outbox row is being delivered right now when a sender claimed it in the last few minutes and
+# hasn't recorded a failure since (a claim clears last_error; a failure sets it and holds the claim
+# as retry backoff). Rows matching NOT_IN_DELIVERY are safe to rewrite or cancel. Takes one
+# parameter: the "stale" cut-off, 5 minutes ago.
+NOT_IN_DELIVERY = "(claimed_at IS NULL OR claimed_at < ? OR last_error != '')"
+
+
 def rebuild_pending_for_lead(connection, lead_id: int) -> None:
     """After a lead's birth details are corrected, refresh their not-yet-sent emails, which hold
     rendered snapshots: report, lead alerts, nudges and the practitioner's nudge digest are
     re-rendered in place; follow-up series
     emails are stepped back and rebuilt by the next run; a "month published" notice is re-rendered;
     daily and monthly calendar emails are cancelled and their markers cleared, so the next hourly run
-    sends fresh ones the same day. Rows a sender has claimed in the last minutes are left
-    alone because they are being delivered right now."""
+    sends fresh ones the same day. Rows being delivered right now are left alone; rows waiting in
+    retry backoff are refreshed like any other."""
     import lead_series  # loaded after this module
     lead_series.requeue_pending(connection, "leads.id = ?", (lead_id,), reason="birth details corrected")
     lead = connection.execute("SELECT * FROM leads WHERE id = ?", (lead_id,)).fetchone()
@@ -306,14 +313,14 @@ def rebuild_pending_for_lead(connection, lead_id: int) -> None:
         return
     stale = iso(now_utc() - dt.timedelta(minutes=5))
     rows = list(connection.execute("SELECT * FROM email_outbox WHERE lead_id = ? AND sent_at IS NULL"
-                                   " AND (claimed_at IS NULL OR claimed_at < ?)", (lead_id, stale)).fetchall())
+                                   f" AND {NOT_IN_DELIVERY}", (lead_id, stale)).fetchall())
     practitioner = None
     if lead["practitioner_id"]:
         practitioner = connection.execute("SELECT * FROM users WHERE id = ?", (lead["practitioner_id"],)).fetchone()
     active = practitioner if practitioner is not None and practitioner["is_active"] else None
     if practitioner is not None:  # the practitioner's nudge digest lists this lead by name and Life Path
         rows += connection.execute("SELECT * FROM email_outbox WHERE kind = 'practitioner_nudge' AND user_id = ?"
-                                   " AND sent_at IS NULL AND (claimed_at IS NULL OR claimed_at < ?)",
+                                   f" AND sent_at IS NULL AND {NOT_IN_DELIVERY}",
                                    (practitioner["id"], stale)).fetchall()
     for row in rows:
         built = None
@@ -332,7 +339,7 @@ def rebuild_pending_for_lead(connection, lead_id: int) -> None:
         elif row["kind"] == "calendar_published":
             import calendar_mail  # loaded after this module
             built = calendar_mail.rebuild_published(connection, lead, row["subject"])
-        guard = " AND sent_at IS NULL AND (claimed_at IS NULL OR claimed_at < ?)"
+        guard = f" AND sent_at IS NULL AND {NOT_IN_DELIVERY}"
         if built is None:
             cancelled = connection.execute(
                 "UPDATE email_outbox SET sent_at = ?, last_error = 'cancelled: birth details corrected'"
@@ -402,7 +409,8 @@ def send_pending(limit: int = 50, ids: list[int] | None = None, smtp_factory=Non
         connection.commit()
         for row in rows:
             claimed = connection.execute(
-                "UPDATE email_outbox SET claimed_at = ?, attempts = attempts + 1 WHERE id = ? AND sent_at IS NULL"
+                "UPDATE email_outbox SET claimed_at = ?, attempts = attempts + 1, last_error = '' WHERE id = ?"
+                " AND sent_at IS NULL"
                 " AND (claimed_at IS NULL OR claimed_at < ?)", (iso(now_utc()), row["id"], stale)).rowcount
             connection.commit()
             if not claimed:

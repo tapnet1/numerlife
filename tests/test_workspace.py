@@ -294,6 +294,22 @@ class BirthCorrectionTest(WorkspaceTestCase):
         self.assertEqual(step, 2)
         self.assertIsNone(row["sent_at"])
 
+    def test_series_email_in_retry_backoff_is_rebuilt(self):
+        import datetime as dt
+        soon = numer.iso(numer.now_utc() + dt.timedelta(minutes=10))
+        with numer.open_db() as connection:
+            connection.execute("UPDATE leads SET series_step = 2 WHERE id = ?", (self.mine,))
+            connection.execute("INSERT INTO email_outbox (kind, to_addr, subject, body_text, body_html, lead_id,"
+                               " created_at, claimed_at, last_error) VALUES ('lead_series', 'ana@example.com',"
+                               " 's', 's', 's', ?, ?, ?, 'SMTP timeout')", (self.mine, numer.iso(numer.now_utc()), soon))
+        self.login("liliana@example.com")
+        self.correct(self.mine)
+        with numer.open_db() as connection:
+            step = connection.execute("SELECT series_step FROM leads WHERE id = ?", (self.mine,)).fetchone()[0]
+            row = connection.execute("SELECT sent_at, last_error FROM email_outbox WHERE kind = 'lead_series'").fetchone()
+        self.assertEqual(step, 1)
+        self.assertEqual(row["last_error"], "cancelled: birth details corrected")
+
     def test_practitioner_can_save_a_us_state_that_is_also_a_country(self):
         self.login("liliana@example.com")
         self.correct(self.mine, birth_city="Atlanta", birth_region="Georgia", birth_country="United States")
