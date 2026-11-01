@@ -352,7 +352,8 @@ ADDED_COLUMNS = (
     ("users", "name_totalling", "TEXT NOT NULL DEFAULT 'whole'"),   # whole | per_name
     ("users", "y_rule", "TEXT NOT NULL DEFAULT 'standard'"),        # standard | always | never
     ("leads", "report", "TEXT"),
-    ("users", "report_lang", "TEXT NOT NULL DEFAULT 'en'"),  # language of report texts: en | es  # the report's method and numbers (JSON), fixed when the report is made
+    ("users", "report_lang", "TEXT NOT NULL DEFAULT 'en'"),  # language of report texts: en | es
+    ("leads", "client_contact", "TEXT"),  # names, home address and consent for the Healy contact card (JSON)  # the report's method and numbers (JSON), fixed when the report is made
 )
 
 REQUIRED_TABLES = {"users", "login_attempts", "leads", "form_attempts", "invites",
@@ -822,3 +823,4 @@ import calendar_mail  # noqa: E402,F401  (daily / monthly calendar emails)
 import lead_series  # noqa: E402,F401  (follow-up email series with open/click tracking)
 import reports  # noqa: E402,F401  (report texts editor and the full written reading)
 import orders  # noqa: E402,F401  (paid full reports: PayPal checkout, review, delivery)
+import healy_contact  # noqa: E402,F401  (client contact card for the Healy app, via Contacts)
