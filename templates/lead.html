@@ -91,6 +91,21 @@
       </details>
     </section>
 
+    {% set lead_orders = orders_for_lead(lead.id) %}
+    {% if lead_orders %}
+    <section class="panel" id="orders">
+      <h2>Paid reports</h2>
+      <ul class="reading-list">
+        {% for o in lead_orders %}
+        <li>{% if o.status in ('paid', 'delivered', 'refunded') %}<a href="{{ url_for('edit_order', order_id=o.id) }}">{% else %}<span>{% endif %}
+          <span class="badge{% if o.status == 'paid' %} badge-unread{% endif %}">{{ order_statuses[o.status] }}</span>
+          <span class="small muted">#{{ o.id }} · {{ (o.paid_at or o.created_at) | friendly_time }}</span>
+        {% if o.status in ('paid', 'delivered', 'refunded') %}</a>{% else %}</span>{% endif %}</li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+
     <section class="panel">
       <h2>Numbers</h2>
       <div class="lead-numbers">

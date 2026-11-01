@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Reading for {{ lead.full_name }} | {{ site_name }}{% endblock %}
+{% block body_class %}app-page{% endblock %}
+{% block content %}
+<header class="app-head">
+  <div>
+    <p class="eyebrow"><a href="{{ url_for('orders_list') }}">Paid reports</a> · #{{ order.id }} · {{ order_statuses[order.status] }}</p>
+    <h1>{{ lead.full_name }}</h1>
+    <p class="muted small">Born {{ lead.birth_date }} · {{ lead | birth_place }} · paid {{ order.paid_at | friendly_time }}{% if order.delivered_at %} · sent {{ order.delivered_at | friendly_time }}{% endif %} · <a href="{{ url_for('lead_detail', lead_id=lead.id) }}">Lead page</a></p>
+  </div>
+</header>
+
+{% if order.status == 'refunded' %}
+<p class="flash flash-error">This order was refunded. The reading can no longer be sent.</p>
+{% else %}
+<section class="panel">
+  <p>This draft comes from your report texts. Complete it in your own words: everything here is what {{ lead.full_name.split(' ')[0] }} will read. {% if order.status == 'paid' %}Nothing is sent until you press <strong>Send to client</strong>.{% else %}It was sent; saving updates their page and PDF (no new email).{% endif %}</p>
+</section>
+
+<form method="post" class="panel">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <h2>Personal note <span class="optional">(optional, shown first)</span></h2>
+  <textarea name="note" rows="4" maxlength="2000" placeholder="A few words from you to {{ lead.full_name.split(' ')[0] }}.">{{ draft.note }}</textarea>
+
+  {% for item in draft["items"] %}
+  <fieldset class="mt">
+    <legend><span class="lp{% if item.number and '/' in item.display %} compound{% endif %}">{{ item.display if item.number else '–' }}</span> {{ item.label }}</legend>
+    <label for="f-{{ loop.index0 }}-title" class="small">{{ reading.labels.title }}</label>
+    <input id="f-{{ loop.index0 }}-title" name="{{ loop.index0 }}-title" maxlength="120" value="{{ item.title }}">
+    <label for="f-{{ loop.index0 }}-meaning" class="small">{{ reading.labels.meaning }}</label>
+    <textarea id="f-{{ loop.index0 }}-meaning" name="{{ loop.index0 }}-meaning" rows="5" maxlength="2000">{{ item.meaning }}</textarea>
+    {% if item.key not in no_strengths %}
+    <label for="f-{{ loop.index0 }}-strengths" class="small">{{ reading.labels.strengths }} (comma or one per line)</label>
+    <textarea id="f-{{ loop.index0 }}-strengths" name="{{ loop.index0 }}-strengths" rows="3" maxlength="800">{{ item.strengths }}</textarea>
+    {% endif %}
+    <label for="f-{{ loop.index0 }}-challenges" class="small">{{ reading.labels.challenges }} (comma or one per line)</label>
+    <textarea id="f-{{ loop.index0 }}-challenges" name="{{ loop.index0 }}-challenges" rows="3" maxlength="800">{{ item.challenges }}</textarea>
+    <label for="f-{{ loop.index0 }}-lesson" class="small">{{ reading.labels.lesson }}</label>
+    <textarea id="f-{{ loop.index0 }}-lesson" name="{{ loop.index0 }}-lesson" rows="3" maxlength="1000">{{ item.lesson }}</textarea>
+  </fieldset>
+  {% endfor %}
+
+  <fieldset class="mt">
+    <legend>{{ reading.labels.together }}</legend>
+    <label for="f-combination" class="small">How the numbers work together</label>
+    <textarea id="f-combination" name="combination" rows="5" maxlength="1500">{{ draft.combination }}</textarea>
+    <label for="f-affirmation" class="small">{{ reading.labels.affirmation }}</label>
+    <textarea id="f-affirmation" name="affirmation" rows="3" maxlength="800">{{ draft.affirmation }}</textarea>
+  </fieldset>
+
+  <div class="actions mt">
+    <button type="submit" name="action" value="save">Save draft</button>
+    {% if order.status == 'paid' %}
+    <button type="submit" name="action" value="send" class="primary">Send to client</button>
+    {% else %}
+    <button type="submit" name="action" value="send" class="primary">Save and update their page</button>
+    {% endif %}
+    {% if order.status == 'paid' %}<button type="submit" name="action" value="reset" class="link" formnovalidate>Start over from my report texts</button>{% endif %}
+  </div>
+</form>
+
+<section class="panel">
+  <details>
+    <summary>Preview what {{ lead.full_name.split(' ')[0] }} will see (last saved)</summary>
+    {% if reading.note %}<h3>Note</h3><p class="pre-line">{{ reading.note }}</p>{% endif %}
+    {% include "_reading.html" %}
+  </details>
+  {% if order.status == 'delivered' %}<p class="small mt">Client page: <a href="{{ client_url }}" target="_blank" rel="noopener">{{ client_url }}</a></p>{% endif %}
+</section>
+{% endif %}
+{% endblock %}

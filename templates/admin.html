@@ -125,6 +125,41 @@
   {% else %}<p class="muted">No entries yet. Entries can't be edited or deleted; corrections are new adjustments.</p>{% endif %}
 </section>
 
+{% set paid_info = paid_reports_overview() %}
+<section class="card" id="paid-reports">
+  <h2>Paid reports</h2>
+  <p>Full written reading: <strong>{{ paid_info.price }}</strong>. PayPal: {% if paid_info.paypal_ready %}<strong>{{ paid_info.paypal_env }}</strong> keys on the server{% else %}<span class="flash flash-error">not set up: add NUMER_PAYPAL_ENV, NUMER_PAYPAL_CLIENT_ID and NUMER_PAYPAL_SECRET to .env</span>{% endif %}.</p>
+  <form method="post" action="{{ url_for('admin_paid_reports') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% if paid_info.switch_on %}
+      <p>Paid reports are <strong>on sale</strong>{% if not (paid_info.paypal_ready and paid_info.platform_ready) %}, but hidden until PayPal and the TAPNET account are set up{% endif %}.</p>
+      <button type="submit" name="on" value="no">Stop selling</button>
+    {% else %}
+      <p>Paid reports are <strong>off</strong>: visitors don't see the offer, and the terms page hides the paid-report section.</p>
+      {% if not paid_info.platform_ready %}<p class="flash flash-error">Set up the numer.life/tapnet (TAPNET) account under Billing first, so sales can be credited.</p>{% endif %}
+      <button type="submit" name="on" value="yes" class="primary"{% if not (paid_info.paypal_ready and paid_info.platform_ready) %} disabled{% endif %}>Start selling</button>
+    {% endif %}
+  </form>
+  {% if paid_info.orders %}
+  <h3 class="mt">Recent orders</h3>
+  <ul class="reading-list">
+    {% for o in paid_info.orders %}
+    <li><div class="row-between">
+      <a href="{{ url_for('edit_order', order_id=o.id) }}"><strong>{{ o.full_name }}</strong> · #{{ o.id }} · {{ o.practitioner_name or 'no practitioner' }}</a>
+      <span class="badge{% if o.status == 'paid' %} badge-unread{% endif %}">{{ order_statuses[o.status] }}</span>
+      {% if o.status in ('paid', 'delivered') %}
+      <form method="post" action="{{ url_for('admin_mark_refunded', order_id=o.id) }}" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="link" title="Refund in PayPal first, then mark it here">Mark refunded</button>
+      </form>
+      {% endif %}
+    </div></li>
+    {% endfor %}
+  </ul>
+  <p class="hint">Refunds: refund the payment in PayPal first, then mark it here; that reverses the order's credits.</p>
+  {% endif %}
+</section>
+
 {% set mail = email_status() %}
 <section class="card" id="email">
   <h2>Email</h2>

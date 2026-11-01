@@ -1,0 +1,7 @@
+{{ t.ready_lead.format(first_name=first_name, who=who) }}
+
+{{ t.ready_button }}: {{ page_url }}
+
+{{ t.ready_pdf }}
+--
+{{ site_name }} · TAPNET

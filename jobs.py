@@ -71,9 +71,19 @@ def calendar_emails() -> dict:
     return result
 
 
+def capture_orders() -> dict:
+    """Capture approved PayPal orders whose buyer never came back to the site."""
+    import orders
+
+    result = orders.capture_open_orders()
+    import emails
+    emails.send_pending()
+    return result
+
+
 JOBS = {"purge-attempts": purge_attempts, "send-push": send_push, "send-email": send_email,
         "send-nudges": send_nudges, "accrue-referrals": accrue_referrals,
-        "calendar-emails": calendar_emails}
+        "calendar-emails": calendar_emails, "capture-orders": capture_orders}
 
 
 def main(argv: list[str]) -> int:

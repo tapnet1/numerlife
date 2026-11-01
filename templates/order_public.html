@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}{{ t.reading_for }} {{ lead.full_name.split(' ')[0] }} | {{ site_name }}{% endblock %}
+{% block body_class %}page-report{% endblock %}
+{% block content %}
+<section class="hero compact report-hero" lang="{{ lang }}">
+  <p class="eyebrow">{{ t.reading_for }}</p>
+  <h1>{{ lead.full_name }}</h1>
+  <p class="muted">{{ t.prepared_by.format(who=who) }}</p>
+</section>
+{% if order.status == 'refunded' %}
+  <section class="card"><h2>{{ t.refunded_title }}</h2></section>
+{% elif reading %}
+  {% if reading.note %}
+  <section class="card" lang="{{ lang }}">
+    <h2>{{ t.note_from.format(who=who) }}</h2>
+    <p class="pre-line">{{ reading.note }}</p>
+  </section>
+  {% endif %}
+  <section class="card">
+    {% include "_reading.html" %}
+    <p class="mt"><a class="btn" href="{{ url_for('order_pdf', token=order.token) }}">{{ t.pdf }}</a></p>
+  </section>
+{% else %}
+  <section class="card" lang="{{ lang }}">
+    <h2>{{ t.preparing_title }}</h2>
+    <p>{{ t.preparing_body.format(who=who, email=lead.email) }}</p>
+  </section>
+{% endif %}
+{% if practitioner and practitioner.is_active %}
+  {% set card = contact_card(practitioner) %}
+  {% include "_contact_card.html" %}
+{% endif %}
+{% endblock %}

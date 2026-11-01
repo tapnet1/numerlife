@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Paid reports | {{ site_name }}{% endblock %}
+{% block body_class %}app-page{% endblock %}
+{% block content %}
+<header class="app-head">
+  <div>
+    <p class="eyebrow">Paid reports</p>
+    <h1>Full written readings</h1>
+  </div>
+</header>
+<section class="panel">
+  {% if orders %}
+  <ul class="reading-list">
+    {% for o in orders %}
+    <li><a href="{{ url_for('edit_order', order_id=o.id) }}">
+      <strong>{{ o.full_name }}</strong>
+      <span class="badge{% if o.status == 'paid' %} badge-unread{% endif %}">{{ order_statuses[o.status] }}</span>
+      <span class="muted small">#{{ o.id }} · paid {{ o.paid_at | friendly_time }}{% if user.role == 'admin' %} · {{ o.practitioner_name or 'no practitioner' }}{% endif %}</span>
+    </a></li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">No paid reports yet. When a visitor buys their full written reading, it appears here for you to review and send.</p>
+  {% endif %}
+</section>
+{% endblock %}

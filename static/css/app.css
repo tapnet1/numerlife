@@ -477,3 +477,4 @@ details > summary.btn-secondary::-webkit-details-marker { display: none; }
 .big-number.compound { font-size: 1.7rem; }
 .big-number.small-number.compound { font-size: 1.05rem; }
 .lp.compound { width: auto; min-width: 2.6rem; padding: 0 .45rem; border-radius: 999px; font-size: .95rem; }
+.pre-line { white-space: pre-line; }
