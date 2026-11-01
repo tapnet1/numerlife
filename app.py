@@ -280,6 +280,21 @@ CREATE TABLE IF NOT EXISTS form_attempts (
     created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_form_attempts ON form_attempts (ip_hash, kind, created_at);
+
+CREATE TABLE IF NOT EXISTS report_content (
+    practitioner_id INTEGER NOT NULL REFERENCES users(id),
+    lang            TEXT NOT NULL,
+    position        TEXT NOT NULL,
+    number          INTEGER NOT NULL,
+    title           TEXT NOT NULL DEFAULT '',
+    meaning         TEXT NOT NULL DEFAULT '',
+    strengths       TEXT NOT NULL DEFAULT '',
+    challenges      TEXT NOT NULL DEFAULT '',
+    lesson          TEXT NOT NULL DEFAULT '',
+    affirmation     TEXT NOT NULL DEFAULT '',
+    updated_at      TEXT NOT NULL,
+    PRIMARY KEY (practitioner_id, lang, position, number)
+);
 """
 
 # Columns added after a table first shipped: (table, column, definition).
@@ -315,12 +330,14 @@ ADDED_COLUMNS = (
     ("users", "report_method", "TEXT NOT NULL DEFAULT 'classic'"),  # classic | kdp (Karma, Destiny, Personality)
     ("users", "name_totalling", "TEXT NOT NULL DEFAULT 'whole'"),   # whole | per_name
     ("users", "y_rule", "TEXT NOT NULL DEFAULT 'standard'"),        # standard | always | never
-    ("leads", "report", "TEXT"),  # the report's method and numbers (JSON), fixed when the report is made
+    ("leads", "report", "TEXT"),
+    ("users", "report_lang", "TEXT NOT NULL DEFAULT 'en'"),  # language of report texts: en | es  # the report's method and numbers (JSON), fixed when the report is made
 )
 
 REQUIRED_TABLES = {"users", "login_attempts", "leads", "form_attempts", "invites",
                    "push_subscriptions", "push_outbox", "avatars", "email_outbox", "settings", "ledger",
-                   "calendars", "calendar_months", "calendar_notes", "calendar_content", "readings", "email_events"}
+                   "calendars", "calendar_months", "calendar_notes", "calendar_content", "readings", "email_events",
+                   "report_content"}
 
 
 def now_utc() -> dt.datetime:
@@ -779,3 +796,4 @@ import calendars  # noqa: E402,F401  (personal calendars: editor, client page, P
 import readings  # noqa: E402,F401  (client record: scheduled and logged readings)
 import calendar_mail  # noqa: E402,F401  (daily / monthly calendar emails)
 import lead_series  # noqa: E402,F401  (follow-up email series with open/click tracking)
+import reports  # noqa: E402,F401  (report texts editor and the full written reading)

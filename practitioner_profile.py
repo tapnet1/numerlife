@@ -190,12 +190,11 @@ def style_context(row) -> dict:
     style = numerology.style_of(row)
     name, born = STYLE_EXAMPLE
     report = numerology.report_numbers(name, born, style)
-    labels = numerology.METHOD_LABELS[report["method"]]
-    example = {"name": name, "items": [{"label": labels[i["key"]][0], "display": i["display"]}
-                                       for i in report["items"]]}
+    example = {"name": name, "items": [{"label": numerology.position_label(i["key"], style["lang"])[0],
+                                        "display": i["display"]} for i in report["items"]]}
     return {"style": style, "style_example": example,
             "style_options": {"methods": numerology.METHODS, "totalling": numerology.TOTALLING,
-                              "y_rules": numerology.Y_RULES}}
+                              "y_rules": numerology.Y_RULES, "languages": numerology.REPORT_LANGUAGES}}
 
 
 @app.post("/settings/style")
@@ -207,8 +206,9 @@ def save_style():
         abort(403)
     style = numerology.clean_style(request.form)
     with open_db() as connection:
-        connection.execute("UPDATE users SET report_method = ?, name_totalling = ?, y_rule = ? WHERE id = ?",
-                           (style["method"], style["totalling"], style["y_rule"], user["id"]))
+        connection.execute("UPDATE users SET report_method = ?, name_totalling = ?, y_rule = ?, report_lang = ?"
+                           " WHERE id = ?",
+                           (style["method"], style["totalling"], style["y_rule"], style["lang"], user["id"]))
     flash("Numerology style saved. New reports use it from now on.", "info")
     return redirect(url_for("edit_profile") + "#style")
 

@@ -49,7 +49,8 @@ def scoped_lead(lead_id: int):
 
 
 def lead_numbers(lead) -> list[dict]:
-    return numerology.report_items(lead)
+    import reports  # loaded after this module
+    return reports.lead_items(lead)
 
 
 def birth_place(lead) -> str:

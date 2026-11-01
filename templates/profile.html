@@ -126,6 +126,13 @@
       <label class="check"><input type="radio" name="y_rule" value="{{ key }}"{% if style.y_rule == key %} checked{% endif %}><span>{{ label }}</span></label>
     {% endfor %}
   </fieldset>
+  <fieldset>
+    <legend>Report language</legend>
+    {% for key, label in style_options.languages.items() %}
+      <label class="check"><input type="radio" name="lang" value="{{ key }}"{% if style.lang == key %} checked{% endif %}><span>{{ label }}</span></label>
+    {% endfor %}
+    <p class="hint">The language of the numbers' texts in your visitors' reports. Write your own texts in <a href="{{ url_for('edit_report_texts') }}">Report texts</a>.</p>
+  </fieldset>
   {% if style_example %}<p class="muted small">Example, {{ style_example.name }}: {% for item in style_example["items"] %}{{ item.label }} {{ item.display }}{% if not loop.last %} · {% endif %}{% endfor %}</p>{% endif %}
   <button type="submit">Save style</button>
 </form>

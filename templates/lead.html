@@ -96,7 +96,7 @@
       <div class="lead-numbers">
         {% for item in numbers %}
           <div class="lead-number">
-            <span class="big-number small-number">{{ item.display if item.number else '–' }}</span>
+            <span class="big-number small-number{% if item.number and '/' in item.display %} compound{% endif %}">{{ item.display if item.number else '–' }}</span>
             <div>
               <p class="eyebrow">{{ item.label }}</p>
               <p class="ln-title">{{ item.title }}</p>
@@ -105,6 +105,12 @@
           </div>
         {% endfor %}
       </div>
+      {% set reading = full_reading(lead) %}
+      <details class="mt">
+        <summary>Full written reading (draft from your report texts)</summary>
+        {% include "_reading.html" %}
+        <p class="small"><a href="{{ url_for('edit_report_texts') }}">Edit your report texts →</a></p>
+      </details>
     </section>
   </div>
 

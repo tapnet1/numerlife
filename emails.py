@@ -143,7 +143,11 @@ def _first_name(full_name: str) -> str:
 
 
 def _number_items(lead) -> list[dict]:
-    return numerology.report_items(lead)
+    import reports  # loaded after this module
+    if has_request_context():
+        return reports.lead_items(lead)
+    with app.app_context():
+        return reports.lead_items(lead)
 
 
 def _card(practitioner) -> dict | None:

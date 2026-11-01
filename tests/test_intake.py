@@ -428,3 +428,80 @@ class PractitionerStyleTest(IntakeTestCase):
         page = self.client.get("/settings/password").get_data(as_text=True)
         response = self.client.post("/settings/style", data={"method": "classic", "csrf_token": token_from(page)})
         self.assertEqual(response.status_code, 403)
+
+
+class ReportTextsTest(IntakeTestCase):
+    def setUp(self):
+        super().setUp()
+        with numer.open_db() as connection:
+            connection.execute("UPDATE users SET report_method = 'kdp' WHERE id = ?", (self.practitioner_id,))
+
+    def marco(self):
+        token = self.submit(path="/liliana", full_name="Marco James Bonanni",
+                            birth_date="1974-06-19").headers["Location"].rsplit("/", 1)[-1]
+        return token, self.leads()[-1]
+
+    def test_starter_texts_cover_every_number_position_and_language(self):
+        import report_texts as t
+        for lang in t.LANGUAGES:
+            for position in t.POSITIONS[lang]:
+                for number in t.NUMBERS:
+                    entry = t.default_entry(lang, position, number)
+                    self.assertTrue(entry["title"] and entry["meaning"] and entry["lesson"]
+                                    and entry["affirmation"] and entry["challenges"], (lang, position, number))
+                    self.assertEqual(bool(entry["strengths"]), position != "karma", (lang, position, number))
+
+    def test_full_reading_has_sections_and_combination(self):
+        import reports
+        _token, lead = self.marco()
+        with numer.app.app_context():
+            reading = reports.full_reading(lead)
+        karma, destiny, personality = reading["items"]
+        self.assertEqual(karma["strength_list"], [])          # Karma: challenges only
+        self.assertIn("Oversensitivity", karma["challenge_list"])
+        self.assertTrue(destiny["strength_list"] and personality["lesson"])
+        self.assertEqual(reading["combination"],
+                         "Your 11/2 · 3 · 14/5 combination describes an intuitive, creative and freedom-loving person.")
+        self.assertEqual(len(reading["affirmations"]), 3)
+
+    def test_spanish_report_language(self):
+        with numer.open_db() as connection:
+            connection.execute("UPDATE users SET report_lang = 'es' WHERE id = ?", (self.practitioner_id,))
+        token, lead = self.marco()
+        self.assertEqual(json.loads(lead["report"])["lang"], "es")
+        html = self.client.get(f"/r/{token}").get_data(as_text=True)
+        self.assertIn("Tu número de Karma", html)
+        import reports
+        with numer.app.app_context():
+            self.assertIn("persona intuitiva, creativa y amante de la libertad", reports.full_reading(lead)["combination"])
+
+    def test_practitioner_wording_replaces_the_starter_text(self):
+        token, lead = self.marco()
+        self.login("liliana@example.com")
+        page = self.client.get("/settings/report?position=karma&lang=en").get_data(as_text=True)
+        self.assertIn("Karma 11", page)
+        self.assertNotIn('name="11-strengths"', page)  # no strengths for Karma
+        response = self.client.post("/settings/report", data={
+            "csrf_token": token_from(page), "lang": "en", "position": "karma",
+            "11-meaning": "Karma 11 represents intuition, sensitivity and spiritual awareness.",
+            "11-lesson": "Learning to trust his intuition."})
+        self.assertEqual(response.status_code, 302)
+        lead_page = self.client.get(f"/leads/{lead['id']}").get_data(as_text=True)
+        self.assertIn("Learning to trust his intuition.", lead_page)
+        report = self.client.get(f"/r/{token}").get_data(as_text=True)
+        self.assertIn("Karma 11 represents intuition", report)
+        with numer.open_db() as connection:
+            row = connection.execute("SELECT title, challenges FROM report_content").fetchone()
+        self.assertEqual(tuple(row), ("", ""))  # untouched fields keep following the starter text
+
+    def test_team_member_edits_their_practitioners_texts(self):
+        numer.create_user("frank@example.com", PASSWORD, "practitioner", "Frank", invited_by=self.admin_id)
+        with numer.open_db() as connection:
+            connection.execute("UPDATE users SET team_of = ? WHERE email = 'frank@example.com'", (self.practitioner_id,))
+        self.login("frank@example.com")
+        page = self.client.get("/settings/report?position=destiny").get_data(as_text=True)
+        self.client.post("/settings/report", data={"csrf_token": token_from(page), "lang": "en",
+                                                   "position": "destiny", "3-title": "La Comunicadora"})
+        with numer.open_db() as connection:
+            owner = connection.execute("SELECT practitioner_id FROM report_content").fetchone()[0]
+        self.assertEqual(owner, self.practitioner_id)
