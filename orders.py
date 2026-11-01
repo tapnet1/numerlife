@@ -7,7 +7,7 @@
    `capture-orders` job captures any approved order whose buyer never came back.
 3. Once paid: the sale is credited 75/25, the client gets a receipt, and the practitioner (and
    her team) get an email and a push alert to prepare the reading.
-4. The practitioner opens /orders/<id>: the reading starts as a draft from her report texts. She
+4. The practitioner opens /settings/orders/<id>: the reading starts as a draft from her report texts. She
    edits and completes it, adds a personal note, previews it, and sends it.
 5. The client gets an email with a private link (/p/<token>) and a PDF of their reading.
 
@@ -205,7 +205,8 @@ def paypal_cancel():
     current = db().execute("SELECT status, token FROM orders WHERE id = ?", (order["id"],)).fetchone()
     if current["status"] in ("paid", "delivered", "refunded"):  # paid in another tab: show the order
         return redirect(url_for("order_public", token=current["token"]))
-    flash("Checkout cancelled. You haven't been charged.", "info")
+    flash("Checkout cancelled. If you did complete a payment in another window, you'll receive a "
+          "confirmation email within a few minutes.", "info")
     return redirect(url_for("report", token=_lead_token(order)))
 
 
@@ -269,7 +270,7 @@ def mark_paid(order_id: int, capture_id: str, payer_email: str) -> bool:
     first_name = (lead["full_name"].split() or ["A client"])[0] if lead else "A client"
     notify.queue([r["id"] for r in recipients], {
         "title": f"Paid report: {first_name}", "body": "Review, complete and send their full reading.",
-        "url": f"/orders/{order_id}", "tag": f"order-{order_id}"})
+        "url": f"/settings/orders/{order_id}", "tag": f"order-{order_id}"})
     return True
 
 
@@ -321,7 +322,7 @@ def _queue_paid_emails(connection, order) -> list:
     recipients = _staff_recipients(connection, order["practitioner_id"])
     for recipient in recipients:
         staff = {"recipient_name": (recipient["display_name"] or "").split(" ")[0], "full_name": lead["full_name"],
-                 "price": price_text(order["amount_cents"]), "order_url": f"{BASE_URL}/orders/{order['id']}"}
+                 "price": price_text(order["amount_cents"]), "order_url": f"{BASE_URL}/settings/orders/{order['id']}"}
         text, html = emails._render_pair("order_alert", **staff)
         emails.enqueue(connection, "order_alert", recipient["email"],
                        f"Paid report to prepare: {lead['full_name']}", text, html,
@@ -402,7 +403,7 @@ def _scoped_order(order_id: int):
     return order
 
 
-@app.get("/orders")
+@app.get("/settings/orders")
 @login_required
 def orders_list():
     user = current_user()
@@ -417,7 +418,7 @@ def orders_list():
     return render_template("orders.html", orders=rows)
 
 
-@app.route("/orders/<int:order_id>", methods=["GET", "POST"])
+@app.route("/settings/orders/<int:order_id>", methods=["GET", "POST"])
 @login_required
 def edit_order(order_id):
     order = _scoped_order(order_id)

@@ -693,7 +693,7 @@ def robots():
         body = "User-agent: *\nDisallow: /\n"
     else:
         body = ("User-agent: *\nDisallow: /admin\nDisallow: /dashboard\nDisallow: /login\n"
-                "Disallow: /r/\nDisallow: /p/\nDisallow: /orders\n" f"Sitemap: {BASE_URL}/sitemap.xml\n")
+                "Disallow: /r/\nDisallow: /p/\n" f"Sitemap: {BASE_URL}/sitemap.xml\n")
     return body, 200, {"Content-Type": "text/plain; charset=utf-8"}
 
 

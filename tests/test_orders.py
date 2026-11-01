@@ -113,10 +113,10 @@ class CheckoutTest(OrdersTestCase):
         self.assertEqual(len(self.outbox("order_paid")), 1)
         alert = self.outbox("order_alert")[0]
         self.assertEqual(alert["to_addr"], "liliana@example.com")
-        self.assertIn("/orders/1", alert["body_text"])
+        self.assertIn("/settings/orders/1", alert["body_text"])
         with numer.open_db() as connection:
             push = [json.loads(r[0]) for r in connection.execute("SELECT payload FROM push_outbox")]
-        self.assertTrue(any(p["url"] == "/orders/1" for p in push))
+        self.assertTrue(any(p["url"] == "/settings/orders/1" for p in push))
         page = self.client.get(f"/p/{order['token']}").get_data(as_text=True)
         self.assertIn("Your reading is being prepared", page)
         self.assertIn("Your full written reading", self.client.get(f"/r/{token}").get_data(as_text=True))
@@ -205,18 +205,18 @@ class ReviewAndDeliveryTest(OrdersTestCase):
     def test_practitioner_edits_and_sends_the_reading(self):
         order = self.paid_order()
         self.login("liliana@example.com")
-        page = self.client.get(f"/orders/{order['id']}").get_data(as_text=True)
+        page = self.client.get(f"/settings/orders/{order['id']}").get_data(as_text=True)
         self.assertIn("Oversensitivity", page)            # draft from the Karma 11 starter text
         self.assertNotIn('name="0-strengths"', page)     # Karma: no strengths
         self.assertEqual(self.outbox("order_ready"), [])
-        self.client.post(f"/orders/{order['id']}", data={
+        self.client.post(f"/settings/orders/{order['id']}", data={
             "csrf_token": token_from(page), "action": "save", "note": "Querido Marco,\nun abrazo.",
             "0-lesson": "Learning to trust his intuition, develop inner confidence."})
         self.assertEqual(self.order()["status"], "paid")  # saving never sends
         public = self.client.get(f"/p/{order['token']}").get_data(as_text=True)
         self.assertNotIn("Learning to trust his intuition", public)
-        page = self.client.get(f"/orders/{order['id']}").get_data(as_text=True)
-        self.client.post(f"/orders/{order['id']}", data={"csrf_token": token_from(page), "action": "send"})
+        page = self.client.get(f"/settings/orders/{order['id']}").get_data(as_text=True)
+        self.client.post(f"/settings/orders/{order['id']}", data={"csrf_token": token_from(page), "action": "send"})
         self.assertEqual(self.order()["status"], "delivered")
         ready = self.outbox("order_ready")
         self.assertEqual((len(ready), ready[0]["to_addr"]), (1, "john@example.com"))
@@ -227,8 +227,8 @@ class ReviewAndDeliveryTest(OrdersTestCase):
         self.assertEqual(pdf.status_code, 200)
         self.assertTrue(pdf.data.startswith(b"%PDF"))
         # later edits update the page without a second email
-        page = self.client.get(f"/orders/{order['id']}").get_data(as_text=True)
-        self.client.post(f"/orders/{order['id']}", data={"csrf_token": token_from(page), "action": "send",
+        page = self.client.get(f"/settings/orders/{order['id']}").get_data(as_text=True)
+        self.client.post(f"/settings/orders/{order['id']}", data={"csrf_token": token_from(page), "action": "send",
                                                          "combination": "Updated."})
         self.assertEqual(len(self.outbox("order_ready")), 1)
         self.assertIn("Updated.", self.client.get(f"/p/{order['token']}").get_data(as_text=True))
@@ -245,8 +245,8 @@ class ReviewAndDeliveryTest(OrdersTestCase):
         order = self.paid_order()
         numer.create_user("other@example.com", PASSWORD, "practitioner", "Other", slug="other")
         self.login("other@example.com")
-        self.assertEqual(self.client.get(f"/orders/{order['id']}").status_code, 404)
-        self.assertNotIn("Marco", self.client.get("/orders").get_data(as_text=True))
+        self.assertEqual(self.client.get(f"/settings/orders/{order['id']}").status_code, 404)
+        self.assertNotIn("Marco", self.client.get("/settings/orders").get_data(as_text=True))
 
     def test_refund_reverses_credits(self):
         order = self.paid_order()
@@ -275,12 +275,12 @@ class ReviewAndDeliveryTest(OrdersTestCase):
     def test_a_sent_reading_cannot_be_reset(self):
         order = self.paid_order()
         self.login("liliana@example.com")
-        page = self.client.get(f"/orders/{order['id']}").get_data(as_text=True)
+        page = self.client.get(f"/settings/orders/{order['id']}").get_data(as_text=True)
         self.assertIn('value="reset"', page)
-        self.client.post(f"/orders/{order['id']}", data={"csrf_token": token_from(page), "action": "send"})
-        page = self.client.get(f"/orders/{order['id']}").get_data(as_text=True)
+        self.client.post(f"/settings/orders/{order['id']}", data={"csrf_token": token_from(page), "action": "send"})
+        page = self.client.get(f"/settings/orders/{order['id']}").get_data(as_text=True)
         self.assertNotIn('value="reset"', page)
-        response = self.client.post(f"/orders/{order['id']}", data={"csrf_token": token_from(page), "action": "reset"})
+        response = self.client.post(f"/settings/orders/{order['id']}", data={"csrf_token": token_from(page), "action": "reset"})
         self.assertEqual(response.status_code, 400)
         self.assertEqual(self.client.get(f"/p/{order['token']}/reading.pdf").status_code, 200)
 
