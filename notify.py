@@ -15,6 +15,7 @@ import threading
 
 from flask import Response, jsonify, request, send_from_directory, url_for
 
+import numerology
 import webpush
 from app import BASE_DIR, SITE_NAME, app, connect, current_user, db, iso, login_required, now_utc, open_db
 
@@ -151,9 +152,9 @@ def queue_new_lead(lead_id: int) -> None:
 
 def new_lead_payload(lead) -> dict:
     first_name = (lead["full_name"].split() or ["Someone"])[0]
-    life_path = json.loads(lead["numbers"]).get("life_path")
+    teaser = numerology.teaser(lead)
     return {"title": f"New lead: {first_name}",
-            "body": f"Life Path {life_path} · unlocked their full report. Tap to see their numbers.",
+            "body": f"{teaser['label']} {teaser['display']} · unlocked their full report. Tap to see their numbers.",
             "url": f"/leads/{lead['id']}", "tag": f"lead-{lead['id']}"}
 
 

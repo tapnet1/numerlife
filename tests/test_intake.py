@@ -365,3 +365,53 @@ class CommandsTest(IntakeTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PractitionerStyleTest(IntakeTestCase):
+    def use_kdp(self):
+        with numer.open_db() as connection:
+            connection.execute("UPDATE users SET report_method = 'kdp' WHERE id = ?", (self.practitioner_id,))
+
+    def test_report_uses_the_practitioners_method_with_karma_free(self):
+        self.use_kdp()
+        response = self.submit(path="/liliana", full_name="Marco James Bonanni", birth_date="1974-06-19")
+        token = response.headers["Location"].rsplit("/", 1)[-1]
+        lead = self.leads()[0]
+        report = json.loads(lead["report"])
+        self.assertEqual([i["display"] for i in report["items"]], ["11/2", "3", "14/5"])
+        html = self.client.get(f"/r/{token}").get_data(as_text=True)
+        self.assertIn("Your Karma number", html)
+        self.assertIn("11/2", html)
+        self.assertNotIn("14/5", html)  # Personality stays locked until the email is given
+        self.unlock(token)
+        html = self.client.get(f"/r/{token}").get_data(as_text=True)
+        self.assertIn("14/5", html)
+        self.assertIn("Destiny", html)
+
+    def test_report_keeps_its_method_after_a_style_change(self):
+        token = self.submit(path="/liliana").headers["Location"].rsplit("/", 1)[-1]
+        self.use_kdp()
+        html = self.client.get(f"/r/{token}").get_data(as_text=True)
+        self.assertIn("Your Life Path number", html)
+
+    def test_practitioner_saves_style_and_team_members_cannot(self):
+        self.login("liliana@example.com")
+        page = self.client.get("/settings/profile").get_data(as_text=True)
+        self.assertIn("Your numerology style", page)
+        response = self.client.post("/settings/style", data={
+            "method": "kdp", "totalling": "per_name", "y_rule": "always", "csrf_token": token_from(page)})
+        self.assertEqual(response.status_code, 302)
+        with numer.open_db() as connection:
+            row = connection.execute("SELECT report_method, name_totalling, y_rule FROM users WHERE id = ?",
+                                     (self.practitioner_id,)).fetchone()
+        self.assertEqual(tuple(row), ("kdp", "per_name", "always"))
+        numer.create_user("frank@example.com", PASSWORD, "practitioner", "Frank", invited_by=self.admin_id)
+        with numer.open_db() as connection:
+            connection.execute("UPDATE users SET team_of = ? WHERE email = 'frank@example.com'",
+                               (self.practitioner_id,))
+        self.client.post("/logout", data={"csrf_token": token_from(page)})
+        self.client = numer.app.test_client()
+        self.login("frank@example.com")
+        page = self.client.get("/settings/password").get_data(as_text=True)
+        response = self.client.post("/settings/style", data={"method": "classic", "csrf_token": token_from(page)})
+        self.assertEqual(response.status_code, 403)

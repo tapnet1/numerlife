@@ -1,7 +1,7 @@
 Hi {{ recipient_name or 'there' }},
 
 {{ full_name }} just unlocked their full numerology report through your link.
-Life Path {{ life_path }} · born {{ birth_date }}
+{{ teaser.label }} {{ teaser.display }} · born {{ birth_date }}
 
 Open the lead: {{ lead_url }}
 

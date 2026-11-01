@@ -6,6 +6,8 @@ Rules used (the common Pythagorean method; other systems arrive with report styl
 - Numbers are reduced by adding digits until one digit remains, except the master
   numbers 11, 22 and 33, which are kept.
 - Life Path: month, day and year are each reduced first, then added and reduced.
+- Practitioner styles (see STYLE_DEFAULTS) choose the method (classic, or Karma / Destiny /
+  Personality), whether names are totalled whole or reduced per name first, and the Y rule.
 - Expression: every letter of the full birth name.
 - Soul Urge: vowels (A, E, I, O, U). Personality: all other letters. Y counts as a consonant,
   except in a name part with no other vowel (Lynn, Glynn), where Y is that part's vowel.
@@ -16,6 +18,7 @@ Rules used (the common Pythagorean method; other systems arrive with report styl
 from __future__ import annotations
 
 import datetime as dt
+import json
 import unicodedata
 from dataclasses import dataclass
 
@@ -95,10 +98,8 @@ def letters_of(name: str) -> str:
     return "".join(out)
 
 
-def split_vowels(full_name: str) -> tuple[str, str]:
-    """Vowel and consonant letters; Y is a vowel only in a name part with no other vowel."""
-    vowels, consonants = [], []
-    # Name parts are split at anything that isn't a letter or accent (spaces, hyphens, apostrophes).
+def name_parts(full_name: str) -> list[str]:
+    """The name's parts as typed, split at anything that isn't a letter or accent (spaces, hyphens, apostrophes)."""
     parts, current = [], []
     for ch in unicodedata.normalize("NFKD", full_name):
         if is_name_letter(ch) or unicodedata.combining(ch):
@@ -108,15 +109,35 @@ def split_vowels(full_name: str) -> tuple[str, str]:
             current = []
     if current:
         parts.append("".join(current))
-    for part in parts:
-        letters = letters_of(part)
+    return parts
+
+
+def _split_part(letters: str, y_rule: str) -> tuple[str, str]:
+    if y_rule == "always":
+        y_is_vowel = True
+    elif y_rule == "never":
+        y_is_vowel = False
+    else:  # standard: Y is a vowel only in a part with no other vowel (Lynn, Glynn)
         y_is_vowel = not any(ch in VOWELS for ch in letters)
-        for ch in letters:
-            if ch in VOWELS or (ch == "Y" and y_is_vowel):
-                vowels.append(ch)
-            else:
-                consonants.append(ch)
-    return "".join(vowels), "".join(consonants)
+    vowels = "".join(ch for ch in letters if ch in VOWELS or (ch == "Y" and y_is_vowel))
+    consonants = "".join(ch for ch in letters if not (ch in VOWELS or (ch == "Y" and y_is_vowel)))
+    return vowels, consonants
+
+
+def name_groups(full_name: str, y_rule: str = "standard") -> list[tuple[str, str, str]]:
+    """(all letters, vowels, consonants) for each name part."""
+    groups = []
+    for part in name_parts(full_name):
+        letters = letters_of(part)
+        if letters:
+            groups.append((letters, *_split_part(letters, y_rule)))
+    return groups
+
+
+def split_vowels(full_name: str, y_rule: str = "standard") -> tuple[str, str]:
+    """Vowel and consonant letters of the whole name (see name_groups for the Y rule)."""
+    groups = name_groups(full_name, y_rule)
+    return "".join(g[1] for g in groups), "".join(g[2] for g in groups)
 
 
 def reduce(number: int, keep_master: bool = True) -> int:
@@ -125,8 +146,24 @@ def reduce(number: int, keep_master: bool = True) -> int:
     return number
 
 
+def _letters_total(letters: str) -> int:
+    return sum(letter_value(ch) for ch in letters)
+
+
+def name_total(parts: list[str], totalling: str = "whole") -> int:
+    """Total of a letter group across the name parts, before the final reduction.
+
+    whole: add every letter of the full name, then reduce (master numbers in the total survive).
+    per_name: reduce each name part first, then add the reduced parts.
+    """
+    sums = [_letters_total(letters) for letters in parts if letters]
+    if totalling == "per_name":
+        return sum(reduce(value) for value in sums)
+    return sum(sums)
+
+
 def _name_number(letters: str) -> int:
-    return reduce(sum(letter_value(ch) for ch in letters)) if letters else 0
+    return reduce(_letters_total(letters)) if letters else 0
 
 
 @dataclass(frozen=True)
@@ -160,19 +197,144 @@ NUMBER_PURPOSE = {
 }
 
 
-def core_numbers(full_name: str, birth_date: dt.date) -> CoreNumbers:
-    letters = letters_of(full_name)
-    if not letters:
+# --------------------------------------------------------------------------
+# Practitioner styles: which method, and how names are totalled
+# --------------------------------------------------------------------------
+METHODS = {
+    "classic": "Classic: Life Path, Expression, Soul Urge, Personality, Birthday",
+    "kdp": "Karma, Destiny, Personality",
+}
+TOTALLING = {
+    "whole": "Add the whole name first, then reduce (keeps master numbers in the total)",
+    "per_name": "Reduce each name first, then add them together",
+}
+Y_RULES = {
+    "standard": "Y is a vowel only in a name with no other vowel (Lynn, Glynn)",
+    "always": "Y is always a vowel",
+    "never": "Y is always a consonant",
+}
+STYLE_DEFAULTS = {"method": "classic", "totalling": "whole", "y_rule": "standard"}
+KARMIC_DEBT = (13, 14, 16, 19)
+
+
+def clean_style(values) -> dict:
+    """A complete, valid style from a mapping (form or stored row); unknown values fall back to defaults."""
+    get = values.get if hasattr(values, "get") else (lambda key, default=None: default)
+    return {
+        "method": get("method") if get("method") in METHODS else STYLE_DEFAULTS["method"],
+        "totalling": get("totalling") if get("totalling") in TOTALLING else STYLE_DEFAULTS["totalling"],
+        "y_rule": get("y_rule") if get("y_rule") in Y_RULES else STYLE_DEFAULTS["y_rule"],
+    }
+
+
+def style_of(user_row) -> dict:
+    """The numerology style of a practitioner (users row), or the default for none."""
+    if user_row is None:
+        return dict(STYLE_DEFAULTS)
+    keys = user_row.keys()
+    return clean_style({"method": user_row["report_method"] if "report_method" in keys else None,
+                        "totalling": user_row["name_totalling"] if "name_totalling" in keys else None,
+                        "y_rule": user_row["y_rule"] if "y_rule" in keys else None})
+
+
+def display_number(total: int) -> str:
+    """How a number is written: 11/2 for master numbers, 14/5 for karmic-debt totals, else the digit."""
+    if total == 0:
+        return "0"
+    value = total
+    while value > 9 and value not in MASTER_NUMBERS and value not in KARMIC_DEBT:
+        value = sum(int(digit) for digit in str(value))
+    if value in MASTER_NUMBERS:
+        return f"{value}/{reduce(value, keep_master=False)}"
+    if value in KARMIC_DEBT:
+        return f"{value}/{reduce(value)}"
+    return str(value)
+
+
+def _entry(key: str, total: int) -> dict:
+    number = reduce(total) if total else 0
+    return {"key": key, "total": total, "number": number, "display": display_number(total) if total else "0"}
+
+
+def core_numbers(full_name: str, birth_date: dt.date, style: dict | None = None) -> CoreNumbers:
+    style = clean_style(style or {})
+    groups = name_groups(full_name, style["y_rule"])
+    if not groups:
         raise ValueError("The name must contain letters")
-    vowels, consonants = split_vowels(full_name)
+    total = lambda index: name_total([g[index] for g in groups], style["totalling"])  # noqa: E731
     life_path = reduce(reduce(birth_date.month) + reduce(birth_date.day) + reduce(birth_date.year))
     return CoreNumbers(
         life_path=life_path,
-        expression=_name_number(letters),
-        soul_urge=_name_number(vowels),
-        personality=_name_number(consonants),
+        expression=reduce(total(0)),
+        soul_urge=reduce(total(1)),
+        personality=reduce(total(2)),
         birthday=reduce(birth_date.day),
     )
+
+
+def report_numbers(full_name: str, birth_date: dt.date, style: dict | None = None) -> dict:
+    """The numbers of the practitioner's method, in report order (the first one is the free teaser).
+
+    Stored with the lead, so the report keeps the method it was made with even if the
+    practitioner later changes style.
+    """
+    style = clean_style(style or {})
+    groups = name_groups(full_name, style["y_rule"])
+    if not groups:
+        raise ValueError("The name must contain letters")
+    total = lambda index: name_total([g[index] for g in groups], style["totalling"])  # noqa: E731
+    if style["method"] == "kdp":
+        items = [_entry("karma", total(1)), _entry("destiny", total(2)), _entry("personality", total(0))]
+    else:
+        core = core_numbers(full_name, birth_date, style)
+        items = [_entry("life_path", core.life_path), _entry("expression", total(0)),
+                 _entry("soul_urge", total(1)), _entry("personality", total(2)),
+                 _entry("birthday", core.birthday)]
+        # Life Path and Birthday come from the date, already reduced along the way.
+        for item in (items[0], items[4]):
+            item["display"] = display_number(item["number"])
+    return {"method": style["method"], "style": style, "items": items}
+
+
+METHOD_LABELS = {
+    "classic": {key: (NUMBER_LABELS[key], NUMBER_PURPOSE[key]) for key in NUMBER_ORDER},
+    "kdp": {
+        "karma": ("Karma", "the challenges you came to work through, and the lesson they hold"),
+        "destiny": ("Destiny", "the direction your life is meant to take"),
+        "personality": ("Personality", "the energy you show the world"),
+    },
+}
+
+
+def classic_report(numbers: dict) -> dict:
+    """Report numbers for a lead stored before methods existed (classic, from its core numbers)."""
+    items = [{"key": key, "total": numbers[key], "number": numbers[key],
+              "display": display_number(numbers[key]) if numbers[key] else "0"} for key in NUMBER_ORDER]
+    return {"method": "classic", "style": dict(STYLE_DEFAULTS), "items": items}
+
+
+def lead_report(lead) -> dict:
+    stored = lead["report"] if "report" in lead.keys() else None
+    if stored:
+        return json.loads(stored)
+    return classic_report(json.loads(lead["numbers"]))
+
+
+def report_items(lead) -> list[dict]:
+    """The lead's numbers with label, purpose and meaning, in report order (teaser first)."""
+    report = lead_report(lead)
+    labels = METHOD_LABELS.get(report["method"], METHOD_LABELS["classic"])
+    items = []
+    for entry in report["items"]:
+        label, purpose = labels.get(entry["key"], (entry["key"].replace("_", " ").title(), ""))
+        title, text = meaning(entry["number"])
+        items.append({**entry, "label": label, "purpose": purpose, "title": title, "text": text})
+    return items
+
+
+def teaser(lead) -> dict:
+    """The free number shown before the email is given (Life Path or Karma, by method)."""
+    return report_items(lead)[0]
 
 
 # Short, original meanings used until practitioners write their own templates.

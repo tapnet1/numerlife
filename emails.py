@@ -142,13 +142,8 @@ def _first_name(full_name: str) -> str:
     return (full_name.split() or ["there"])[0]
 
 
-def _number_items(numbers: dict) -> list[dict]:
-    items = []
-    for key in numerology.NUMBER_ORDER:
-        title, text = numerology.meaning(numbers[key])
-        items.append({"label": numerology.NUMBER_LABELS[key], "number": numbers[key], "title": title,
-                      "text": text, "purpose": numerology.NUMBER_PURPOSE[key]})
-    return items
+def _number_items(lead) -> list[dict]:
+    return numerology.report_items(lead)
 
 
 def _card(practitioner) -> dict | None:
@@ -176,21 +171,22 @@ def _card_for_id(practitioner_id) -> dict | None:
 
 
 def report_email(lead, practitioner, report_url: str | None = None) -> tuple[str, str, str]:
-    numbers = json.loads(lead["numbers"])
+    items = _number_items(lead)
+    teaser = items[0]
     context = {"first_name": _first_name(lead["full_name"]), "full_name": lead["full_name"],
-               "items": _number_items(numbers), "life_path": numbers["life_path"],
+               "items": items, "teaser": teaser,
                "report_url": report_url or f"{BASE_URL}/r/{lead['token']}", "card": _card(practitioner)}
-    subject = f"Your numerology report, {context['first_name']}: Life Path {numbers['life_path']}"
+    subject = f"Your numerology report, {context['first_name']}: {teaser['label']} {teaser['display']}"
     return (subject, *_render_pair("report", **context))
 
 
 def lead_alert_email(lead, recipient, lead_url: str | None = None) -> tuple[str, str, str]:
-    numbers = json.loads(lead["numbers"])
+    teaser = numerology.teaser(lead)
     context = {"first_name": _first_name(lead["full_name"]), "full_name": lead["full_name"],
-               "life_path": numbers["life_path"], "recipient_name": _first_name(recipient["display_name"] or ""),
+               "teaser": teaser, "recipient_name": _first_name(recipient["display_name"] or ""),
                "lead_url": lead_url or f"{BASE_URL}/leads/{lead['id']}",
                "birth_date": lead["birth_date"], "settings_url": f"{BASE_URL}/settings/profile"}
-    subject = f"New lead: {context['first_name']} (Life Path {numbers['life_path']})"
+    subject = f"New lead: {context['first_name']} ({teaser['label']} {teaser['display']})"
     return (subject, *_render_pair("lead_alert", **context))
 
 
@@ -205,11 +201,11 @@ def practitioner_nudge_email(recipient, waiting: list) -> tuple[str, str, str, d
 
 def client_nudge_email(lead, practitioner) -> tuple[str, str, str, dict]:
     unsubscribe = unsubscribe_url("client", lead["email"])
-    numbers = json.loads(lead["numbers"])
-    context = {"first_name": _first_name(lead["full_name"]), "life_path": numbers["life_path"],
+    teaser = numerology.teaser(lead)
+    context = {"first_name": _first_name(lead["full_name"]), "teaser": teaser,
                "card": _card(practitioner), "report_url": f"{BASE_URL}/r/{lead['token']}",
                "unsubscribe_url": unsubscribe}
-    subject = f"{context['first_name']}, take your Life Path {numbers['life_path']} reading deeper"
+    subject = f"{context['first_name']}, take your {teaser['label']} {teaser['display']} reading deeper"
     return (subject, *_render_pair("client_nudge", **context), {"List-Unsubscribe": f"<{unsubscribe}>"})
 
 

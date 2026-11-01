@@ -100,3 +100,49 @@ class NameEdgeCasesTest(unittest.TestCase):
         title, text = n.meaning(0)
         self.assertEqual(title, "Not active")
         self.assertTrue(text)
+
+
+class StylesTest(unittest.TestCase):
+    """Practitioner styles, checked against Liliana's handwritten sample reading."""
+    BORN = dt.date(1974, 6, 19)
+
+    def items(self, name="Marco James Bonanni", **style):
+        report = n.report_numbers(name, self.BORN, style)
+        return [(i["key"], i["total"], i["number"], i["display"]) for i in report["items"]]
+
+    def test_karma_destiny_personality_matches_sample_reading(self):
+        # vowels 7 + 6 + 16 = 29 -> 11/2; consonants 16 + 6 + 17 = 39 -> 3; all 23 + 12 + 33 = 68 -> 14/5
+        self.assertEqual(self.items(method="kdp"), [
+            ("karma", 29, 11, "11/2"), ("destiny", 39, 3, "3"), ("personality", 68, 5, "14/5")])
+
+    def test_reducing_each_name_first_loses_the_master_number(self):
+        items = self.items(method="kdp", totalling="per_name")
+        self.assertEqual([i[2] for i in items], [2, 3, 5])  # 7 + 6 + 7 = 20 -> 2
+
+    def test_y_rule(self):
+        # Mary: standard -> Y consonant (A is a vowel); always -> vowel
+        standard = dict((k, v) for k, _, v, _ in self.items("Mary", method="kdp"))
+        always = dict((k, v) for k, _, v, _ in self.items("Mary", method="kdp", y_rule="always"))
+        self.assertEqual((standard["karma"], always["karma"]), (1, 8))   # A=1; A+Y = 1+7
+        lynn = dict((k, v) for k, _, v, _ in self.items("Lynn", method="kdp", y_rule="never"))
+        self.assertEqual(lynn["karma"], 0)  # no vowels at all: not active
+
+    def test_classic_default_is_unchanged(self):
+        self.assertEqual(n.core_numbers("John Smith", dt.date(1990, 7, 15), {"y_rule": "standard"}).as_dict(),
+                         n.core_numbers("John Smith", dt.date(1990, 7, 15)).as_dict())
+        report = n.report_numbers("John Smith", dt.date(1990, 7, 15))
+        self.assertEqual(report["method"], "classic")
+        self.assertEqual(report["items"][0]["key"], "life_path")
+
+    def test_display_numbers(self):
+        self.assertEqual([n.display_number(v) for v in (29, 68, 39, 7, 22, 19)],
+                         ["11/2", "14/5", "3", "7", "22/4", "19/1"])
+
+    def test_unknown_style_values_fall_back_to_defaults(self):
+        self.assertEqual(n.clean_style({"method": "x", "totalling": None, "y_rule": "sometimes"}),
+                         n.STYLE_DEFAULTS)
+
+    def test_leads_without_stored_report_read_as_classic(self):
+        lead = {"numbers": '{"life_path": 5, "expression": 8, "soul_urge": 6, "personality": 11, "birthday": 6}'}
+        teaser = n.teaser(lead)
+        self.assertEqual((teaser["label"], teaser["display"]), ("Life Path", "5"))

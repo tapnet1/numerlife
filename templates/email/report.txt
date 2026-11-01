@@ -2,7 +2,7 @@ Hi {{ first_name }},
 
 Here are the numbers in your name and birth date.
 {% for item in items %}
-{{ item.label | upper }} NUMBER: {{ item.number if item.number else '-' }} ({{ item.title }})
+{{ item.label | upper }} NUMBER: {{ item.display if item.number else '-' }} ({{ item.title }})
 {{ item.text }}
 {% endfor %}
 View your full report: {{ report_url }}
