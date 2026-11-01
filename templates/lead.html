@@ -91,6 +91,37 @@
       </details>
     </section>
 
+    {% set hc = healy_contact(lead) %}
+    <section class="panel" id="healy">
+      <h2>Healy contact</h2>
+      <p class="muted small">Adds this client to your iPad's Contacts so you can bring them into the Healy app with <strong>Clients → Import from Address Book</strong>. Open numer.life in Safari on the iPad you use for Healy.</p>
+      {% if hc.consent_at %}
+        <p><a class="btn" href="{{ url_for('client_vcard', lead_id=lead.id) }}">Add to Contacts</a></p>
+        <p class="muted small">Then tap <em>Create New Contact</em>. Birth place is in the contact's notes; Healy may need it typed into its Birth place box.</p>
+      {% endif %}
+      <details class="mt"{% if not hc.consent_at %} open{% endif %}>
+        <summary class="btn-secondary">Name, address and consent</summary>
+        <form method="post" action="{{ url_for('save_client_contact', lead_id=lead.id) }}" class="stack">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="grid-2">
+            <div><label for="h-first">First name(s)</label><input id="h-first" name="first_name" maxlength="60" value="{{ hc.first_name }}"></div>
+            <div><label for="h-last">Last name(s)</label><input id="h-last" name="last_name" maxlength="80" value="{{ hc.last_name }}"></div>
+          </div>
+          <p class="hint">Check the split, especially for two first names or two surnames.</p>
+          <label for="h-street">Home address <span class="optional">(optional)</span></label>
+          <input id="h-street" name="street" maxlength="120" value="{{ hc.street }}" placeholder="Street and number" autocomplete="off">
+          <div class="grid-2">
+            <div><label for="h-city">City</label><input id="h-city" name="city" maxlength="80" value="{{ hc.city }}" autocomplete="off"></div>
+            <div><label for="h-region">Province / state</label><input id="h-region" name="region" maxlength="80" value="{{ hc.region }}" autocomplete="off"></div>
+            <div><label for="h-postcode">Postal code</label><input id="h-postcode" name="postcode" maxlength="20" value="{{ hc.postcode }}" autocomplete="off"></div>
+            <div><label for="h-country">Country</label><input id="h-country" name="country" maxlength="80" value="{{ hc.country }}" autocomplete="off"></div>
+          </div>
+          <label class="check"><input type="checkbox" name="consent" value="yes"{% if hc.consent_at %} checked{% endif %}><span>{{ lead.full_name.split(' ')[0] }} agreed that I add their details to my device and my Healy app.</span></label>
+          <button type="submit">Save</button>
+        </form>
+      </details>
+    </section>
+
     {% set lead_orders = orders_for_lead(lead.id) %}
     {% if lead_orders %}
     <section class="panel" id="orders">
