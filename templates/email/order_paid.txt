@@ -1,0 +1,11 @@
+{{ t.paid_lead.format(first_name=first_name, price=price) }}
+
+{{ t.paid_body.format(who=who) }}
+
+{{ t.receipt | upper }}
+{{ t.price_label }} · {{ t.amount }}: {{ price }} · {{ t.order }} #{{ order_id }}
+{{ t.paid_via }}
+
+{{ page_url }}
+--
+{{ site_name }} · TAPNET

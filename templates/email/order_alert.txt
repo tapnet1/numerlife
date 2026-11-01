@@ -1,0 +1,7 @@
+Hi {{ recipient_name or 'there' }},
+
+{{ full_name }} just paid {{ price }} for their full written reading.
+
+Their draft is ready, built from your report texts. Review it, complete it in your own words, add a personal note, and send it. Nothing reaches the client until you press Send.
+
+Review and send: {{ order_url }}

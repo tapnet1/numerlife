@@ -34,6 +34,24 @@
       </section>
     {% endfor %}
   </div>
+  {% set paid = paid_order_for_lead(lead.id) %}
+  {% if paid %}
+  <section class="card" id="full-reading">
+    <h2>Your full written reading</h2>
+    <p>{% if paid.status == 'delivered' %}Your reading is ready.{% elif paid.status == 'paid' %}Thank you for your order. It's being prepared, and we'll email you as soon as it's ready.{% else %}This order was refunded.{% endif %}</p>
+    {% if paid.status != 'refunded' %}<p><a class="btn" href="{{ url_for('order_public', token=paid.token) }}">Open my order</a></p>{% endif %}
+  </section>
+  {% elif sales_open() %}
+  <section class="card" id="full-reading">
+    <h2>Go deeper: your full written reading</h2>
+    <p>{{ practitioner.display_name if practitioner else 'Your numerologist' }} prepares it for you personally: what each of your numbers means, your strengths and challenges, the lesson each one holds, how your numbers work together, and an affirmation to keep. You receive it by email, with a PDF.</p>
+    <form method="post" action="{{ url_for('buy_report', token=lead.token) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="primary">Get my full reading · {{ full_report_price() }}</button>
+    </form>
+    <p class="muted small">Secure payment with PayPal or a card. Prepared by hand, usually within a few business days. See the <a href="{{ url_for('terms') }}">terms</a>, including refunds.</p>
+  </section>
+  {% endif %}
   {% set cal = lead_calendar(lead.id) %}
   <section class="card" id="calendar">
     {% if cal and cal.active and cal.email_freq != 'none' %}

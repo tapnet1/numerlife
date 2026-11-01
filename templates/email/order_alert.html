@@ -1,0 +1,8 @@
+{% extends "email/_layout.html" %}
+{% block preheader %}{{ full_name }} paid for their full written reading.{% endblock %}
+{% block body %}
+<p style="margin:0 0 14px;">Hi {{ recipient_name or 'there' }},</p>
+<p style="margin:0 0 14px;"><strong>{{ full_name }}</strong> just paid {{ price }} for their full written reading.</p>
+<p style="margin:0 0 22px;">Their draft is ready, built from your report texts. Review it, complete it in your own words, add a personal note, and send it. Nothing reaches the client until you press Send.</p>
+<p style="margin:0;text-align:center;"><a href="{{ order_url }}" style="display:inline-block;background:#d4af5a;color:#1b1038;font-weight:600;text-decoration:none;padding:13px 26px;border-radius:999px;">Review and send</a></p>
+{% endblock %}

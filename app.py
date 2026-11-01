@@ -281,6 +281,27 @@ CREATE TABLE IF NOT EXISTS form_attempts (
 );
 CREATE INDEX IF NOT EXISTS idx_form_attempts ON form_attempts (ip_hash, kind, created_at);
 
+CREATE TABLE IF NOT EXISTS orders (
+    id                INTEGER PRIMARY KEY,
+    lead_id           INTEGER NOT NULL REFERENCES leads(id),
+    practitioner_id   INTEGER REFERENCES users(id),
+    product           TEXT NOT NULL DEFAULT 'full_report',
+    amount_cents      INTEGER NOT NULL,
+    currency          TEXT NOT NULL DEFAULT 'CAD',
+    status            TEXT NOT NULL DEFAULT 'pending',  -- pending | paid | delivered | refunded | cancelled
+    paypal_order_id   TEXT UNIQUE,
+    paypal_capture_id TEXT UNIQUE,
+    payer_email       TEXT NOT NULL DEFAULT '',
+    token             TEXT NOT NULL UNIQUE,             -- client's private link /p/<token>
+    draft             TEXT,                             -- the practitioner's edited reading (JSON)
+    created_at        TEXT NOT NULL,
+    paid_at           TEXT,
+    delivered_at      TEXT,
+    updated_at        TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_orders_lead ON orders (lead_id, status);
+CREATE INDEX IF NOT EXISTS idx_orders_practitioner ON orders (practitioner_id, status);
+
 CREATE TABLE IF NOT EXISTS report_content (
     practitioner_id INTEGER NOT NULL REFERENCES users(id),
     lang            TEXT NOT NULL,
@@ -337,7 +358,7 @@ ADDED_COLUMNS = (
 REQUIRED_TABLES = {"users", "login_attempts", "leads", "form_attempts", "invites",
                    "push_subscriptions", "push_outbox", "avatars", "email_outbox", "settings", "ledger",
                    "calendars", "calendar_months", "calendar_notes", "calendar_content", "readings", "email_events",
-                   "report_content"}
+                   "report_content", "orders"}
 
 
 def now_utc() -> dt.datetime:
@@ -520,16 +541,19 @@ def _security_headers(response):
     response.headers.setdefault(
         "Content-Security-Policy",
         "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; "
-        "form-action 'self'; frame-ancestors 'none'; base-uri 'self'; manifest-src 'self'; worker-src 'self'",
+        "form-action 'self' https://www.paypal.com https://www.sandbox.paypal.com; frame-ancestors 'none'; base-uri 'self'; manifest-src 'self'; worker-src 'self'",
     )
     if app.config["SESSION_COOKIE_SECURE"]:
         response.headers.setdefault("Strict-Transport-Security", "max-age=86400")
     if NOINDEX or request.endpoint in ("report", "unlock_report", "start_report", "unsubscribe",
-                                         "calendar_public", "calendar_pdf"):
+                                         "calendar_public", "calendar_pdf", "order_public", "order_pdf",
+                                         "buy_report", "paypal_return", "paypal_cancel"):
         # Personal report pages are never indexed, even after launch.
         response.headers["X-Robots-Tag"] = "noindex, nofollow"
     if (session.get("user_id") and request.endpoint not in ("avatar", "static")) or request.endpoint in ("login", "report", "unlock_report", "start_report",
-                                                                  "calendar_public", "calendar_pdf"):
+                                                                  "calendar_public", "calendar_pdf", "order_public",
+                                                                  "order_pdf", "buy_report", "paypal_return",
+                                                                  "paypal_cancel"):
         response.headers["Cache-Control"] = "no-store"  # signed-in pages never cached
     return response
 
@@ -669,7 +693,7 @@ def robots():
         body = "User-agent: *\nDisallow: /\n"
     else:
         body = ("User-agent: *\nDisallow: /admin\nDisallow: /dashboard\nDisallow: /login\n"
-                "Disallow: /r/\n" f"Sitemap: {BASE_URL}/sitemap.xml\n")
+                "Disallow: /r/\nDisallow: /p/\nDisallow: /orders\n" f"Sitemap: {BASE_URL}/sitemap.xml\n")
     return body, 200, {"Content-Type": "text/plain; charset=utf-8"}
 
 
@@ -797,3 +821,4 @@ import readings  # noqa: E402,F401  (client record: scheduled and logged reading
 import calendar_mail  # noqa: E402,F401  (daily / monthly calendar emails)
 import lead_series  # noqa: E402,F401  (follow-up email series with open/click tracking)
 import reports  # noqa: E402,F401  (report texts editor and the full written reading)
+import orders  # noqa: E402,F401  (paid full reports: PayPal checkout, review, delivery)
