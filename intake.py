@@ -384,12 +384,17 @@ def privacy():
     return render_template("privacy.html")
 
 
+@app.get("/terms")
+def terms():
+    return render_template("terms.html")
+
+
 @app.get("/sitemap.xml")
 def sitemap():
     import public_profiles  # loaded after this module
 
     today = dt.date.today().isoformat()
-    pages = [("/", "1.0"), *[(path, "0.7") for path in public_profiles.sitemap_profiles()], ("/privacy", "0.3")]
+    pages = [("/", "1.0"), *[(path, "0.7") for path in public_profiles.sitemap_profiles()], ("/privacy", "0.3"), ("/terms", "0.3")]
     urls = "".join(
         f"<url><loc>{BASE_URL}{path}</loc><lastmod>{today}</lastmod><priority>{priority}</priority></url>"
         for path, priority in pages

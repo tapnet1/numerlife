@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Terms and conditions — {{ site_name }}{% endblock %}
+{% block description %}The terms for using numer.life: free and paid numerology reports, payments through TAPNET, refunds and practitioner accounts.{% endblock %}
+{% block content %}
+<section class="card prose">
+  <h1>Terms and conditions</h1>
+  <p class="muted small">Draft for review. Last updated {{ year }}.</p>
+
+  <h2>Who we are</h2>
+  <p>{{ site_name }} is operated by <strong>TAPNET</strong>, a digital marketing and technology company based in Edmonton, Alberta, Canada. TAPNET runs the website, sends its emails, collects payments for paid reports and pays practitioners their share. You may see the name TAPNET on payment receipts and in some emails. You can reach us at <a href="mailto:reports@numer.life">reports@numer.life</a>.</p>
+  <p>By using {{ site_name }}, requesting a report or buying one, you agree to these terms and to our <a href="{{ url_for('privacy') }}">privacy policy</a>.</p>
+
+  <h2>What numerology is, and isn't</h2>
+  <p>Numerology is a tradition of personal reflection. Reports, calendars and readings are offered for insight and personal growth. They are not medical, psychological, legal, financial or other professional advice, and they don't predict the future. Please don't make important decisions based on them alone.</p>
+
+  <h2>Practitioners</h2>
+  <p>Reports, readings and calendars are prepared in the style of the numerologist (practitioner) whose link you used, or who was assigned to you. Practitioners are independent: they are not TAPNET employees, and they are responsible for their own readings and wording. TAPNET provides the platform, the calculations and the payments.</p>
+
+  <h2>Free reports</h2>
+  <p>Your first number is free. When you give your email and agree to receive your report, we show and email your other numbers with a short meaning for each, and share your details with your practitioner so they can follow up with you.</p>
+
+  <h2>Paid full reports</h2>
+  <ul>
+    <li><strong>Price:</strong> the full written report costs <strong>CAD $29</strong>. All prices are in Canadian dollars. Any applicable taxes are shown before you pay.</li>
+    <li><strong>Payment:</strong> you pay through PayPal (with a PayPal account or a card). The payment goes to TAPNET, which passes the practitioner's share on to them. We never see or store your card details.</li>
+    <li><strong>Preparation:</strong> your practitioner prepares and reviews your report personally after you pay, so it isn't instant. We'll email you as soon as it's ready, usually within a few business days.</li>
+    <li><strong>Delivery:</strong> you receive a private link to your report by email, and you can download it as a PDF. Please keep the link private.</li>
+    <li><strong>Refunds:</strong> if your report hasn't been delivered within 14 days of payment, you can ask for a full refund at <a href="mailto:reports@numer.life">reports@numer.life</a>. Once your report has been delivered it is personal to you, so the sale is final, except where the law requires otherwise. If something is wrong with your report (for example, a misspelled name or wrong birth date), contact us and we'll have it corrected.</li>
+  </ul>
+
+  <h2>Personal calendars and emails</h2>
+  <p>If you sign up for a personal calendar or follow-up emails, you can stop them at any time with the link in any email. Paid calendar subscriptions, when offered, show their price and billing period before you subscribe and can be cancelled at any time; cancelling stops future payments.</p>
+
+  <h2>For practitioners</h2>
+  <ul>
+    <li>Practitioner accounts are by invitation. Your personal link and public profile must describe you and your services accurately.</li>
+    <li>Your report texts, calendar guidance and messages must be your own wording, or material you have permission to use. Don't upload or reproduce content from courses, books or manuals without the author's permission.</li>
+    <li>Treat your clients' details as confidential and use them only to serve those clients. Respect their email choices.</li>
+    <li>Subscription fees, referral rewards and your share of sales are shown in your account. Rewards and shares are recorded as credits in Canadian dollars and paid out by TAPNET after review, as described in your account.</li>
+    <li>We may suspend an account that breaks these terms or puts clients at risk.</li>
+  </ul>
+
+  <h2>Fair use</h2>
+  <p>Please don't misuse the site: no automated requests, attempts to access other people's reports or accounts, false information meant to mislead a practitioner, or anything unlawful.</p>
+
+  <h2>Liability</h2>
+  <p>We work hard to keep {{ site_name }} accurate and available, but it is provided as is. To the extent the law allows, TAPNET is not responsible for decisions you make based on a report, reading or calendar, and our total liability to you is limited to the amount you paid us in the 12 months before the claim. Nothing in these terms limits rights you have under consumer protection law.</p>
+
+  <h2>Changes and governing law</h2>
+  <p>We may update these terms; the date above shows the latest version, and changes don't affect purchases already made. These terms are governed by the laws of Alberta and the federal laws of Canada that apply there.</p>
+</section>
+{% endblock %}

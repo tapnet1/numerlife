@@ -86,7 +86,7 @@
   <footer class="footer">
     <p class="footer-brand"><img src="{{ url_for('static', filename='img/logo-128.png') }}" alt="" width="30" height="30">{% include "_wordmark.html" %}</p>
     <p>Free numerology reports based on the Pythagorean system. For reflection and entertainment.</p>
-    <p>&copy; {{ year }} {{ site_name }} · <a href="{{ url_for('privacy') }}">Privacy</a> · <a href="{{ url_for('login') }}">Practitioner sign in</a></p>
+    <p>&copy; {{ year }} {{ site_name }} · <a href="{{ url_for('privacy') }}">Privacy</a> · <a href="{{ url_for('terms') }}">Terms</a> · <a href="{{ url_for('login') }}">Practitioner sign in</a></p>
   </footer>
   {% if user %}<script src="{{ url_for('static', filename='js/nav.js') }}" defer></script>{% endif %}
   {% block scripts %}{% endblock %}

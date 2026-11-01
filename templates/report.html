@@ -93,7 +93,7 @@
       <label class="check">
         <input type="checkbox" name="consent_report" value="yes" {% if form.consent_report %}checked{% endif %}>
         <span>Email me my full report{% if practitioner %}, and share my details and report with {{ practitioner.display_name }}, who will be in touch{% endif %}.
-          See our <a href="{{ url_for('privacy') }}">privacy policy</a>.</span>
+          See our <a href="{{ url_for('privacy') }}">privacy policy</a> and <a href="{{ url_for('terms') }}">terms</a>.</span>
       </label>
       <label class="check">
         <input type="checkbox" name="marketing_opt_in" value="yes" {% if form.marketing_opt_in %}checked{% endif %}>

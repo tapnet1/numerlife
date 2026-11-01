@@ -26,7 +26,7 @@ class HomeSeoTest(AppTestCase):
 
     def test_title_and_description_fit_search_limits(self):
         import html as html_lib
-        for path in ("/", "/privacy"):
+        for path in ("/", "/privacy", "/terms"):
             page = self.client.get(path).get_data(as_text=True)
             title = html_lib.unescape(re.search(r"<title>(.*?)</title>", page, re.S).group(1).strip())
             description = html_lib.unescape(re.search(r'name="description" content="([^"]*)"', page).group(1))
@@ -119,3 +119,12 @@ class PractitionerSeoAndShareTest(IntakeTestCase):
         self.assertEqual(share, "http://localhost/liliana")
         share_section = html[html.index('class="share"'):]
         self.assertNotIn(token, share_section)
+
+
+class TermsPageTest(AppTestCase):
+    def test_terms_name_tapnet_price_and_refunds_and_are_linked(self):
+        page = self.client.get("/terms").get_data(as_text=True)
+        for text in ("TAPNET", "Edmonton, Alberta", "CAD $29", "14 days", "PayPal"):
+            self.assertIn(text, page)
+        self.assertIn('href="/terms"', self.client.get("/").get_data(as_text=True))
+        self.assertIn("/terms</loc>", self.client.get("/sitemap.xml").get_data(as_text=True))
