@@ -80,10 +80,15 @@ def price_text(cents: int = PRICE_CENTS) -> str:
     return f"CAD {billing.money(cents)}"
 
 
+def platform_ready() -> bool:
+    with open_db() as connection:
+        return billing.platform_account(connection) is not None
+
+
 def sales_open() -> bool:
-    """Paid reports are switched on in Admin and PayPal keys are on the server."""
+    """Paid reports are switched on in Admin, PayPal keys are on the server and TAPNET's account exists."""
     import intake
-    return intake.paid_reports_on() and paypal.configured()
+    return intake.paid_reports_on() and paypal.configured() and platform_ready()
 
 
 def order_for_lead(lead_id: int):
@@ -226,7 +231,8 @@ def finalize(order_id: int) -> str:
         app.logger.warning("PayPal order %s for order %s not completed or mismatched (status %s)",
                            order["paypal_order_id"], order_id, result.get("status"))
         return "declined" if result.get("status") in ("VOIDED",) else "unconfirmed"
-    return "paid" if mark_paid(order_id, capture["capture_id"], capture["payer_email"]) else "paid"
+    mark_paid(order_id, capture["capture_id"], capture["payer_email"])  # False: already recorded
+    return "paid"
 
 
 def mark_paid(order_id: int, capture_id: str, payer_email: str) -> bool:
@@ -239,15 +245,7 @@ def mark_paid(order_id: int, capture_id: str, payer_email: str) -> bool:
         if not changed:
             return False
         order = connection.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
-        reference = f"order-{order_id}"
-        if order["practitioner_id"]:
-            billing.record_sale(connection, order["practitioner_id"], order["amount_cents"], reference,
-                                note=f"Full report, order {order_id}")
-        else:
-            platform = billing.platform_account(connection)
-            if platform is not None:
-                billing.post(connection, platform["id"], "platform_share", order["amount_cents"],
-                             f"{reference}:platform", note=f"Full report, order {order_id} (no practitioner)")
+        _credit_sale(connection, order)
         recipients = _queue_paid_emails(connection, order)
     import emails
     import notify
@@ -258,6 +256,26 @@ def mark_paid(order_id: int, capture_id: str, payer_email: str) -> bool:
         "title": f"Paid report: {first_name}", "body": "Review, complete and send their full reading.",
         "url": f"/orders/{order_id}", "tag": f"order-{order_id}"})
     return True
+
+
+def _credit_sale(connection, order) -> None:
+    """Credit the sale 75/25. The buyer has already been charged, so this never fails the payment:
+    a share that can't be credited (no TAPNET account yet) is logged for an admin adjustment."""
+    reference = f"order-{order['id']}"
+    note = f"Full report, order {order['id']}"
+    platform = billing.platform_account(connection)
+    platform_cents, practitioner_cents = billing.split(order["amount_cents"])
+    if not order["practitioner_id"]:
+        platform_cents, practitioner_cents = order["amount_cents"], 0
+    if practitioner_cents:
+        billing.post(connection, order["practitioner_id"], "sale_share", practitioner_cents,
+                     f"{reference}:practitioner", note=note)
+    if platform is not None:
+        billing.post(connection, platform["id"], "platform_share", platform_cents, f"{reference}:platform",
+                     source_user_id=order["practitioner_id"], note=note)
+    else:
+        app.logger.error("Order %s: no TAPNET platform account, platform share of %s cents not credited",
+                         order["id"], platform_cents)
 
 
 def _staff_recipients(connection, practitioner_id):
@@ -395,6 +413,8 @@ def edit_order(order_id):
         if order["status"] == "refunded":
             abort(400, description="This order was refunded.")
         if action == "reset":
+            if order["status"] != "paid":
+                abort(400, description="A sent reading can't be reset; edit it instead.")
             with open_db() as connection:
                 connection.execute("UPDATE orders SET draft = NULL, updated_at = ? WHERE id = ?",
                                    (iso(now_utc()), order_id))
@@ -552,6 +572,7 @@ def admin_overview() -> dict:
         " WHERE orders.status NOT IN ('pending', 'cancelled') ORDER BY orders.id DESC LIMIT 50").fetchall()
     import intake
     return {"switch_on": intake.paid_reports_on(), "paypal_ready": paypal.configured(),
+            "platform_ready": platform_ready(),
             "paypal_env": paypal.environment(), "orders": rows, "price": price_text()}
 
 
@@ -565,6 +586,9 @@ def admin_paid_reports():
     turn_on = request.form.get("on") == "yes"
     if turn_on and not paypal.configured():
         flash("Add the PayPal keys to .env on the server first.", "error")
+        return redirect(url_for("admin") + "#paid-reports")
+    if turn_on and not platform_ready():
+        flash("Set up the numer.life/tapnet (TAPNET) account under Billing first, so sales can be credited.", "error")
         return redirect(url_for("admin") + "#paid-reports")
     emails.set_setting("paid_reports", "on" if turn_on else "off")
     flash("Paid reports are on sale." if turn_on else "Paid reports are off. Visitors no longer see the offer.", "info")

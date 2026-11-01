@@ -231,6 +231,30 @@ class ReviewAndDeliveryTest(OrdersTestCase):
         self.assertEqual(totals, {self.practitioner_id: 0, self.tapnet_id: 0})
         self.assertIn("refunded", self.client.get(f"/p/{order['token']}").get_data(as_text=True))
 
+    def test_payment_is_recorded_even_without_a_platform_account(self):
+        token = self.captured_lead()
+        self.buy(token)
+        with numer.open_db() as connection:
+            connection.execute("DELETE FROM settings WHERE key = 'platform_user_id'")
+        with mock.patch.object(paypal, "capture_order", return_value=completed("order-1")):
+            self.client.get("/paypal/return?token=PP123")
+        self.assertEqual(self.order()["status"], "paid")
+        self.assertEqual(self.ledger(), {(self.practitioner_id, "sale_share"): 2175})
+        self.assertEqual(len(self.outbox("order_alert")), 1)
+        self.assertNotIn("Get my full reading", self.client.get(f"/r/{token}").get_data(as_text=True))
+
+    def test_a_sent_reading_cannot_be_reset(self):
+        order = self.paid_order()
+        self.login("liliana@example.com")
+        page = self.client.get(f"/orders/{order['id']}").get_data(as_text=True)
+        self.assertIn('value="reset"', page)
+        self.client.post(f"/orders/{order['id']}", data={"csrf_token": token_from(page), "action": "send"})
+        page = self.client.get(f"/orders/{order['id']}").get_data(as_text=True)
+        self.assertNotIn('value="reset"', page)
+        response = self.client.post(f"/orders/{order['id']}", data={"csrf_token": token_from(page), "action": "reset"})
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(self.client.get(f"/p/{order['token']}/reading.pdf").status_code, 200)
+
     def test_admin_switch_needs_paypal_keys(self):
         self.login("owner@example.com")
         page = self.client.get("/admin").get_data(as_text=True)
@@ -245,3 +269,9 @@ class ReviewAndDeliveryTest(OrdersTestCase):
         self.client.post("/admin/paid-reports", data={"csrf_token": token_from(page), "on": "yes"})
         with numer.app.app_context():
             self.assertTrue(intake.paid_reports_on())
+        self.client.post("/admin/paid-reports", data={"csrf_token": token_from(page), "on": "no"})
+        with numer.open_db() as connection:
+            connection.execute("DELETE FROM settings WHERE key = 'platform_user_id'")
+        self.client.post("/admin/paid-reports", data={"csrf_token": token_from(page), "on": "yes"})
+        with numer.app.app_context():
+            self.assertFalse(intake.paid_reports_on())  # TAPNET's account must exist first

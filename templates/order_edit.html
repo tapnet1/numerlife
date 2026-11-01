@@ -55,7 +55,7 @@
     {% else %}
     <button type="submit" name="action" value="send" class="primary">Save and update their page</button>
     {% endif %}
-    <button type="submit" name="action" value="reset" class="link" formnovalidate>Start over from my report texts</button>
+    {% if order.status == 'paid' %}<button type="submit" name="action" value="reset" class="link" formnovalidate>Start over from my report texts</button>{% endif %}
   </div>
 </form>
 

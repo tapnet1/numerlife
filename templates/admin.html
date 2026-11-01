@@ -132,11 +132,12 @@
   <form method="post" action="{{ url_for('admin_paid_reports') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     {% if paid_info.switch_on %}
-      <p>Paid reports are <strong>on sale</strong>{% if not paid_info.paypal_ready %}, but hidden until PayPal is set up{% endif %}.</p>
+      <p>Paid reports are <strong>on sale</strong>{% if not (paid_info.paypal_ready and paid_info.platform_ready) %}, but hidden until PayPal and the TAPNET account are set up{% endif %}.</p>
       <button type="submit" name="on" value="no">Stop selling</button>
     {% else %}
       <p>Paid reports are <strong>off</strong>: visitors don't see the offer, and the terms page hides the paid-report section.</p>
-      <button type="submit" name="on" value="yes" class="primary"{% if not paid_info.paypal_ready %} disabled{% endif %}>Start selling</button>
+      {% if not paid_info.platform_ready %}<p class="flash flash-error">Set up the numer.life/tapnet (TAPNET) account under Billing first, so sales can be credited.</p>{% endif %}
+      <button type="submit" name="on" value="yes" class="primary"{% if not (paid_info.paypal_ready and paid_info.platform_ready) %} disabled{% endif %}>Start selling</button>
     {% endif %}
   </form>
   {% if paid_info.orders %}
