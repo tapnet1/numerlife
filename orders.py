@@ -236,16 +236,28 @@ def finalize(order_id: int) -> str:
 
 
 def mark_paid(order_id: int, capture_id: str, payer_email: str) -> bool:
-    """Record a confirmed payment once: order paid, sale credited, client and practitioner told."""
+    """Record a confirmed payment once: order paid, sale credited, client and practitioner told.
+
+    A completed capture is money received, so it is recorded even if the order was cancelled while
+    the capture was in flight (a replacement checkout, the buyer's cancel link, the expiry job).
+    If that leaves the lead with two paid orders, it's logged so an admin can refund one."""
     with open_db() as connection:
+        before = connection.execute("SELECT status FROM orders WHERE id = ?", (order_id,)).fetchone()
         changed = connection.execute(
             "UPDATE orders SET status = 'paid', paypal_capture_id = ?, payer_email = ?, paid_at = ?, updated_at = ?"
-            " WHERE id = ? AND status = 'pending'",
+            " WHERE id = ? AND status IN ('pending', 'cancelled')",
             (capture_id or None, payer_email[:200], iso(now_utc()), iso(now_utc()), order_id)).rowcount
         if not changed:
             return False
+        if before is not None and before["status"] == "cancelled":
+            app.logger.warning("Order %s was cancelled while PayPal captured it; recorded as paid", order_id)
         order = connection.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
         _credit_sale(connection, order)
+        others = connection.execute("SELECT COUNT(*) FROM orders WHERE lead_id = ? AND id != ? AND status IN"
+                                    " ('paid', 'delivered')", (order["lead_id"], order_id)).fetchone()[0]
+        if others:
+            app.logger.warning("Lead %s now has more than one paid order (latest %s): refund the duplicate",
+                               order["lead_id"], order_id)
         recipients = _queue_paid_emails(connection, order)
     import emails
     import notify

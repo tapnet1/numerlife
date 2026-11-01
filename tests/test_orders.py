@@ -133,6 +133,22 @@ class CheckoutTest(OrdersTestCase):
         self.assertEqual(self.order()["status"], "pending")
         self.assertEqual(self.ledger(), {})
 
+    def test_capture_completing_after_a_cancel_is_still_recorded(self):
+        token = self.captured_lead()
+        self.buy(token)
+
+        def capture_while_cancelled(_order_id):
+            with numer.open_db() as connection:  # e.g. the buyer's cancel link in another tab
+                connection.execute("UPDATE orders SET status = 'cancelled'")
+            return completed("order-1")
+
+        with mock.patch.object(paypal, "capture_order", side_effect=capture_while_cancelled):
+            with numer.app.app_context():
+                self.assertEqual(orders.finalize(1), "paid")
+        self.assertEqual(self.order()["status"], "paid")
+        self.assertEqual(self.ledger()[(self.practitioner_id, "sale_share")], 2175)
+        self.assertEqual(len(self.outbox("order_paid")), 1)
+
     def test_declined_payment_returns_to_the_report(self):
         token = self.captured_lead()
         self.buy(token)
