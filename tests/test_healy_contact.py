@@ -42,6 +42,15 @@ class HealyContactTest(IntakeTestCase):
         self.save()  # unticking withdraws consent
         self.assertEqual(self.client.get(f"/leads/{self.lead_id}/contact.vcf").status_code, 302)
 
+    def test_names_beyond_latin_1_still_download(self):
+        self.login("liliana@example.com")
+        self.save(first_name="Łukasz", last_name="Żółć", consent="yes")
+        response = self.client.get(f"/leads/{self.lead_id}/contact.vcf")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('filename="Lukasz-Zolc.vcf"', response.headers["Content-Disposition"])
+        response.headers["Content-Disposition"].encode("latin-1")
+        self.assertIn("N:Żółć;Łukasz;;;", response.get_data(as_text=True))
+
     def test_other_practitioners_cannot_get_the_card(self):
         self.login("liliana@example.com")
         self.save(consent="yes")

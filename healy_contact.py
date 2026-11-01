@@ -115,7 +115,9 @@ def client_vcard(lead_id):
     if not details["consent_at"]:
         flash("Tick that the client agreed before adding them to your contacts.", "error")
         return redirect(url_for("lead_detail", lead_id=lead["id"]) + "#healy")
-    name = "".join(ch for ch in f"{details['first_name']}-{details['last_name']}" if ch.isalnum() or ch == "-")
+    import numerology  # A-Z spelling of each word (Łukasz -> Lukasz): headers must stay ASCII
+    words = f"{details['first_name']} {details['last_name']}".split()
+    name = "-".join(filter(None, (numerology.letters_of(word).title() for word in words)))
     return vcard(lead, details), 200, {
         "Content-Type": "text/vcard; charset=utf-8",
         # inline: Safari on iPad/iPhone shows the contact with "Create New Contact"
