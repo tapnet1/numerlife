@@ -149,6 +149,13 @@ class CheckoutTest(OrdersTestCase):
         self.assertEqual(self.ledger()[(self.practitioner_id, "sale_share")], 2175)
         self.assertEqual(len(self.outbox("order_paid")), 1)
 
+    def test_cancel_link_after_payment_shows_the_paid_order(self):
+        token = self.captured_lead()
+        self.pay(token)
+        response = self.client.get("/paypal/cancel?token=PP123")
+        self.assertEqual(response.headers["Location"], f"/p/{self.order()['token']}")
+        self.assertEqual(self.order()["status"], "paid")
+
     def test_declined_payment_returns_to_the_report(self):
         token = self.captured_lead()
         self.buy(token)

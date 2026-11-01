@@ -202,6 +202,9 @@ def paypal_cancel():
         with open_db() as connection:
             connection.execute("UPDATE orders SET status = 'cancelled', updated_at = ? WHERE id = ? AND status = 'pending'",
                                (iso(now_utc()), order["id"]))
+    current = db().execute("SELECT status, token FROM orders WHERE id = ?", (order["id"],)).fetchone()
+    if current["status"] in ("paid", "delivered", "refunded"):  # paid in another tab: show the order
+        return redirect(url_for("order_public", token=current["token"]))
     flash("Checkout cancelled. You haven't been charged.", "info")
     return redirect(url_for("report", token=_lead_token(order)))
 
