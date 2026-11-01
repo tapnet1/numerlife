@@ -385,9 +385,15 @@ def privacy():
     return render_template("privacy.html")
 
 
+def paid_reports_on() -> bool:
+    """Paid full reports are on sale (admin switch, set once PayPal checkout is ready)."""
+    import emails  # loaded after this module
+    return emails.get_setting("paid_reports") == "on"
+
+
 @app.get("/terms")
 def terms():
-    return render_template("terms.html")
+    return render_template("terms.html", paid_reports=paid_reports_on())
 
 
 @app.get("/sitemap.xml")

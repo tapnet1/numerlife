@@ -124,7 +124,14 @@ class PractitionerSeoAndShareTest(IntakeTestCase):
 class TermsPageTest(AppTestCase):
     def test_terms_name_tapnet_price_and_refunds_and_are_linked(self):
         page = self.client.get("/terms").get_data(as_text=True)
-        for text in ("TAPNET", "Edmonton, Alberta", "CAD $29", "14 days", "PayPal"):
+        self.assertIn("TAPNET", page)
+        self.assertIn("Edmonton, Alberta", page)
+        self.assertNotIn("CAD $29", page)  # paid reports aren't on sale yet
+        import emails
+        with numer.app.app_context():
+            emails.set_setting("paid_reports", "on")
+        page = self.client.get("/terms").get_data(as_text=True)
+        for text in ("CAD $29", "14 days", "PayPal"):
             self.assertIn(text, page)
         self.assertIn('href="/terms"', self.client.get("/").get_data(as_text=True))
         self.assertIn("/terms</loc>", self.client.get("/sitemap.xml").get_data(as_text=True))

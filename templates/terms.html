@@ -7,7 +7,7 @@
   <p class="muted small">Draft for review. Last updated {{ year }}.</p>
 
   <h2>Who we are</h2>
-  <p>{{ site_name }} is operated by <strong>TAPNET</strong>, a digital marketing and technology company based in Edmonton, Alberta, Canada. TAPNET runs the website, sends its emails, collects payments for paid reports and pays practitioners their share. You may see the name TAPNET on payment receipts and in some emails. You can reach us at <a href="mailto:reports@numer.life">reports@numer.life</a>.</p>
+  <p>{{ site_name }} is operated by <strong>TAPNET</strong>, a digital marketing and technology company based in Edmonton, Alberta, Canada. TAPNET runs the website, sends its emails, collects any payments and pays practitioners their share. You may see the name TAPNET on payment receipts and in some emails. You can reach us at <a href="mailto:reports@numer.life">reports@numer.life</a>.</p>
   <p>By using {{ site_name }}, requesting a report or buying one, you agree to these terms and to our <a href="{{ url_for('privacy') }}">privacy policy</a>.</p>
 
   <h2>What numerology is, and isn't</h2>
@@ -19,6 +19,7 @@
   <h2>Free reports</h2>
   <p>Your first number is free. When you give your email and agree to receive your report, we show and email your other numbers with a short meaning for each, and share your details with your practitioner so they can follow up with you.</p>
 
+  {% if paid_reports %}
   <h2>Paid full reports</h2>
   <ul>
     <li><strong>Price:</strong> the full written report costs <strong>CAD $29</strong>. All prices are in Canadian dollars. Any applicable taxes are shown before you pay.</li>
@@ -27,6 +28,8 @@
     <li><strong>Delivery:</strong> you receive a private link to your report by email, and you can download it as a PDF. Please keep the link private.</li>
     <li><strong>Refunds:</strong> if your report hasn't been delivered within 14 days of payment, you can ask for a full refund at <a href="mailto:reports@numer.life">reports@numer.life</a>. Once your report has been delivered it is personal to you, so the sale is final, except where the law requires otherwise. If something is wrong with your report (for example, a misspelled name or wrong birth date), contact us and we'll have it corrected.</li>
   </ul>
+
+  {% endif %}
 
   <h2>Personal calendars and emails</h2>
   <p>If you sign up for a personal calendar or follow-up emails, you can stop them at any time with the link in any email. Paid calendar subscriptions, when offered, show their price and billing period before you subscribe and can be cancelled at any time; cancelling stops future payments.</p>
