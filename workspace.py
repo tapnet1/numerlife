@@ -49,13 +49,7 @@ def scoped_lead(lead_id: int):
 
 
 def lead_numbers(lead) -> list[dict]:
-    numbers = json.loads(lead["numbers"])
-    items = []
-    for key in numerology.NUMBER_ORDER:
-        title, text = numerology.meaning(numbers[key])
-        items.append({"label": numerology.NUMBER_LABELS[key], "number": numbers[key],
-                      "title": title, "text": text, "purpose": numerology.NUMBER_PURPOSE[key]})
-    return items
+    return numerology.report_items(lead)
 
 
 def birth_place(lead) -> str:
@@ -68,6 +62,7 @@ def life_path(lead) -> int:
 
 app.jinja_env.filters["birth_place"] = birth_place
 app.jinja_env.filters["life_path"] = life_path
+app.jinja_env.filters["teaser"] = numerology.teaser
 
 
 @app.template_filter("friendly_time")
@@ -219,13 +214,13 @@ def update_lead_birth(lead_id):
         for error in errors:
             flash(error, "error")
         return redirect(url_for("lead_detail", lead_id=lead["id"]) + "#birth")
-    numbers = numerology.core_numbers(data["full_name"], dt.date.fromisoformat(data["birth_date"]))
+    numbers, report_json = intake.lead_numbers_for(data, lead["practitioner_id"])
     connection = db()
     connection.execute(
         "UPDATE leads SET full_name = ?, birth_date = ?, birth_city = ?, birth_region = ?, birth_country = ?,"
-        " numbers = ?, updated_at = ? WHERE id = ?",
+        " numbers = ?, report = ?, updated_at = ? WHERE id = ?",
         (data["full_name"], data["birth_date"], data["birth_city"], data["birth_region"], data["birth_country"],
-         json.dumps(numbers.as_dict()), iso(now_utc()), lead["id"]),
+         numbers, report_json, iso(now_utc()), lead["id"]),
     )
     import emails  # loaded after this module
     emails.rebuild_pending_for_lead(connection, lead["id"])

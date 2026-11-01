@@ -101,4 +101,33 @@
     {% include "_contact_card.html" %}
   </aside>
 </div>
+
+{% if user.role == 'practitioner' %}
+<form class="panel mt" id="style" method="post" action="{{ url_for('save_style') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <h2>Your numerology style</h2>
+  <p class="hint">How reports for your visitors are calculated. Changes apply to new reports; reports already sent keep their numbers. Correcting a lead's birth details recalculates them in your current style.</p>
+  <fieldset>
+    <legend>Method</legend>
+    {% for key, label in style_options.methods.items() %}
+      <label class="check"><input type="radio" name="method" value="{{ key }}"{% if style.method == key %} checked{% endif %}><span>{{ label }}</span></label>
+    {% endfor %}
+    <p class="hint">The first number is the free one visitors see before giving their email (Life Path, or Karma).</p>
+  </fieldset>
+  <fieldset>
+    <legend>Name totals</legend>
+    {% for key, label in style_options.totalling.items() %}
+      <label class="check"><input type="radio" name="totalling" value="{{ key }}"{% if style.totalling == key %} checked{% endif %}><span>{{ label }}</span></label>
+    {% endfor %}
+  </fieldset>
+  <fieldset>
+    <legend>The letter Y</legend>
+    {% for key, label in style_options.y_rules.items() %}
+      <label class="check"><input type="radio" name="y_rule" value="{{ key }}"{% if style.y_rule == key %} checked{% endif %}><span>{{ label }}</span></label>
+    {% endfor %}
+  </fieldset>
+  {% if style_example %}<p class="muted small">Example, {{ style_example.name }}: {% for item in style_example["items"] %}{{ item.label }} {{ item.display }}{% if not loop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+  <button type="submit">Save style</button>
+</form>
+{% endif %}
 {% endblock %}

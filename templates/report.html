@@ -11,7 +11,7 @@
 </section>
 
 <section class="number-card featured">
-  <div class="big-number">{{ life.number }}</div>
+  <div class="big-number">{{ life.display }}</div>
   <div>
     <p class="eyebrow">Your {{ life.label }} number</p>
     <h2>{{ life.title }}</h2>
@@ -25,7 +25,7 @@
   <div class="numbers">
     {% for item in items[1:] %}
       <section class="number-card">
-        <div class="big-number small-number">{{ item.number or "–" }}</div>
+        <div class="big-number small-number">{{ item.display if item.number else "–" }}</div>
         <div>
           <p class="eyebrow">{{ item.label }}: {{ item.purpose }}</p>
           <h3>{{ item.title }}</h3>

@@ -1,6 +1,6 @@
 <li>
   <a class="lead-row{% if lead.status == 'captured' and not lead.viewed_at %} is-unread{% endif %}" href="{{ url_for('lead_detail', lead_id=lead.id) }}">
-    <span class="lp" title="Life Path {{ lead | life_path }}">{{ lead | life_path }}</span>
+    {% set teaser = lead | teaser %}<span class="lp" title="{{ teaser.label }} {{ teaser.display }}">{{ teaser.number }}</span>
     <span class="lead-main">
       <span class="lead-name">{{ lead.full_name }}{% if lead.status == 'captured' and not lead.viewed_at %} <span class="badge badge-unread">Unread</span>{% endif %}</span>
       <span class="lead-meta">

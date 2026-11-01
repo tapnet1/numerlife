@@ -235,7 +235,6 @@ def start_report():
     if not reserve_attempt("submit", SUBMIT_LIMIT_PER_HOUR):
         return render_form(practitioner, data, ["Too many reports from your connection. "
                                                 "Please try again in an hour."], 429)
-    numbers = numerology.core_numbers(data["full_name"], dt.date.fromisoformat(data["birth_date"]))
     token = secrets.token_urlsafe(24)
     source = "link"
     if practitioner is None:
@@ -243,18 +242,36 @@ def start_report():
         source = "round_robin" if practitioner else "none"
         if practitioner:
             session["ref_id"] = practitioner["id"]  # later reports and shares stay with them
+    numbers, report_json = lead_numbers_for(data, practitioner["id"] if practitioner else None)
     connection = db()
     connection.execute(
         "INSERT INTO leads (practitioner_id, ref_slug, source, token, full_name, birth_date, birth_city,"
-        " birth_region, birth_country, numbers, created_at, lang) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        " birth_region, birth_country, numbers, report, created_at, lang)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (practitioner["id"] if practitioner else None,
          practitioner["slug"] if practitioner and source == "link" else None, source,
          token, data["full_name"], data["birth_date"], data["birth_city"], data["birth_region"],
-         data["birth_country"], json.dumps(numbers.as_dict()), iso(now_utc()),
+         data["birth_country"], numbers, report_json, iso(now_utc()),
          request.accept_languages.best_match(["en", "es"]) or "en"),
     )
     connection.commit()
     return redirect(url_for("report", token=token))
+
+
+def lead_numbers_for(data: dict, practitioner_id) -> tuple[str, str]:
+    """Core numbers and report numbers (both JSON) in the practitioner's style.
+
+    The report numbers follow the practitioner's method (the first is the free teaser); the core
+    numbers (Life Path and the rest) are kept for calendars and follow-up emails.
+    """
+    row = None
+    if practitioner_id:
+        row = db().execute("SELECT * FROM users WHERE id = ?", (practitioner_id,)).fetchone()
+    style = numerology.style_of(row)
+    birth_date = dt.date.fromisoformat(data["birth_date"])
+    numbers = numerology.core_numbers(data["full_name"], birth_date, style)
+    report = numerology.report_numbers(data["full_name"], birth_date, style)
+    return json.dumps(numbers.as_dict()), json.dumps(report)
 
 
 def next_round_robin_practitioner():
@@ -297,13 +314,7 @@ def lead_for_token(token: str):
 
 
 def report_context(lead):
-    numbers = json.loads(lead["numbers"])
-    items = []
-    for key in numerology.NUMBER_ORDER:
-        title, text = numerology.meaning(numbers[key])
-        items.append({"key": key, "label": numerology.NUMBER_LABELS[key],
-                      "purpose": numerology.NUMBER_PURPOSE[key], "number": numbers[key],
-                      "title": title, "text": text})
+    items = numerology.report_items(lead)
     practitioner = None
     if lead["practitioner_id"]:
         practitioner = db().execute("SELECT * FROM users WHERE id = ?",

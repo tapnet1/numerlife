@@ -312,6 +312,10 @@ ADDED_COLUMNS = (
     ("leads", "client_at", "TEXT"),                          # first time the lead was marked a client
     ("email_outbox", "campaign", "TEXT"),                    # series step key
     ("email_outbox", "track", "TEXT"),                       # open/click tracking token
+    ("users", "report_method", "TEXT NOT NULL DEFAULT 'classic'"),  # classic | kdp (Karma, Destiny, Personality)
+    ("users", "name_totalling", "TEXT NOT NULL DEFAULT 'whole'"),   # whole | per_name
+    ("users", "y_rule", "TEXT NOT NULL DEFAULT 'standard'"),        # standard | always | never
+    ("leads", "report", "TEXT"),  # the report's method and numbers (JSON), fixed when the report is made
 )
 
 REQUIRED_TABLES = {"users", "login_attempts", "leads", "form_attempts", "invites",

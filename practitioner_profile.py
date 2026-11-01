@@ -5,6 +5,7 @@ https:// (or a plain social handle, which is turned into the network's https URL
 """
 from __future__ import annotations
 
+import datetime as dt
 import io
 import json
 import re
@@ -174,7 +175,42 @@ def edit_profile():
     preview = contact_card({**dict(row), "display_name": form["display_name"], "profile": json.dumps(
         {k: form.get(k, "") for k in PROFILE_KEYS})})
     return render_template("profile.html", form=form, errors=errors, preview=preview,
-                           socials=SOCIAL_NETWORKS, base_host=BASE_URL.split("://")[-1]), (400 if errors else 200)
+                           socials=SOCIAL_NETWORKS, base_host=BASE_URL.split("://")[-1],
+                           **style_context(row)), (400 if errors else 200)
+
+
+# --------------------------------------------------------------------------
+# Numerology style: method, name totals, Y rule
+# --------------------------------------------------------------------------
+STYLE_EXAMPLE = ("Marco James Bonanni", dt.date(1974, 6, 19))
+
+
+def style_context(row) -> dict:
+    import numerology
+    style = numerology.style_of(row)
+    name, born = STYLE_EXAMPLE
+    report = numerology.report_numbers(name, born, style)
+    labels = numerology.METHOD_LABELS[report["method"]]
+    example = {"name": name, "items": [{"label": labels[i["key"]][0], "display": i["display"]}
+                                       for i in report["items"]]}
+    return {"style": style, "style_example": example,
+            "style_options": {"methods": numerology.METHODS, "totalling": numerology.TOTALLING,
+                              "y_rules": numerology.Y_RULES}}
+
+
+@app.post("/settings/style")
+@login_required
+def save_style():
+    import numerology
+    user = current_user()
+    if user["role"] != "practitioner" or user["team_of"]:
+        abort(403)
+    style = numerology.clean_style(request.form)
+    with open_db() as connection:
+        connection.execute("UPDATE users SET report_method = ?, name_totalling = ?, y_rule = ? WHERE id = ?",
+                           (style["method"], style["totalling"], style["y_rule"], user["id"]))
+    flash("Numerology style saved. New reports use it from now on.", "info")
+    return redirect(url_for("edit_profile") + "#style")
 
 
 # --------------------------------------------------------------------------

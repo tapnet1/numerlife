@@ -96,7 +96,7 @@
       <div class="lead-numbers">
         {% for item in numbers %}
           <div class="lead-number">
-            <span class="big-number small-number">{{ item.number or '–' }}</span>
+            <span class="big-number small-number">{{ item.display if item.number else '–' }}</span>
             <div>
               <p class="eyebrow">{{ item.label }}</p>
               <p class="ln-title">{{ item.title }}</p>
