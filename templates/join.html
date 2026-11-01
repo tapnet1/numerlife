@@ -21,7 +21,7 @@
     <input id="confirm_password" name="confirm_password" type="password" minlength="12" required autocomplete="new-password">
     <p class="hint">At least 12 characters. A short phrase works well.</p>
     <label class="check"><input type="checkbox" name="accept_terms" value="yes">
-      <span>I agree to the terms of use and the <a href="{{ url_for('privacy') }}" target="_blank">privacy policy</a>.</span></label>
+      <span>I agree to the <a href="{{ url_for('terms') }}" target="_blank">terms and conditions</a> and the <a href="{{ url_for('privacy') }}" target="_blank">privacy policy</a>.</span></label>
     <button type="submit" class="primary">Create my account</button>
   </form>
 </section>

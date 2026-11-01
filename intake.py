@@ -384,12 +384,23 @@ def privacy():
     return render_template("privacy.html")
 
 
+def paid_reports_on() -> bool:
+    """Paid full reports are on sale (admin switch, set once PayPal checkout is ready)."""
+    import emails  # loaded after this module
+    return emails.get_setting("paid_reports") == "on"
+
+
+@app.get("/terms")
+def terms():
+    return render_template("terms.html", paid_reports=paid_reports_on())
+
+
 @app.get("/sitemap.xml")
 def sitemap():
     import public_profiles  # loaded after this module
 
     today = dt.date.today().isoformat()
-    pages = [("/", "1.0"), *[(path, "0.7") for path in public_profiles.sitemap_profiles()], ("/privacy", "0.3")]
+    pages = [("/", "1.0"), *[(path, "0.7") for path in public_profiles.sitemap_profiles()], ("/privacy", "0.3"), ("/terms", "0.3")]
     urls = "".join(
         f"<url><loc>{BASE_URL}{path}</loc><lastmod>{today}</lastmod><priority>{priority}</priority></url>"
         for path, priority in pages
