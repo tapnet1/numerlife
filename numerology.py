@@ -213,7 +213,8 @@ Y_RULES = {
     "always": "Y is always a vowel",
     "never": "Y is always a consonant",
 }
-STYLE_DEFAULTS = {"method": "classic", "totalling": "whole", "y_rule": "standard"}
+STYLE_DEFAULTS = {"method": "classic", "totalling": "whole", "y_rule": "standard", "lang": "en"}
+REPORT_LANGUAGES = {"en": "English", "es": "Español"}
 KARMIC_DEBT = (13, 14, 16, 19)
 
 
@@ -224,6 +225,7 @@ def clean_style(values) -> dict:
         "method": get("method") if get("method") in METHODS else STYLE_DEFAULTS["method"],
         "totalling": get("totalling") if get("totalling") in TOTALLING else STYLE_DEFAULTS["totalling"],
         "y_rule": get("y_rule") if get("y_rule") in Y_RULES else STYLE_DEFAULTS["y_rule"],
+        "lang": get("lang") if get("lang") in REPORT_LANGUAGES else STYLE_DEFAULTS["lang"],
     }
 
 
@@ -234,7 +236,8 @@ def style_of(user_row) -> dict:
     keys = user_row.keys()
     return clean_style({"method": user_row["report_method"] if "report_method" in keys else None,
                         "totalling": user_row["name_totalling"] if "name_totalling" in keys else None,
-                        "y_rule": user_row["y_rule"] if "y_rule" in keys else None})
+                        "y_rule": user_row["y_rule"] if "y_rule" in keys else None,
+                        "lang": user_row["report_lang"] if "report_lang" in keys else None})
 
 
 def display_number(total: int) -> str:
@@ -293,17 +296,15 @@ def report_numbers(full_name: str, birth_date: dt.date, style: dict | None = Non
         # Life Path and Birthday come from the date, already reduced along the way.
         for item in (items[0], items[4]):
             item["display"] = display_number(item["number"])
-    return {"method": style["method"], "style": style, "items": items}
+    return {"method": style["method"], "lang": style["lang"], "style": style, "items": items}
 
 
-METHOD_LABELS = {
-    "classic": {key: (NUMBER_LABELS[key], NUMBER_PURPOSE[key]) for key in NUMBER_ORDER},
-    "kdp": {
-        "karma": ("Karma", "the challenges you came to work through, and the lesson they hold"),
-        "destiny": ("Destiny", "the direction your life is meant to take"),
-        "personality": ("Personality", "the energy you show the world"),
-    },
-}
+def position_label(position: str, lang: str = "en") -> tuple[str, str]:
+    """(label, what it shows) for a report position, in the report's language."""
+    import report_texts
+    label, purpose, _frame = report_texts.POSITIONS[report_texts.clean_lang(lang)].get(
+        position, (position.replace("_", " ").title(), "", ""))
+    return label, purpose
 
 
 def classic_report(numbers: dict) -> dict:
@@ -320,15 +321,20 @@ def lead_report(lead) -> dict:
     return classic_report(json.loads(lead["numbers"]))
 
 
-def report_items(lead) -> list[dict]:
-    """The lead's numbers with label, purpose and meaning, in report order (teaser first)."""
+def report_items(lead, overrides: dict | None = None) -> list[dict]:
+    """The lead's numbers in report order (teaser first), each with its label and full text in the
+    report's language: title, meaning, strengths, challenges, lesson, affirmation. `text` is the
+    meaning, kept for the free report and short emails. Pass the practitioner's overrides
+    (reports.practitioner_overrides) to use her own wording."""
+    import report_texts
     report = lead_report(lead)
-    labels = METHOD_LABELS.get(report["method"], METHOD_LABELS["classic"])
+    lang = report_texts.clean_lang(report.get("lang"))
     items = []
     for entry in report["items"]:
-        label, purpose = labels.get(entry["key"], (entry["key"].replace("_", " ").title(), ""))
-        title, text = meaning(entry["number"])
-        items.append({**entry, "label": label, "purpose": purpose, "title": title, "text": text})
+        label, purpose = position_label(entry["key"], lang)
+        texts = report_texts.entry(lang, entry["key"], entry["number"], overrides)
+        items.append({**entry, **texts, "label": label, "purpose": purpose, "text": texts["meaning"],
+                      "lang": lang})
     return items
 
 

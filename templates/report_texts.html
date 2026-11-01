@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Report texts | {{ site_name }}{% endblock %}
+{% block body_class %}app-page{% endblock %}
+{% block content %}
+<header class="app-head">
+  <div>
+    <p class="eyebrow">Reports</p>
+    <h1>{% if for_id %}{{ owner.display_name }}'s report texts{% else %}Your report texts{% endif %}</h1>
+  </div>
+</header>
+
+{% if practitioners is defined %}
+<section class="panel">
+  <p>Choose a practitioner to edit the texts their reports use.</p>
+  {% if practitioners %}
+  <ul>{% for p in practitioners %}<li><a href="{{ url_for('edit_report_texts', **{'for': p.id}) }}">{{ p.display_name or p.email }}</a></li>{% endfor %}</ul>
+  {% else %}<p class="muted">No active practitioners yet.</p>{% endif %}
+</section>
+{% else %}
+<section class="panel">
+  <p>Write what each number means in your own words. Anything you leave empty uses numer.life's starter text (shown in grey). Changes apply straight away to reports in that language, including the drafts of paid reports you review.</p>
+  <form method="get" action="{{ url_for('edit_report_texts') }}" class="inline-form">
+    {% if for_id %}<input type="hidden" name="for" value="{{ for_id }}">{% endif %}
+    <input type="hidden" name="position" value="{{ position }}">
+    <label for="lang">Language</label>
+    <select id="lang" name="lang">{% for code, name in languages.items() %}<option value="{{ code }}"{% if code == lang %} selected{% endif %}>{{ name }}</option>{% endfor %}</select>
+    <button type="submit" class="btn-secondary">Switch</button>
+  </form>
+  <nav class="tabs" aria-label="Number positions">
+    {% for key, label in tabs %}
+      <a href="{{ url_for('edit_report_texts', lang=lang, position=key, **({'for': for_id} if for_id else {})) }}"{% if key == position %} aria-current="page"{% endif %}>{{ label }}</a>{% if not loop.last %} · {% endif %}
+    {% endfor %}
+  </nav>
+  <p class="muted small">{{ customised }} of {{ entries | length }} {{ position_label }} numbers use your wording in {{ languages[lang] }}.{% if position == 'karma' %} Karma is read as challenges only, so it has no strengths.{% endif %} Strengths and challenges: separate them with commas.</p>
+</section>
+
+<form method="post" action="{{ url_for('save_report_texts') }}" class="panel">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="lang" value="{{ lang }}">
+  <input type="hidden" name="position" value="{{ position }}">
+  {% if for_id %}<input type="hidden" name="for" value="{{ for_id }}">{% endif %}
+  <ul class="cal-days">
+    {% for e in entries %}
+    {% set mine = e.mine %}
+    <li class="cal-day{% if mine.values() | select | list %} has-note{% endif %}">
+      <details>
+        <summary>
+          <span class="lp">{{ e.number }}</span>
+          <span class="cal-title">{{ position_label }} {{ e.number }}: {{ mine.title or e.default.title }}</span>
+        </summary>
+        {% for f in fields %}
+        <label for="t-{{ e.number }}-{{ f }}" class="small">{{ labels[f] }}</label>
+        {% if f == 'title' %}
+        <input id="t-{{ e.number }}-{{ f }}" name="{{ e.number }}-{{ f }}" maxlength="{{ limits[f] }}" placeholder="{{ e.default[f] }}" value="{{ mine[f] }}">
+        {% else %}
+        <textarea id="t-{{ e.number }}-{{ f }}" name="{{ e.number }}-{{ f }}" rows="{{ 4 if f == 'meaning' else 2 }}" maxlength="{{ limits[f] }}" placeholder="{{ e.default[f] }}">{{ mine[f] }}</textarea>
+        {% endif %}
+        {% endfor %}
+      </details>
+    </li>
+    {% endfor %}
+  </ul>
+  <div class="actions">
+    <button type="submit" name="action" value="save" class="primary">Save {{ position_label }} texts</button>
+    {% if customised %}<button type="submit" name="action" value="reset" class="link" formnovalidate>Go back to the starter texts</button>{% endif %}
+  </div>
+</form>
+{% endif %}
+{% endblock %}

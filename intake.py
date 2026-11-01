@@ -314,7 +314,8 @@ def lead_for_token(token: str):
 
 
 def report_context(lead):
-    items = numerology.report_items(lead)
+    import reports  # loaded after this module
+    items = reports.lead_items(lead)
     practitioner = None
     if lead["practitioner_id"]:
         practitioner = db().execute("SELECT * FROM users WHERE id = ?",

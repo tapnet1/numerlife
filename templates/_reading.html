@@ -1,0 +1,22 @@
+{# The full written reading. Expects `reading` from reports.full_reading(lead). #}
+<div class="reading" lang="{{ reading.lang }}">
+  {% for item in reading["items"] %}
+  <section class="reading-number">
+    <h3><span class="lp{% if item.number and '/' in item.display %} compound{% endif %}">{{ item.display if item.number else '–' }}</span> {{ item.label }}: {{ item.title }}</h3>
+    <p>{{ item.meaning }}</p>
+    {% if item.strength_list %}<h4>{{ reading.labels.strengths }}</h4>
+    <ul>{% for s in item.strength_list %}<li>{{ s }}</li>{% endfor %}</ul>{% endif %}
+    {% if item.challenge_list %}<h4>{{ reading.labels.challenges }}</h4>
+    <ul>{% for c in item.challenge_list %}<li>{{ c }}</li>{% endfor %}</ul>{% endif %}
+    {% if item.lesson %}<p><strong>{{ reading.labels.lesson }}:</strong> {{ item.lesson }}</p>{% endif %}
+  </section>
+  {% endfor %}
+  {% if reading.combination or reading.affirmations %}
+  <section class="reading-number">
+    <h3>{{ reading.labels.together }}</h3>
+    {% if reading.combination %}<p>{{ reading.combination }}</p>{% endif %}
+    {% if reading.affirmations %}<h4>{{ reading.labels.affirmation }}</h4>
+    <blockquote>{{ reading.affirmations | join(' ') }}</blockquote>{% endif %}
+  </section>
+  {% endif %}
+</div>
