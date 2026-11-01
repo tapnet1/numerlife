@@ -388,6 +388,19 @@ class PractitionerStyleTest(IntakeTestCase):
         self.assertIn("14/5", html)
         self.assertIn("Destiny", html)
 
+    def test_lead_alerts_show_the_karma_teaser(self):
+        self.use_kdp()
+        token = self.submit(path="/liliana", full_name="Marco James Bonanni",
+                            birth_date="1974-06-19").headers["Location"].rsplit("/", 1)[-1]
+        self.unlock(token)
+        with numer.open_db() as connection:
+            payloads = [json.loads(r[0]) for r in connection.execute("SELECT payload FROM push_outbox")]
+            subjects = [r[0] for r in connection.execute("SELECT subject FROM email_outbox")]
+        self.assertTrue(payloads)
+        self.assertTrue(all(p["body"].startswith("Karma 11/2") for p in payloads))
+        self.assertIn("New lead: Marco (Karma 11/2)", subjects)
+        self.assertIn("Your numerology report, Marco: Karma 11/2", subjects)
+
     def test_report_keeps_its_method_after_a_style_change(self):
         token = self.submit(path="/liliana").headers["Location"].rsplit("/", 1)[-1]
         self.use_kdp()

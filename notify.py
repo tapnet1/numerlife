@@ -137,7 +137,7 @@ def queue(user_ids: list[int], message: dict, start_sending: bool = True) -> Non
 def queue_new_lead(lead_id: int) -> None:
     """Called after a visitor unlocks their report (the lead row is already committed)."""
     with open_db() as connection:
-        lead = connection.execute("SELECT id, practitioner_id, full_name, numbers FROM leads WHERE id = ?",
+        lead = connection.execute("SELECT id, practitioner_id, full_name, numbers, report FROM leads WHERE id = ?",
                                   (lead_id,)).fetchone()
         if lead is None:
             return
