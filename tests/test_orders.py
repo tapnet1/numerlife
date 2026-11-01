@@ -59,6 +59,12 @@ class OrdersTestCase(IntakeTestCase):
 
 
 class CheckoutTest(OrdersTestCase):
+    def test_order_and_paypal_paths_cannot_be_practitioner_links(self):
+        import intake
+        for slug in ("orders", "paypal", "checkout"):
+            with self.assertRaises(ValueError):
+                intake.validate_slug(slug)
+
     def test_offer_needs_the_switch_and_paypal_keys(self):
         token = self.captured_lead()
         self.assertIn("Get my full reading · CAD $29.00", self.client.get(f"/r/{token}").get_data(as_text=True))
