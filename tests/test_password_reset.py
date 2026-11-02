@@ -92,6 +92,23 @@ class PasswordResetTest(EmailTestCase):
         self.assertEqual(known.data, unknown.data)
         self.assertEqual(self.reset_emails(), [])
 
+    def test_unsent_reset_email_expires_before_its_link(self):
+        import emails
+        self.request_reset()
+        stamp = numer.iso(numer.now_utc() - password_reset.DELIVER_WITHIN - __import__("datetime").timedelta(minutes=1))
+        with numer.open_db() as connection:
+            connection.execute("UPDATE email_outbox SET created_at = ? WHERE kind = 'password_reset'", (stamp,))
+        stats = emails.send_pending(smtp_factory=self.smtp)
+        self.assertEqual((stats["sent"], stats["expired"]), (0, 1))
+        self.assertEqual(self.reset_emails()[0]["last_error"], "expired")
+        self.assertEqual(self.smtp.sent, [])
+
+    def test_fresh_reset_email_is_delivered(self):
+        import emails
+        self.request_reset()
+        self.assertEqual(emails.send_pending(smtp_factory=self.smtp)["sent"], 1)
+        self.assertEqual(self.smtp.sent[0]["To"], "liliana@example.com")
+
     def test_validation_errors_keep_password(self):
         self.request_reset()
         link = self.link_from(self.reset_emails()[0])

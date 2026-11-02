@@ -21,6 +21,8 @@ from app import BASE_URL, MIN_PASSWORD_LENGTH, SITE_NAME, app, current_user, db,
 from intake import EMAIL_RE, reserve_attempt
 
 RESET_MINUTES = 60
+# Queued reset emails still unsent after this are dropped, so nobody receives a dead link.
+DELIVER_WITHIN = dt.timedelta(minutes=RESET_MINUTES - 10)
 REQUESTS_PER_IP_PER_HOUR = 5
 EMAILS_PER_ACCOUNT_PER_HOUR = 3
 RESETS_PER_IP_PER_HOUR = 10
