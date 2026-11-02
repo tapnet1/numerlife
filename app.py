@@ -640,7 +640,8 @@ def login():
     if request.method == "GET":
         if current_user() is not None:
             return redirect(url_for("dashboard"))
-        return render_template("login.html", next=safe_next(request.args.get("next")))
+        return render_template("login.html", next=safe_next(request.args.get("next")),
+                               email=(request.args.get("email") or "")[:254])
 
     email = (request.form.get("email") or "").strip()[:254]
     password = request.form.get("password") or ""
@@ -824,3 +825,4 @@ import lead_series  # noqa: E402,F401  (follow-up email series with open/click t
 import reports  # noqa: E402,F401  (report texts editor and the full written reading)
 import orders  # noqa: E402,F401  (paid full reports: PayPal checkout, review, delivery)
 import healy_contact  # noqa: E402,F401  (client contact card for the Healy app, via Contacts)
+import password_reset  # noqa: E402,F401  (forgot password: emailed one-time reset link)

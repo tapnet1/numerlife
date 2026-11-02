@@ -37,6 +37,7 @@ KINDS = {
     "calendar_monthly": "Client calendar: monthly / welcome",
     "calendar_published": "Client calendar: month published",
     "lead_series": "Follow-up series (7 emails, client)",
+    "password_reset": "Password reset link",
 }
 
 
@@ -401,6 +402,12 @@ def send_pending(limit: int = 50, ids: list[int] | None = None, smtp_factory=Non
         connection.execute("UPDATE email_outbox SET sent_at = ?, last_error = 'expired' WHERE sent_at IS NULL"
                            " AND created_at < ?", (iso(now_utc()), iso(now_utc() - EXPIRE_AFTER)))
         stats["expired"] = connection.execute("SELECT changes()").fetchone()[0]
+        # A password reset link only works for a short time: never deliver one that's already dead.
+        import password_reset  # loaded after this module
+        connection.execute("UPDATE email_outbox SET sent_at = ?, last_error = 'expired' WHERE sent_at IS NULL"
+                           " AND kind = 'password_reset' AND created_at < ?",
+                           (iso(now_utc()), iso(now_utc() - password_reset.DELIVER_WITHIN)))
+        stats["expired"] += connection.execute("SELECT changes()").fetchone()[0]
         connection.commit()
         query = "SELECT * FROM email_outbox WHERE sent_at IS NULL AND (claimed_at IS NULL OR claimed_at < ?)"
         params: list = [stale]
@@ -576,6 +583,10 @@ def admin_email_test():
         if kind == "invite":
             sample = {"name": "Sam Rivera", "email": to}
             built.append((kind, *invite_email(practitioner, sample, f"{BASE_URL}/", "in 14 days")))
+        elif kind == "password_reset":
+            import password_reset  # loaded after this module
+            sample = {"display_name": admin["display_name"], "email": to}  # dummy link: never a real token
+            built.append((kind, *password_reset.reset_email(sample, f"{BASE_URL}/login/forgot"), {}))
         elif kind == "report":
             built.append((kind, *report_email(lead, practitioner, report_url=f"{BASE_URL}/"), {}))
         elif kind == "lead_alert":
