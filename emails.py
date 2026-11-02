@@ -37,6 +37,7 @@ KINDS = {
     "calendar_monthly": "Client calendar: monthly / welcome",
     "calendar_published": "Client calendar: month published",
     "lead_series": "Follow-up series (7 emails, client)",
+    "password_reset": "Password reset link",
 }
 
 
@@ -576,6 +577,10 @@ def admin_email_test():
         if kind == "invite":
             sample = {"name": "Sam Rivera", "email": to}
             built.append((kind, *invite_email(practitioner, sample, f"{BASE_URL}/", "in 14 days")))
+        elif kind == "password_reset":
+            import password_reset  # loaded after this module
+            sample = {"display_name": admin["display_name"], "email": to}  # dummy link: never a real token
+            built.append((kind, *password_reset.reset_email(sample, f"{BASE_URL}/login/forgot"), {}))
         elif kind == "report":
             built.append((kind, *report_email(lead, practitioner, report_url=f"{BASE_URL}/"), {}))
         elif kind == "lead_alert":

@@ -12,6 +12,7 @@
     <input id="password" name="password" type="password" autocomplete="current-password" required>
     <button type="submit">Sign in</button>
   </form>
+  <p class="small"><a href="{{ url_for('forgot_password') }}">Forgot your password?</a></p>
   <p class="muted small">Registration is by invitation from another practitioner.</p>
 </section>
 {% endblock %}
