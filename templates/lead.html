@@ -64,6 +64,51 @@
       </details>
     </section>
 
+    {% set fb_journal = feedback_journal(lead.id) %}
+    {% set fb_entries = feedback_entries(lead.id) %}
+    <section class="panel" id="feedback">
+      <h2>Client feedback</h2>
+      {% if fb_entries %}
+        <ul class="feedback-list">
+          {% for e in fb_entries %}
+          <li>
+            <p class="small">{% if not e.seen_at %}<span class="badge badge-unread">New</span> {% endif %}<strong>{{ feedback_day_label(e) or e.entry_date }}</strong>
+              <span class="muted">· {{ e.entry_date }}{% if feedback_session_label(e) %} · {{ feedback_session_label(e) }}{% endif %}{% if e.feeling %} · {{ feedback_feelings[e.feeling] }}{% endif %}</span></p>
+            {% if e.body %}<p class="pre-line">{{ e.body }}</p>{% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+      {% elif fb_journal %}
+        <p class="muted small">No feedback yet. {{ lead.full_name.split(' ')[0] }} can write whenever they like, for example on days 1, 2, 3, 5 and 7 after their reading.</p>
+      {% endif %}
+      {% if fb_journal %}
+        <label for="fb-link" class="small mt">{{ lead.full_name.split(' ')[0] }}'s private feedback link</label>
+        <input id="fb-link" class="feedback-link" type="text" readonly value="{{ feedback_url(fb_journal) }}">
+        <p class="hint">{% if fb_journal.invited_at %}Last emailed {{ fb_journal.invited_at | friendly_time }}. {% endif %}You can also send it by text or WhatsApp.</p>
+        <div class="actions">
+          {% if lead.status == 'captured' and lead.email %}
+          <form method="post" action="{{ url_for('feedback_invite', lead_id=lead.id) }}" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" name="send" value="yes" class="btn-secondary">{{ 'Email the link again' if fb_journal.invited_at else 'Email the link' }}</button>
+          </form>
+          {% endif %}
+          <form method="post" action="{{ url_for('feedback_new_link', lead_id=lead.id) }}" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn-secondary">Replace link</button>
+          </form>
+        </div>
+      {% elif feedback_can_invite(lead) %}
+        <p class="small">Invite {{ lead.full_name.split(' ')[0] }} to tell you how they feel in the days after their reading. They write on a private page whenever they like, and you get an alert each time.</p>
+        <form method="post" action="{{ url_for('feedback_invite', lead_id=lead.id) }}" class="actions">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" name="send" value="yes">Email a feedback link</button>
+          <button type="submit" name="send" value="no" class="btn-secondary">Just make the link</button>
+        </form>
+      {% else %}
+        <p class="muted small">After a completed reading or a delivered full reading, you can invite {{ lead.full_name.split(' ')[0] }} to share how they feel in the days after.</p>
+      {% endif %}
+    </section>
+
     <section class="panel" id="birth">
       <h2>Birth details</h2>
       <dl class="facts">

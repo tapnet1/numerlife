@@ -40,7 +40,7 @@ RESERVED_SLUGS = frozenset("""
     contact dashboard docs favicon.ico health help home invite invites join leads legal
     login logout manifest.webmanifest me numer numerlife pricing privacy profile qr r register
     report reports robots.txt settings share signin signout signup sitemap.xml static support
-    sw.js tapnet terms unlock www orders order paypal checkout buy pay p c
+    sw.js tapnet terms unlock www orders order paypal checkout buy pay p c f feedback
 """.split())
 
 PLATFORM_SLUGS = frozenset({"tapnet"})  # reserved for numer.life's own account, but a working link

@@ -50,6 +50,13 @@
       <select id="mode" name="mode">{% for k, label in reading_modes.items() %}<option value="{{ k }}"{% if reading.mode == k %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
       <button type="submit" class="primary">Save</button>
     </section>
+    {% if reading.status == 'completed' %}
+    <section class="panel">
+      <h2>Client feedback</h2>
+      <p class="small">Ask {{ lead.full_name.split(' ')[0] }} how they feel in the days after this reading.</p>
+      <a class="btn-secondary" href="{{ url_for('lead_detail', lead_id=lead.id) }}#feedback">Feedback link and entries →</a>
+    </section>
+    {% endif %}
     {% if reading.kind == 'magialogia' and reading.status == 'completed' %}
     <section class="panel">
       <h2>Personal calendar</h2>

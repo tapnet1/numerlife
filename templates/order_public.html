@@ -20,6 +20,14 @@
     {% include "_reading.html" %}
     <p class="mt"><a class="btn" href="{{ url_for('order_pdf', token=order.token) }}">{{ t.pdf }}</a></p>
   </section>
+  {% set fb_url = feedback_url_for_lead(lead.id) %}
+  {% if fb_url %}{% set ft = feedback_t[lang] %}
+  <section class="card" lang="{{ lang }}">
+    <h2>{{ ft.card_title }}</h2>
+    <p>{{ ft.card_body.format(who=who) }}</p>
+    <p class="mt"><a class="btn" href="{{ fb_url }}">{{ ft.card_button }}</a></p>
+  </section>
+  {% endif %}
 {% else %}
   <section class="card" lang="{{ lang }}">
     <h2>{{ t.preparing_title }}</h2>
