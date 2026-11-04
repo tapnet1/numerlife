@@ -3,5 +3,8 @@
 {{ t.ready_button }}: {{ page_url }}
 
 {{ t.ready_pdf }}
+{% if feedback_line %}
+{{ feedback_line }}
+{% endif %}
 --
 {{ site_name }} · TAPNET

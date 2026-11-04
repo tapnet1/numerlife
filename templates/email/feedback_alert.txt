@@ -1,0 +1,9 @@
+Hi {{ recipient_name or 'there' }},
+
+{{ full_name }} wrote about how they feel{% if when %} ({{ when }}{% if session %}, {{ session }}{% endif %}){% endif %}.
+{% if feeling %}
+Overall: {{ feeling }}
+{% endif %}{% if body %}
+"{{ body }}"
+{% endif %}
+Open their page: {{ lead_url }}

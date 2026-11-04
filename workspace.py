@@ -175,7 +175,11 @@ def lead_detail(lead_id):
         connection = db()
         connection.execute("UPDATE leads SET viewed_at = ? WHERE id = ?", (iso(now_utc()), lead_id))
         connection.commit()
-    return render_template("lead.html", lead=lead, numbers=lead_numbers(lead), stages=STAGES)
+    page = render_template("lead.html", lead=lead, numbers=lead_numbers(lead), stages=STAGES)
+    if user["role"] != "admin" or lead["practitioner_id"] is None:
+        import feedback
+        feedback.mark_seen(lead_id)  # after rendering, so new entries are still marked "New" on this view
+    return page
 
 
 @app.post("/leads/<int:lead_id>")

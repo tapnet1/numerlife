@@ -1,0 +1,9 @@
+{% extends "email/_layout.html" %}
+{% block preheader %}{{ t.invite_lead.format(first_name=first_name, who=who) }}{% endblock %}
+{% block body %}
+<p style="margin:0 0 14px;">{{ t.invite_lead.format(first_name=first_name, who=who) }}</p>
+<p style="margin:0 0 22px;">{{ t.invite_body }}</p>
+<p style="margin:0 0 22px;text-align:center;"><a href="{{ page_url }}" style="display:inline-block;background:#2b1a57;color:#ffffff;font-weight:600;text-decoration:none;padding:13px 26px;border-radius:999px;">{{ t.invite_button }}</a></p>
+<p style="margin:0;font-size:13px;color:#4a4360;">{{ t.invite_private }}</p>
+{% include "email/_card.html" %}
+{% endblock %}

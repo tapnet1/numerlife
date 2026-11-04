@@ -37,6 +37,7 @@ Open http://localhost:5000. Sign in at `/login`; admins also see `/admin`.
 | `app.py` | Settings, database (`initialize()`), security, auth and roles, routes, `init-db` / `create-owner` / `restore-db` commands |
 | `intake.py` | Public report form, practitioner links (`/<slug>`), teaser and email capture, `add-practitioner` / `set-slug` commands |
 | `numerology.py` | Pythagorean core numbers (deterministic) and their default meanings |
+| `feedback.py` | Client feedback journal: private link `/f/<token>` where clients write how they feel in the days after a reading; alerts and entries on the lead page |
 | `secretbox.py` | AES-GCM encryption for stored third-party credentials (`NUMER_CREDENTIAL_KEY`) |
 | `templates/` | Jinja pages (`base.html` holds the top bar and SEO / Open Graph tags) |
 | `static/` | `css/app.css`, `favicon.svg` |

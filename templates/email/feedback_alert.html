@@ -1,0 +1,9 @@
+{% extends "email/_layout.html" %}
+{% block preheader %}{{ full_name }} shared how they feel{% if when %} ({{ when }}){% endif %}.{% endblock %}
+{% block body %}
+<p style="margin:0 0 14px;">Hi {{ recipient_name or 'there' }},</p>
+<p style="margin:0 0 14px;"><strong>{{ full_name }}</strong> wrote about how they feel{% if when %} ({{ when }}{% if session %}, {{ session }}{% endif %}){% endif %}.</p>
+{% if feeling %}<p style="margin:0 0 14px;">Overall: <strong>{{ feeling }}</strong></p>{% endif %}
+{% if body %}<p style="margin:0 0 22px;padding:12px 16px;border-left:3px solid #d4af5a;background:#f7f4fb;white-space:pre-line;">{{ body }}</p>{% endif %}
+<p style="margin:0;text-align:center;"><a href="{{ lead_url }}" style="display:inline-block;background:#d4af5a;color:#1b1038;font-weight:600;text-decoration:none;padding:13px 26px;border-radius:999px;">Open their page</a></p>
+{% endblock %}

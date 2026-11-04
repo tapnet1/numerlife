@@ -4,5 +4,8 @@
 <p style="margin:0 0 18px;">{{ t.ready_lead.format(first_name=first_name, who=who) }}</p>
 <p style="margin:0 0 22px;text-align:center;"><a href="{{ page_url }}" style="display:inline-block;background:#2b1a57;color:#ffffff;font-weight:600;text-decoration:none;padding:13px 26px;border-radius:999px;">{{ t.ready_button }}</a></p>
 <p style="margin:0;font-size:14px;color:#4a4360;">{{ t.ready_pdf }}</p>
+{% if feedback_url %}{% set ft = feedback_t[lang] %}
+<p style="margin:18px 0 0;font-size:14px;color:#4a4360;">{{ ft.card_body.format(who=who) }} <a href="{{ feedback_url }}" style="color:#2b1a57;font-weight:600;">{{ ft.card_button }}</a></p>
+{% endif %}
 {% include "email/_card.html" %}
 {% endblock %}

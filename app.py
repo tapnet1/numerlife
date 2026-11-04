@@ -302,6 +302,28 @@ CREATE TABLE IF NOT EXISTS orders (
 CREATE INDEX IF NOT EXISTS idx_orders_lead ON orders (lead_id, status);
 CREATE INDEX IF NOT EXISTS idx_orders_practitioner ON orders (practitioner_id, status);
 
+CREATE TABLE IF NOT EXISTS feedback_journals (
+    id          INTEGER PRIMARY KEY,
+    lead_id     INTEGER NOT NULL UNIQUE REFERENCES leads(id),
+    token       TEXT NOT NULL UNIQUE,                 -- client's private link /f/<token>
+    created_at  TEXT NOT NULL,
+    invited_at  TEXT
+);
+
+CREATE TABLE IF NOT EXISTS feedback_entries (
+    id           INTEGER PRIMARY KEY,
+    lead_id      INTEGER NOT NULL REFERENCES leads(id),
+    session_kind TEXT,                                -- order | reading (what the feedback is about)
+    session_id   INTEGER,
+    session_date TEXT,                                -- YYYY-MM-DD, for "Day 3 after"
+    entry_date   TEXT NOT NULL,                       -- the day the client is writing about
+    feeling      INTEGER CHECK (feeling BETWEEN 1 AND 5),
+    body         TEXT NOT NULL DEFAULT '',
+    created_at   TEXT NOT NULL,
+    seen_at      TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_feedback_lead ON feedback_entries (lead_id, entry_date);
+
 CREATE TABLE IF NOT EXISTS report_content (
     practitioner_id INTEGER NOT NULL REFERENCES users(id),
     lang            TEXT NOT NULL,
@@ -695,7 +717,7 @@ def robots():
         body = "User-agent: *\nDisallow: /\n"
     else:
         body = ("User-agent: *\nDisallow: /admin\nDisallow: /dashboard\nDisallow: /login\n"
-                "Disallow: /r/\nDisallow: /p/\n" f"Sitemap: {BASE_URL}/sitemap.xml\n")
+                "Disallow: /r/\nDisallow: /p/\nDisallow: /f/\n" f"Sitemap: {BASE_URL}/sitemap.xml\n")
     return body, 200, {"Content-Type": "text/plain; charset=utf-8"}
 
 
@@ -826,3 +848,4 @@ import reports  # noqa: E402,F401  (report texts editor and the full written rea
 import orders  # noqa: E402,F401  (paid full reports: PayPal checkout, review, delivery)
 import healy_contact  # noqa: E402,F401  (client contact card for the Healy app, via Contacts)
 import password_reset  # noqa: E402,F401  (forgot password: emailed one-time reset link)
+import feedback  # noqa: E402,F401  (client feedback journal in the days after a reading)

@@ -1,0 +1,9 @@
+{{ t.invite_lead.format(first_name=first_name, who=who) }}
+
+{{ t.invite_body }}
+
+{{ t.invite_button }}: {{ page_url }}
+
+{{ t.invite_private }}
+--
+{{ site_name }} · TAPNET

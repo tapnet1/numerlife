@@ -476,8 +476,12 @@ def deliver(order_id: int) -> None:
         t = T[lang]
         first_name = (lead["full_name"].split() or ["there"])[0]
         who = _who(practitioner, lang)
+        import feedback
+        journal = feedback.ensure_journal(connection, lead["id"])  # so they can tell her how they feel after
         context = {"t": t, "lang": lang, "email_lang": lang, "first_name": first_name, "who": who,
                    "page_url": f"{BASE_URL}/p/{order['token']}",
+                   "feedback_line": feedback.T[lang]["ready_feedback"].format(who=who, url=feedback.journal_url(journal)),
+                   "feedback_url": feedback.journal_url(journal),
                    "card": emails._card(practitioner) if practitioner is not None and practitioner["is_active"] else None}
         text, html = emails._render_pair("order_ready", **context)
         emails.enqueue(connection, "order_ready", lead["email"], t["ready_subject"].format(first_name=first_name),
