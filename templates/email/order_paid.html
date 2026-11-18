@@ -7,7 +7,7 @@
 <tr><td style="padding:14px 16px;font-size:14px;color:#4a4360;">
   <p style="margin:0 0 6px;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#7a7290;">{{ t.receipt }}</p>
   <p style="margin:0;">{{ t.price_label }} · {{ t.amount }}: <strong>{{ price }}</strong> · {{ t.order }} #{{ order_id }}</p>
-  <p style="margin:6px 0 0;font-size:12px;color:#7a7290;">{{ t.paid_via }}</p>
+  <p style="margin:6px 0 0;font-size:12px;color:#7a7290;">{{ paid_via or t.paid_via }}</p>
 </td></tr></table>
 <p style="margin:0;text-align:center;"><a href="{{ page_url }}" style="display:inline-block;background:#2b1a57;color:#ffffff;font-weight:600;text-decoration:none;padding:13px 26px;border-radius:999px;">{{ t.preparing_title }}</a></p>
 {% include "email/_card.html" %}

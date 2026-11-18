@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}PayPal | {{ site_name }}{% endblock %}
+{% block body_class %}app-page{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1>PayPal</h1>
+  {% if connected %}
+    <p class="flash flash-info">Connected{% if account.paypal_env != 'live' %} in <strong>sandbox</strong> (test payments only){% else %} (live){% endif %} since {{ account.paypal_connected_at | friendly_time }}. Your clients pay you directly.</p>
+    <p class="small">numer.life still confirms every payment with PayPal before anything is unlocked. TAPNET's 25% is added to your monthly invoice.</p>
+    <form method="post" action="{{ url_for('paypal_settings_save') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" name="action" value="disconnect" class="btn-secondary">Disconnect PayPal</button>
+    </form>
+    <h2 class="mt">Replace the keys</h2>
+  {% else %}
+    <p>Connect your PayPal Business account so your clients pay you directly. TAPNET then sends you one invoice a month for its 25%.</p>
+    <p class="small muted">{% if tapnet_ready %}Until you connect, your clients pay TAPNET's PayPal and your 75% is credited to you.{% else %}Until you connect, paid readings can't be sold for your clients.{% endif %}</p>
+    <h2 class="mt">How to get your keys</h2>
+    <ol class="small">
+      <li>Sign in at <a href="https://developer.paypal.com/dashboard/applications" target="_blank" rel="noopener noreferrer">developer.paypal.com</a> with your PayPal <strong>Business</strong> account. <em>Done when</em> you see "Apps &amp; Credentials".</li>
+      <li>Choose <strong>Live</strong> at the top (or Sandbox to test first), then <strong>Create App</strong>, name it "numer.life", type Merchant. <em>Done when</em> the app page shows a Client ID.</li>
+      <li>Copy the <strong>Client ID</strong> and the <strong>Secret</strong> (click "Show") into the boxes below, pick the same Live/Sandbox, and press Save. <em>Done when</em> this page says "Connected".</li>
+    </ol>
+  {% endif %}
+  <form method="post" action="{{ url_for('paypal_settings_save') }}" class="stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="pp-env">Account type</label>
+    <select id="pp-env" name="env"><option value="live"{% if account.paypal_env == 'live' %} selected{% endif %}>Live (real payments)</option><option value="sandbox"{% if account.paypal_env != 'live' %} selected{% endif %}>Sandbox (test payments)</option></select>
+    <label for="pp-id">Client ID</label>
+    <input id="pp-id" name="client_id" autocomplete="off" spellcheck="false" maxlength="200" required>
+    <label for="pp-secret">Secret</label>
+    <input id="pp-secret" name="secret" type="password" autocomplete="off" maxlength="200" required>
+    <button type="submit">Save and check with PayPal</button>
+  </form>
+</section>
+{% endblock %}

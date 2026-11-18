@@ -143,7 +143,7 @@ class CheckoutTest(OrdersTestCase):
         token = self.captured_lead()
         self.buy(token)
 
-        def capture_while_cancelled(_order_id):
+        def capture_while_cancelled(_order_id, account=None):
             with numer.open_db() as connection:  # e.g. the buyer's cancel link in another tab
                 connection.execute("UPDATE orders SET status = 'cancelled'")
             return completed("order-1")

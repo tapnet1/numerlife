@@ -39,6 +39,7 @@ KINDS = {
     "referral_credit": "Referral reward",
     "sale_share": "Sale share (75%)",
     "platform_share": "Platform share (25%)",
+    "platform_fee": "Platform fee owed (25%)",
     "subscription_payment": "Subscription payment",
     "payout": "Payout",
     "adjustment": "Adjustment",
