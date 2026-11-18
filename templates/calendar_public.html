@@ -16,7 +16,7 @@
 {% if visible or preview %}
   {% set jt = journal_labels(lang) %}
   {% set journal = {} if preview else journal_month_entries(lead.id, key) %}
-  {% if preview %}<p class="flash flash-info">Preview: your client can't see this month until you publish it.</p>{% endif %}
+  {% if preview %}<p class="flash flash-info">Preview: {% if access_locked %}your client's access ends {{ access_until.isoformat() }}, so they can't see this month (extend it on their lead page).{% else %}your client can't see this month until you publish it.{% endif %}</p>{% endif %}
   <section class="panel cal-summary">
     <p><span class="lp lp-lg">{{ personal_year }}</span> <strong>{{ labels.personal_year }}</strong> · {{ year_guide.title }}</p>
     <p><span class="lp lp-lg">{{ personal_month }}</span> <strong>{{ labels.personal_month }}</strong> · {{ month_guide.title }}</p>
@@ -105,6 +105,14 @@
     </li>
     {% endfor %}
   </ol>
+{% elif locked %}
+  {% set al = calendar_access_labels(lang) %}
+  <section class="panel cal-locked">
+    <h2>🔒 {{ al.title }}</h2>
+    <p>{{ al.body.format(date=access_until.isoformat()) }}</p>
+    <p>{{ al.ask.format(who=card.name if card else journal_labels(lang).your_numerologist) }}</p>
+    <p><a class="btn" href="{{ url_for('calendar_public', token=cal.token) }}">{{ al.back.format(month=labels.calendar) }}</a></p>
+  </section>
 {% else %}
   <section class="panel"><p>{{ labels.not_ready }}</p></section>
 {% endif %}

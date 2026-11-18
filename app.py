@@ -381,6 +381,7 @@ ADDED_COLUMNS = (
     ("email_outbox", "track", "TEXT"),                       # open/click tracking token
     ("feedback_entries", "source", "TEXT NOT NULL DEFAULT 'feedback'"),  # feedback | calendar (day journal)
     ("feedback_entries", "tz", "TEXT"),
+    ("calendars", "access_until", "TEXT"),                    # last day the client can see (free 30 days, plan)
     ("users", "paypal_env", "TEXT"),                          # practitioner's own PayPal: sandbox | live
     ("users", "paypal_client_id", "TEXT"),
     ("users", "paypal_secret", "TEXT"),                       # encrypted (secretbox)
@@ -442,6 +443,9 @@ def initialize(path: str | None = None) -> None:
                 connection.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
         connection.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_slug ON users (slug)")
         connection.execute("CREATE INDEX IF NOT EXISTS idx_email_outbox_track ON email_outbox (track)")
+        # Calendars started before access limits existed (2026-11-18) get their 30 free days from then.
+        connection.execute("UPDATE calendars SET access_until = '2026-12-18' WHERE access_until IS NULL"
+                           " AND created_at < '2026-11-18T13:00'")
     try:
         db_path.chmod(0o600)
     except OSError:
@@ -868,3 +872,4 @@ import feedback  # noqa: E402,F401  (client feedback journal in the days after a
 import calendar_journal  # noqa: E402,F401  (day journal: client notes on any calendar day)
 import client_page  # noqa: E402,F401  (client page /me/<token>: report, calendar, readings)
 import practitioner_paypal  # noqa: E402,F401  (practitioners connect their own PayPal)
+import calendar_access  # noqa: E402,F401  (free 30 days, then the yearly plan)
