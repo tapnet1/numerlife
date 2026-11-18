@@ -2,6 +2,7 @@
 {% block title %}{{ t.title.format(first_name=first_name) }} | {{ site_name }}{% endblock %}
 {% block body_class %}page-report{% endblock %}
 {% block content %}
+{% include "_client_home.html" %}
 <section class="hero compact report-hero" lang="{{ lang }}">
   <h1>{{ t.title.format(first_name=first_name) }}</h1>
   <p class="muted">{{ t.intro.format(who=who) }}</p>

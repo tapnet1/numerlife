@@ -2,6 +2,7 @@
 {% block title %}{{ t.reading_for }} {{ lead.full_name.split(' ')[0] }} | {{ site_name }}{% endblock %}
 {% block body_class %}page-report{% endblock %}
 {% block content %}
+{% include "_client_home.html" %}
 <section class="hero compact report-hero" lang="{{ lang }}">
   <p class="eyebrow">{{ t.reading_for }}</p>
   <h1>{{ lead.full_name }}</h1>

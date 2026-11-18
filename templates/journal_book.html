@@ -2,6 +2,7 @@
 {% block title %}{{ jt.my_journal }} | {{ site_name }}{% endblock %}
 {% block body_class %}app-page journal-book{% endblock %}
 {% block content %}
+{% include "_client_home.html" %}
 <header class="app-head">
   <div>
     <p class="eyebrow">{{ jt.prepared_with.format(who=who) }}</p>
