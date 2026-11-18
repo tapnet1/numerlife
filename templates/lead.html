@@ -67,13 +67,13 @@
     {% set fb_journal = feedback_journal(lead.id) %}
     {% set fb_entries = feedback_entries(lead.id) %}
     <section class="panel" id="feedback">
-      <h2>Client feedback</h2>
+      <h2>Client feedback &amp; journal</h2>
       {% if fb_entries %}
         <ul class="feedback-list">
           {% for e in fb_entries %}
           <li>
-            <p class="small">{% if not e.seen_at %}<span class="badge badge-unread">New</span> {% endif %}<strong>{{ feedback_day_label(e) or e.entry_date }}</strong>
-              <span class="muted">· {{ e.entry_date }}{% if feedback_session_label(e) %} · {{ feedback_session_label(e) }}{% endif %}{% if e.feeling %} · {{ feedback_feelings[e.feeling] }}{% endif %}</span></p>
+            <p class="small">{% if not e.seen_at %}<span class="badge badge-unread">New</span> {% endif %}<strong>{% if e.source == 'calendar' %}Calendar journal{% else %}{{ feedback_day_label(e) or e.entry_date }}{% endif %}</strong>
+              <span class="muted">· {{ e.entry_date }}{% if e.source == 'calendar' %} · {{ journal_time(e) }}{% endif %}{% if feedback_session_label(e) %} · {{ feedback_session_label(e) }}{% endif %}{% if e.feeling %} · {{ feedback_feelings[e.feeling] }}{% endif %}</span></p>
             {% if e.body %}<p class="pre-line">{{ e.body }}</p>{% endif %}
           </li>
           {% endfor %}
