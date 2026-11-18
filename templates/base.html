@@ -61,6 +61,7 @@
       {% else %}
       <a href="{{ url_for('invite_practitioner') }}"{% if request.endpoint == 'invite_practitioner' %} aria-current="page"{% endif %}>Invite</a>
       <a href="{{ url_for('edit_profile') }}"{% if request.endpoint in ('edit_profile', 'change_password') %} aria-current="page"{% endif %}>Profile</a>
+      {% if user.role == 'practitioner' %}<a href="{{ url_for('paypal_settings') }}"{% if request.endpoint == 'paypal_settings' %} aria-current="page"{% endif %}>PayPal</a>{% endif %}
       {% endif %}
       {% if user.role == 'admin' %}<a href="{{ url_for('admin') }}">Admin</a>{% endif %}
       <form method="post" action="{{ url_for('logout') }}" class="inline">

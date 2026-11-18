@@ -4,10 +4,15 @@ Proof of payment is our own authenticated capture call: after the buyer approves
 the server asks PayPal to capture the order and reads PayPal's answer. Nothing is marked paid
 from a redirect, an email or any other message a third party could forge.
 
-Settings (.env on the server, never in GitHub):
-  NUMER_PAYPAL_ENV        sandbox | live (default sandbox)
-  NUMER_PAYPAL_CLIENT_ID  REST app client ID
-  NUMER_PAYPAL_SECRET     REST app secret
+Two kinds of PayPal account:
+- TAPNET's own (.env on the server, never in GitHub): used when a practitioner hasn't connected
+  PayPal yet, and later to send the monthly invoices.
+    NUMER_PAYPAL_ENV        sandbox | live (default sandbox)
+    NUMER_PAYPAL_CLIENT_ID  REST app client ID
+    NUMER_PAYPAL_SECRET     REST app secret
+- A practitioner's own PayPal Business account (keys saved encrypted in the database, see
+  practitioner_paypal.py): their clients pay them directly.
+Every call takes the Account to use; without one it uses TAPNET's.
 """
 from __future__ import annotations
 
@@ -18,12 +23,24 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from dataclasses import dataclass
 
 API = {"sandbox": "https://api-m.sandbox.paypal.com", "live": "https://api-m.paypal.com"}
 TIMEOUT = 20
 
 _token_lock = threading.Lock()
-_token: dict = {"value": None, "expires": 0.0, "key": None}
+_tokens: dict = {}  # (env, client_id) -> {"value", "expires"}
+
+
+@dataclass(frozen=True)
+class Account:
+    key: str          # "tapnet" or "user:<id>": stored on each order, to capture and check it later
+    env: str          # sandbox | live
+    client_id: str
+    secret: str
+
+    def __repr__(self) -> str:  # never print the secret
+        return f"Account({self.key}, {self.env})"
 
 
 class PayPalError(Exception):
@@ -43,12 +60,21 @@ def configured() -> bool:
     return bool(os.environ.get("NUMER_PAYPAL_CLIENT_ID") and os.environ.get("NUMER_PAYPAL_SECRET"))
 
 
-def _base() -> str:
-    return API[environment()]
+def tapnet_account() -> Account | None:
+    client_id = os.environ.get("NUMER_PAYPAL_CLIENT_ID", "")
+    secret = os.environ.get("NUMER_PAYPAL_SECRET", "")
+    return Account("tapnet", environment(), client_id, secret) if client_id and secret else None
+
+
+def _account(account: Account | None) -> Account:
+    account = account or tapnet_account()
+    if account is None:
+        raise PayPalError("PayPal is not configured")
+    return account
 
 
 def _request(method: str, path: str, body: dict | None = None, headers: dict | None = None,
-             form: str | None = None) -> dict:
+             form: str | None = None, account: Account | None = None) -> dict:
     data = None
     all_headers = {"Accept": "application/json", **(headers or {})}
     if form is not None:
@@ -57,7 +83,8 @@ def _request(method: str, path: str, body: dict | None = None, headers: dict | N
     elif body is not None:
         data = json.dumps(body).encode()
         all_headers["Content-Type"] = "application/json"
-    request = urllib.request.Request(_base() + path, data=data, method=method, headers=all_headers)
+    env = account.env if account is not None else environment()
+    request = urllib.request.Request(API.get(env, API["sandbox"]) + path, data=data, method=method, headers=all_headers)
     try:
         with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
             raw = response.read()
@@ -74,25 +101,27 @@ def _request(method: str, path: str, body: dict | None = None, headers: dict | N
     return json.loads(raw or b"{}")
 
 
-def _access_token() -> str:
-    client_id = os.environ.get("NUMER_PAYPAL_CLIENT_ID", "")
-    secret = os.environ.get("NUMER_PAYPAL_SECRET", "")
-    if not (client_id and secret):
-        raise PayPalError("PayPal is not configured")
-    key = (environment(), client_id)
+def _access_token(account: Account) -> str:
+    key = (account.env, account.client_id, account.secret)
     with _token_lock:
-        if _token["value"] and _token["key"] == key and _token["expires"] > time.time() + 60:
-            return _token["value"]
-        basic = base64.b64encode(f"{client_id}:{secret}".encode()).decode()
+        cached = _tokens.get(key)
+        if cached and cached["expires"] > time.time() + 60:
+            return cached["value"]
+        basic = base64.b64encode(f"{account.client_id}:{account.secret}".encode()).decode()
         result = _request("POST", "/v1/oauth2/token", headers={"Authorization": f"Basic {basic}"},
-                          form="grant_type=client_credentials")
-        _token.update(value=result["access_token"], expires=time.time() + int(result.get("expires_in", 300)),
-                      key=key)
-        return _token["value"]
+                          form="grant_type=client_credentials", account=account)
+        _tokens[key] = {"value": result["access_token"],
+                        "expires": time.time() + int(result.get("expires_in", 300))}
+        return result["access_token"]
 
 
-def _auth(extra: dict | None = None) -> dict:
-    return {"Authorization": f"Bearer {_access_token()}", **(extra or {})}
+def verify(account: Account) -> None:
+    """Raise PayPalError unless PayPal accepts these keys (used when a practitioner connects)."""
+    _access_token(account)
+
+
+def _auth(account: Account, extra: dict | None = None) -> dict:
+    return {"Authorization": f"Bearer {_access_token(account)}", **(extra or {})}
 
 
 def money_value(cents: int) -> str:
@@ -100,8 +129,9 @@ def money_value(cents: int) -> str:
 
 
 def create_order(*, reference: str, cents: int, currency: str, description: str,
-                 return_url: str, cancel_url: str, brand: str) -> tuple[str, str]:
+                 return_url: str, cancel_url: str, brand: str, account: Account | None = None) -> tuple[str, str]:
     """Create a checkout order. Returns (PayPal order id, URL to send the buyer to)."""
+    account = _account(account)
     body = {
         "intent": "CAPTURE",
         "purchase_units": [{
@@ -113,8 +143,8 @@ def create_order(*, reference: str, cents: int, currency: str, description: str,
             "return_url": return_url, "cancel_url": cancel_url,
         }}},
     }
-    result = _request("POST", "/v2/checkout/orders", body,
-                      headers=_auth({"PayPal-Request-Id": f"create-{reference}", "Prefer": "return=minimal"}))
+    result = _request("POST", "/v2/checkout/orders", body, account=account,
+                      headers=_auth(account, {"PayPal-Request-Id": f"create-{reference}", "Prefer": "return=minimal"}))
     links = {link.get("rel"): link.get("href") for link in result.get("links", [])}
     approve = links.get("payer-action") or links.get("approve")
     if not result.get("id") or not approve:
@@ -122,19 +152,22 @@ def create_order(*, reference: str, cents: int, currency: str, description: str,
     return result["id"], approve
 
 
-def get_order(order_id: str) -> dict:
-    return _request("GET", f"/v2/checkout/orders/{_safe(order_id)}", headers=_auth())
+def get_order(order_id: str, account: Account | None = None) -> dict:
+    account = _account(account)
+    return _request("GET", f"/v2/checkout/orders/{_safe(order_id)}", headers=_auth(account), account=account)
 
 
-def capture_order(order_id: str) -> dict:
+def capture_order(order_id: str, account: Account | None = None) -> dict:
     """Capture an approved order. Safe to repeat: PayPal-Request-Id makes the retry idempotent, and an
     order captured earlier (ORDER_ALREADY_CAPTURED) is read back instead."""
+    account = _account(account)
     try:
-        return _request("POST", f"/v2/checkout/orders/{_safe(order_id)}/capture", {},
-                        headers=_auth({"PayPal-Request-Id": f"capture-{order_id}", "Prefer": "return=representation"}))
+        return _request("POST", f"/v2/checkout/orders/{_safe(order_id)}/capture", {}, account=account,
+                        headers=_auth(account, {"PayPal-Request-Id": f"capture-{order_id}",
+                                                "Prefer": "return=representation"}))
     except PayPalError as exc:
         if exc.issue == "ORDER_ALREADY_CAPTURED":
-            return get_order(order_id)
+            return get_order(order_id, account)
         raise
 
 

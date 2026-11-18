@@ -380,7 +380,12 @@ ADDED_COLUMNS = (
     ("email_outbox", "campaign", "TEXT"),                    # series step key
     ("email_outbox", "track", "TEXT"),                       # open/click tracking token
     ("feedback_entries", "source", "TEXT NOT NULL DEFAULT 'feedback'"),  # feedback | calendar (day journal)
-    ("feedback_entries", "tz", "TEXT"),                      # writer's time zone (for the note's time)
+    ("feedback_entries", "tz", "TEXT"),
+    ("users", "paypal_env", "TEXT"),                          # practitioner's own PayPal: sandbox | live
+    ("users", "paypal_client_id", "TEXT"),
+    ("users", "paypal_secret", "TEXT"),                       # encrypted (secretbox)
+    ("users", "paypal_connected_at", "TEXT"),
+    ("orders", "paypal_account", "TEXT NOT NULL DEFAULT 'tapnet'"),  # who was paid: tapnet | user:<id>
     ("users", "report_method", "TEXT NOT NULL DEFAULT 'classic'"),  # classic | kdp (Karma, Destiny, Personality)
     ("users", "name_totalling", "TEXT NOT NULL DEFAULT 'whole'"),   # whole | per_name
     ("users", "y_rule", "TEXT NOT NULL DEFAULT 'standard'"),        # standard | always | never
@@ -862,3 +867,4 @@ import password_reset  # noqa: E402,F401  (forgot password: emailed one-time res
 import feedback  # noqa: E402,F401  (client feedback journal in the days after a reading)
 import calendar_journal  # noqa: E402,F401  (day journal: client notes on any calendar day)
 import client_page  # noqa: E402,F401  (client page /me/<token>: report, calendar, readings)
+import practitioner_paypal  # noqa: E402,F401  (practitioners connect their own PayPal)

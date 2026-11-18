@@ -128,7 +128,8 @@
 {% set paid_info = paid_reports_overview() %}
 <section class="card" id="paid-reports">
   <h2>Paid reports</h2>
-  <p>Full written reading: <strong>{{ paid_info.price }}</strong>. PayPal: {% if paid_info.paypal_ready %}<strong>{{ paid_info.paypal_env }}</strong> keys on the server{% else %}<span class="flash flash-error">not set up: add NUMER_PAYPAL_ENV, NUMER_PAYPAL_CLIENT_ID and NUMER_PAYPAL_SECRET to .env</span>{% endif %}.</p>
+  <p>Full written reading: <strong>{{ paid_info.price }}</strong>. TAPNET PayPal: {% if paid_info.tapnet_paypal %}<strong>{{ paid_info.paypal_env }}</strong> keys on the server{% else %}<span class="flash flash-error">not set up: add NUMER_PAYPAL_ENV, NUMER_PAYPAL_CLIENT_ID and NUMER_PAYPAL_SECRET to .env</span>{% endif %}.</p>
+  <p class="small">Practitioners who connect their own PayPal (menu → PayPal) are paid directly, and TAPNET's 25% is recorded as a fee they owe. The others' clients pay TAPNET's PayPal, and their 75% is credited to them.</p>
   <form method="post" action="{{ url_for('admin_paid_reports') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     {% if paid_info.switch_on %}

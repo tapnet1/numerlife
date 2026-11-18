@@ -48,7 +48,7 @@ T = {
         "ready_lead": "Hi {first_name}, your full written reading from {who} is ready.",
         "ready_button": "Open my reading",
         "ready_pdf": "You can also download it as a PDF from the reading page.",
-        "receipt": "Receipt", "amount": "Amount", "order": "Order", "paid_via": "Paid with PayPal to TAPNET, which operates numer.life.",
+        "receipt": "Receipt", "amount": "Amount", "order": "Order", "paid_via": "Paid with PayPal to TAPNET, which operates numer.life.", "paid_via_practitioner": "Paid with PayPal to {who}.",
         "your_numerologist": "your numerologist", "note_from": "A note from {who}",
         "preparing_title": "Your reading is being prepared",
         "preparing_body": "Thank you for your order. {who} is preparing your full written reading personally. We'll email you at {email} as soon as it's ready.",
@@ -65,7 +65,7 @@ T = {
         "ready_lead": "Hola {first_name}, tu lectura completa por escrito de {who} está lista.",
         "ready_button": "Abrir mi lectura",
         "ready_pdf": "También puedes descargarla en PDF desde la página de la lectura.",
-        "receipt": "Recibo", "amount": "Importe", "order": "Pedido", "paid_via": "Pagado con PayPal a TAPNET, que opera numer.life.",
+        "receipt": "Recibo", "amount": "Importe", "order": "Pedido", "paid_via": "Pagado con PayPal a TAPNET, que opera numer.life.", "paid_via_practitioner": "Pagado con PayPal a {who}.",
         "your_numerologist": "tu numeróloga", "note_from": "Una nota de {who}",
         "preparing_title": "Estamos preparando tu lectura",
         "preparing_body": "Gracias por tu pedido. {who} está preparando personalmente tu lectura completa por escrito. Te escribiremos a {email} en cuanto esté lista.",
@@ -85,10 +85,28 @@ def platform_ready() -> bool:
         return billing.platform_account(connection) is not None
 
 
-def sales_open() -> bool:
-    """Paid reports are switched on in Admin, PayPal keys are on the server and TAPNET's account exists."""
+def seller_account(lead) -> paypal.Account | None:
+    """Who the client pays: their practitioner's own PayPal if connected, otherwise TAPNET's
+    (which also needs the numer.life/tapnet account, so the practitioner's share can be credited)."""
+    import practitioner_paypal
+    if lead is not None and lead["practitioner_id"]:
+        practitioner = db().execute("SELECT * FROM users WHERE id = ? AND is_active = 1",
+                                    (lead["practitioner_id"],)).fetchone()
+        account = practitioner_paypal.account_for_user(practitioner)
+        if account is not None:
+            return account
+    return paypal.tapnet_account() if platform_ready() else None
+
+
+def sales_open(lead=None) -> bool:
+    """Paid reports are switched on in Admin and this client has someone to pay (see seller_account)."""
     import intake
-    return intake.paid_reports_on() and paypal.configured() and platform_ready()
+    if not intake.paid_reports_on():
+        return False
+    if lead is None:
+        import practitioner_paypal
+        return (paypal.configured() and platform_ready()) or practitioner_paypal.any_connected()
+    return seller_account(lead) is not None
 
 
 def order_for_lead(lead_id: int):
@@ -128,7 +146,8 @@ def buy_report(token):
     existing = order_for_lead(lead["id"])
     if existing is not None:
         return redirect(url_for("order_public", token=existing["token"]))
-    if not sales_open():
+    account = seller_account(lead)
+    if not sales_open(lead) or account is None:
         flash("The full written reading isn't available right now. Please try again later.", "error")
         return redirect(url_for("report", token=token))
     if not intake.reserve_attempt("buy", 10):
@@ -142,15 +161,16 @@ def buy_report(token):
                            " AND status = 'pending'", (now, lead["id"]))
         order_id = connection.execute(
             "INSERT INTO orders (lead_id, practitioner_id, product, amount_cents, currency, status, token,"
-            " created_at, updated_at) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?)",
-            (lead["id"], lead["practitioner_id"], PRODUCT, PRICE_CENTS, CURRENCY, order_token, now, now),
+            " created_at, updated_at, paypal_account) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)",
+            (lead["id"], lead["practitioner_id"], PRODUCT, PRICE_CENTS, CURRENCY, order_token, now, now, account.key),
         ).lastrowid
     lang = _lead_lang(lead)
     try:  # network call: no database lock held
         paypal_id, approve_url = paypal.create_order(
             reference=f"order-{order_id}", cents=PRICE_CENTS, currency=CURRENCY,
             description=f"{SITE_NAME}: {T[lang]['price_label']}",
-            return_url=f"{BASE_URL}/paypal/return", cancel_url=f"{BASE_URL}/paypal/cancel", brand=SITE_NAME)
+            return_url=f"{BASE_URL}/paypal/return", cancel_url=f"{BASE_URL}/paypal/cancel", brand=SITE_NAME,
+            account=account)
     except paypal.PayPalError as exc:
         app.logger.warning("PayPal create order failed: %s (%s)", exc, exc.issue)
         with open_db() as connection:
@@ -222,8 +242,14 @@ def finalize(order_id: int) -> str:
         return "paid"
     if order["status"] != "pending":
         return "declined"
+    import practitioner_paypal
+    account = practitioner_paypal.account_for_key(order["paypal_account"])
+    if account is None:
+        app.logger.error("Order %s: PayPal account %s is no longer connected; can't capture",
+                         order_id, order["paypal_account"])
+        return "unconfirmed"
     try:  # network call: no database lock held
-        result = paypal.capture_order(order["paypal_order_id"])
+        result = paypal.capture_order(order["paypal_order_id"], account=account)
     except paypal.PayPalError as exc:
         app.logger.warning("PayPal capture failed for order %s: %s (%s)", order_id, exc, exc.issue)
         if exc.issue in ("INSTRUMENT_DECLINED", "PAYER_ACTION_REQUIRED", "ORDER_NOT_APPROVED"):
@@ -276,11 +302,18 @@ def mark_paid(order_id: int, capture_id: str, payer_email: str) -> bool:
 
 def _credit_sale(connection, order) -> None:
     """Credit the sale 75/25. The buyer has already been charged, so this never fails the payment:
-    a share that can't be credited (no TAPNET account yet) is logged for an admin adjustment."""
+    a share that can't be credited (no TAPNET account yet) is logged for an admin adjustment.
+
+    Paid to the practitioner's own PayPal: they have the money, so TAPNET's 25% is recorded as a
+    fee they owe (negative entry), billed on the monthly invoice."""
     reference = f"order-{order['id']}"
     note = f"Full report, order {order['id']}"
-    platform = billing.platform_account(connection)
     platform_cents, practitioner_cents = billing.split(order["amount_cents"])
+    if (order["paypal_account"] or "").startswith("user:") and order["practitioner_id"]:
+        billing.post(connection, order["practitioner_id"], "platform_fee", -platform_cents, f"{reference}:fee",
+                     note=note)
+        return
+    platform = billing.platform_account(connection)
     if not order["practitioner_id"]:
         platform_cents, practitioner_cents = order["amount_cents"], 0
     if practitioner_cents:
@@ -315,6 +348,8 @@ def _queue_paid_emails(connection, order) -> list:
     who = _who(practitioner, lang)
     context = {"t": t, "lang": lang, "email_lang": lang, "first_name": first_name, "who": who, "price": price_text(order["amount_cents"]),
                "order_id": order["id"], "page_url": f"{BASE_URL}/p/{order['token']}",
+               "paid_via": t["paid_via_practitioner"].format(who=who)
+               if (order["paypal_account"] or "").startswith("user:") else t["paid_via"],
                "card": emails._card(practitioner) if practitioner is not None and practitioner["is_active"] else None}
     subject = t["paid_subject"]
     text, html = emails._render_pair("order_paid", **context)
@@ -337,16 +372,18 @@ def capture_open_orders() -> dict:
     with open_db() as connection:
         connection.execute("UPDATE orders SET status = 'cancelled', updated_at = ? WHERE status = 'pending'"
                            " AND created_at < ?", (iso(now_utc()), cutoff_old))
-        rows = connection.execute("SELECT id, paypal_order_id FROM orders WHERE status = 'pending'"
+        rows = connection.execute("SELECT id, paypal_order_id, paypal_account FROM orders WHERE status = 'pending'"
                                   " AND paypal_order_id IS NOT NULL AND created_at < ?", (cutoff_new,)).fetchall()
     result = {"checked": 0, "paid": 0}
-    if not paypal.configured():
-        return result
+    import practitioner_paypal
     with app.app_context():
         for row in rows:
+            account = practitioner_paypal.account_for_key(row["paypal_account"])
+            if account is None:
+                continue
             result["checked"] += 1
             try:
-                status = paypal.get_order(row["paypal_order_id"]).get("status")
+                status = paypal.get_order(row["paypal_order_id"], account=account).get("status")
             except paypal.PayPalError:
                 continue
             if status in ("APPROVED", "COMPLETED") and finalize(row["id"]) == "paid":
@@ -591,7 +628,9 @@ def admin_overview() -> dict:
         " JOIN leads ON leads.id = orders.lead_id LEFT JOIN users ON users.id = orders.practitioner_id"
         " WHERE orders.status NOT IN ('pending', 'cancelled') ORDER BY orders.id DESC LIMIT 50").fetchall()
     import intake
-    return {"switch_on": intake.paid_reports_on(), "paypal_ready": paypal.configured(),
+    import practitioner_paypal
+    return {"switch_on": intake.paid_reports_on(), "paypal_ready": paypal.configured() or practitioner_paypal.any_connected(),
+            "tapnet_paypal": paypal.configured(),
             "platform_ready": platform_ready(),
             "paypal_env": paypal.environment(), "orders": rows, "price": price_text()}
 
@@ -604,8 +643,9 @@ app.jinja_env.globals["paid_reports_overview"] = admin_overview
 def admin_paid_reports():
     import emails
     turn_on = request.form.get("on") == "yes"
-    if turn_on and not paypal.configured():
-        flash("Add the PayPal keys to .env on the server first.", "error")
+    import practitioner_paypal
+    if turn_on and not (paypal.configured() or practitioner_paypal.any_connected()):
+        flash("Add TAPNET's PayPal keys to .env on the server, or have a practitioner connect PayPal, first.", "error")
         return redirect(url_for("admin") + "#paid-reports")
     if turn_on and not platform_ready():
         flash("Set up the numer.life/tapnet (TAPNET) account under Billing first, so sales can be credited.", "error")
@@ -627,7 +667,7 @@ def admin_mark_refunded(order_id):
                            (iso(now_utc()), order_id))
         reference = f"order-{order_id}"
         for entry in connection.execute("SELECT * FROM ledger WHERE reference IN (?, ?, ?)",
-                                         (f"{reference}:practitioner", f"{reference}:platform", reference)).fetchall():
+                                         (f"{reference}:practitioner", f"{reference}:platform", f"{reference}:fee")).fetchall():
             billing.post(connection, entry["user_id"], "adjustment", -entry["amount_cents"],
                          f"{entry['reference']}:refund", source_user_id=entry["source_user_id"],
                          note=f"Refund of order {order_id}", created_by=current_user()["id"])
