@@ -530,6 +530,9 @@ details > summary.btn-secondary::-webkit-details-marker { display: none; }
 /* Client page */
 .client-tiles { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); margin: 1rem 0; }
 .client-tile h2 { font-size: 1.25rem; margin-top: 0; }
+.tile-actions { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: .8rem; }
+.tile-actions .btn, .tile-actions .btn-secondary { margin: 0; flex: 1 1 11rem; justify-content: center; text-align: center; }
+.client-tile form button { margin-top: .8rem; }
 
 /* Journal: prompt, conversation, printable journal */
 .journal-prompt { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
