@@ -68,6 +68,21 @@ jobs:
                   print("SMTP sign-in: ok")
               except Exception as exc:
                   print("SMTP sign-in FAILED:", mailer.describe_error(exc))
+          print("== PayPal sign-in check (TAPNET keys in .env; no values printed)")
+          import paypal
+          account = paypal.tapnet_account()
+          if account is None:
+              print("PayPal: not configured")
+          else:
+              print("PayPal env:", account.env, "| client id length:", len(account.client_id),
+                    "| secret length:", len(account.secret),
+                    "| spaces/quotes in keys:", any(c in account.client_id + account.secret for c in " '\""))
+              try:
+                  paypal.verify(account)
+                  print("PayPal sign-in: ok")
+              except Exception as exc:
+                  print("PayPal sign-in FAILED:", type(exc).__name__, getattr(exc, "status", None),
+                        getattr(exc, "issue", None), str(exc)[:200])
           with app.open_db() as connection:
               for row in connection.execute("SELECT id, kind, created_at, sent_at, attempts, last_error"
                                             " FROM email_outbox ORDER BY id DESC LIMIT 10"):
