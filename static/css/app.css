@@ -554,3 +554,7 @@ details > summary.btn-secondary::-webkit-details-marker { display: none; }
   body { background: #fff; }
   .panel { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
 }
+
+/* Share the client page link */
+.share-row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin: .6rem 0 .2rem; }
+.share-row .btn { margin: 0; }

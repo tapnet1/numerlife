@@ -39,7 +39,17 @@
       {% if cp %}
         <label for="cp-link" class="small">Private link</label>
         <input id="cp-link" class="feedback-link" type="text" readonly value="{{ client_page_url(cp) }}">
-        <p class="hint">{% if cp.emailed_at %}Last emailed {{ cp.emailed_at | friendly_time }}. {% endif %}You can also send it by text or WhatsApp.</p>
+        {% set share_msg = client_share_text(lead) %}
+        {% set share_url = client_page_url(cp) %}
+        {% set share_full = share_msg ~ ' ' ~ share_url %}
+        <div class="share-row" data-share-title="numer.life" data-share-text="{{ share_msg }}" data-share-url="{{ share_url }}">
+          <button type="button" class="btn" data-share hidden>📤 Share…</button>
+          <a class="note-btn" href="https://wa.me/{{ whatsapp_number(lead.phone) }}?text={{ share_full | urlencode }}" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+          <a class="note-btn" href="sms:{{ lead.phone or '' }}?&amp;body={{ share_full | urlencode }}">Text message</a>
+          <a class="note-btn" href="mailto:{{ lead.email or '' }}?subject={{ 'numer.life' | urlencode }}&amp;body={{ share_full | urlencode }}">Email app</a>
+          <button type="button" class="note-btn" data-copy="{{ share_full }}">Copy message</button>
+        </div>
+        <p class="hint">{% if cp.emailed_at %}Last emailed {{ cp.emailed_at | friendly_time }}. {% endif %}Share opens your phone's share panel (WhatsApp, Messenger, text…) with a short message and the link{% if lead.phone %}; WhatsApp and Text go to {{ lead.phone }}{% endif %}.</p>
       {% endif %}
       <div class="actions">
         {% if lead.email %}
@@ -336,3 +346,4 @@
   </aside>
 </div>
 {% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/share.js') }}" defer></script>{% endblock %}

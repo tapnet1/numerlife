@@ -1,30 +1,27 @@
-// Share bar: native share sheet on phones, copy-link everywhere it's supported.
-// The plain links (WhatsApp, Facebook, X, Email, Text) work without JavaScript.
+// Lead page: share the client page link (native share panel on phones; copy fallback).
 (function () {
-  document.querySelectorAll(".share-buttons").forEach(function (bar) {
-    var url = bar.getAttribute("data-share-url");
-    var text = bar.getAttribute("data-share-text");
-    var status = bar.parentElement.querySelector(".share-status");
-    var say = function (message) { if (status) { status.textContent = message; } };
-
-    var nativeBtn = bar.querySelector(".share-native");
-    if (nativeBtn && navigator.share) {
-      nativeBtn.hidden = false;
-      nativeBtn.addEventListener("click", function () {
-        navigator.share({ title: document.title, text: text, url: url }).catch(function () {});
+  document.querySelectorAll(".share-row").forEach(function (row) {
+    var button = row.querySelector("[data-share]");
+    var data = {title: row.dataset.shareTitle, text: row.dataset.shareText, url: row.dataset.shareUrl};
+    if (button && navigator.share && (!navigator.canShare || navigator.canShare(data))) {
+      button.hidden = false;
+      button.addEventListener("click", function () {
+        navigator.share(data).catch(function () { /* closed or not allowed: nothing to do */ });
       });
     }
-
-    var copyBtn = bar.querySelector(".share-copy");
-    if (copyBtn && navigator.clipboard && window.isSecureContext) {
-      copyBtn.hidden = false;
-      copyBtn.addEventListener("click", function () {
-        navigator.clipboard.writeText(url).then(function () {
-          copyBtn.querySelector("span").textContent = "Copied!";
-          say("Link copied. Paste it anywhere to share.");
-          setTimeout(function () { copyBtn.querySelector("span").textContent = "Copy link"; }, 2500);
-        }, function () { say("Couldn't copy automatically. The link is " + url); });
-      });
-    }
+  });
+  document.querySelectorAll("[data-copy]").forEach(function (button) {
+    button.addEventListener("click", function () {
+      var text = button.dataset.copy, label = button.textContent;
+      function done() { button.textContent = "Copied ✓"; setTimeout(function () { button.textContent = label; }, 2000); }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function () {});
+      } else {
+        var area = document.createElement("textarea");
+        area.value = text; document.body.appendChild(area); area.select();
+        try { document.execCommand("copy"); done(); } catch (e) { /* ignore */ }
+        document.body.removeChild(area);
+      }
+    });
   });
 })();
