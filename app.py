@@ -310,6 +310,18 @@ CREATE TABLE IF NOT EXISTS feedback_journals (
     invited_at  TEXT
 );
 
+CREATE TABLE IF NOT EXISTS journal_replies (
+    id         INTEGER PRIMARY KEY,
+    entry_id   INTEGER NOT NULL REFERENCES feedback_entries(id),
+    lead_id    INTEGER NOT NULL REFERENCES leads(id),
+    author     TEXT NOT NULL,                       -- client | staff
+    user_id    INTEGER REFERENCES users(id),        -- staff author
+    body       TEXT NOT NULL,
+    tz         TEXT,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_journal_replies_entry ON journal_replies (entry_id);
+
 CREATE TABLE IF NOT EXISTS client_pages (
     id           INTEGER PRIMARY KEY,
     lead_id      INTEGER NOT NULL UNIQUE REFERENCES leads(id),

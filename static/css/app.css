@@ -530,3 +530,27 @@ details > summary.btn-secondary::-webkit-details-marker { display: none; }
 /* Client page */
 .client-tiles { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); margin: 1rem 0; }
 .client-tile h2 { font-size: 1.25rem; margin-top: 0; }
+
+/* Journal: prompt, conversation, printable journal */
+.journal-prompt { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
+.journal-prompt-text { flex: 1 1 100%; margin: 0 0 .2rem; font-weight: 600; }
+.journal-thread { list-style: none; padding: 0; margin: .5rem 0 0; display: grid; gap: .4rem; }
+.bubble { padding: .45rem .7rem; border-radius: 12px; max-width: 92%; }
+.bubble p { margin: .1rem 0; }
+.bubble-client { background: #fff; border: 1px solid var(--line); justify-self: end; }
+.bubble-staff { background: #fff7e6; border: 1px solid #ecd9a8; justify-self: start; }
+.journal-reply { margin-top: .5rem; }
+.journal-reply summary { list-style: none; display: inline-flex; }
+.journal-reply summary::-webkit-details-marker { display: none; }
+.journal-reply textarea { width: 100%; margin-top: .4rem; }
+.journal-reply form p { margin: .3rem 0 0; }
+.book-month { margin: 1.6rem 0 .6rem; }
+.book-day h3 { font-size: 1.05rem; margin: 0 0 .4rem; }
+.book-day-note { background: #fff7e6; padding: .45rem .7rem; border-radius: 8px; }
+.book-note { border-left: 3px solid var(--gold); padding: .2rem 0 .2rem .7rem; margin: .6rem 0; display: grid; gap: .35rem; }
+.book-note .bubble { justify-self: stretch; max-width: none; }
+@media print {
+  .no-print, .topbar, .footer, .flash { display: none !important; }
+  body { background: #fff; }
+  .panel { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
+}

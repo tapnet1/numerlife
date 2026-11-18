@@ -15,3 +15,8 @@
   window.addEventListener("hashchange", openTarget);
   openTarget();
 })();
+
+// Journal page: print / save as PDF
+document.querySelectorAll("[data-print]").forEach(function (button) {
+  button.addEventListener("click", function () { window.print(); });
+});

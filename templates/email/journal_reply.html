@@ -1,0 +1,9 @@
+{% extends "email/_layout.html" %}
+{% block preheader %}{{ t.reply_lead.format(who=who, date=date) }}{% endblock %}
+{% block body %}
+<p style="margin:0 0 12px;">{{ t.reply_lead.format(who=who, date=date) }}</p>
+<div style="margin:0 0 16px;padding:12px 14px;background:#f6f1ff;border-left:3px solid #d4af5a;border-radius:6px;white-space:pre-line;">{{ body }}</div>
+{% if note %}<p style="margin:0 0 18px;font-size:13px;color:#7a7290;white-space:pre-line;">“{{ note[:300] }}{% if note|length > 300 %}…{% endif %}”</p>{% endif %}
+<p style="margin:0 0 20px;text-align:center;"><a href="{{ page_url }}" style="display:inline-block;background:#2b1a57;color:#ffffff;font-weight:600;text-decoration:none;padding:12px 24px;border-radius:999px;">{{ t.reply }}</a></p>
+{% include "email/_card.html" %}
+{% endblock %}

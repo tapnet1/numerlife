@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}{{ jt.my_journal }} | {{ site_name }}{% endblock %}
+{% block body_class %}app-page journal-book{% endblock %}
+{% block content %}
+<header class="app-head">
+  <div>
+    <p class="eyebrow">{{ jt.prepared_with.format(who=who) }}</p>
+    <h1>{{ jt.book_title.format(name=first_name) }}</h1>
+  </div>
+  <div class="actions no-print">
+    <a class="btn-secondary" href="{{ url_for('calendar_public', token=cal.token) }}">← {{ jt.back_calendar }}</a>
+    {% if days %}<button type="button" class="btn" data-print>🖨 {{ jt.print }}</button>{% endif %}
+  </div>
+</header>
+
+{% if not days %}
+  <section class="panel"><p>{{ jt.book_empty }}</p>
+    <p class="no-print"><a class="btn" href="{{ url_for('calendar_public', token=cal.token) }}">{{ jt.open_journal }}</a></p></section>
+{% endif %}
+
+{% for d in days %}
+  {% if loop.first or d.day.month != loop.previtem.day.month or d.day.year != loop.previtem.day.year %}
+  <h2 class="book-month">{{ d.month_name }} {{ d.day.year }}</h2>
+  {% endif %}
+  <article class="panel book-day">
+    <h3><span class="lp">{{ d.number }}</span> {{ d.date }} · {{ d.title }}</h3>
+    {% if d.day_note %}<p class="book-day-note"><strong>{{ jt.day_note_from.format(who=who) }}:</strong> {{ d.day_note }}</p>{% endif %}
+    {% for e in d.notes %}
+    <div class="book-note">
+      <p class="small muted">{{ journal_time(e) }}{% if e.feeling %} · {{ jt.feelings[e.feeling] }}{% endif %}</p>
+      {% if e.body %}<p class="pre-line">{{ e.body }}</p>{% endif %}
+      {% for r in replies.get(e.id, []) %}
+      <div class="bubble {{ 'bubble-staff' if r.author == 'staff' else 'bubble-client' }}">
+        <p class="small muted"><strong>{{ (r.staff_name or who) if r.author == 'staff' else jt.you }}</strong> · {{ journal_time(r) }}</p>
+        <p class="pre-line">{{ r.body }}</p>
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </article>
+{% endfor %}
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/journal.js') }}" defer></script>{% endblock %}

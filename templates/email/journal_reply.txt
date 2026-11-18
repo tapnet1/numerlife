@@ -1,0 +1,10 @@
+{{ t.reply_lead.format(who=who, date=date) }}
+
+{{ body }}
+{% if note %}
+> {{ note[:300] }}
+{% endif %}
+{{ t.reply }}: {{ page_url }}
+{% if card %}
+{{ card.name }}{% if card.about_url %} · {{ card.about_url }}{% endif %}
+{% endif %}

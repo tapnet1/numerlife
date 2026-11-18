@@ -98,18 +98,44 @@
 
     {% set fb_journal = feedback_journal(lead.id) %}
     {% set fb_entries = feedback_entries(lead.id) %}
+    {% set fb_replies = journal_lead_replies(lead.id) %}
     <section class="panel" id="feedback">
       <h2>Client feedback &amp; journal</h2>
+      {% set jcal = lead_calendar(lead.id) %}
+      {% if jcal and fb_entries %}<p><a class="btn-secondary" href="{{ url_for('journal_book', token=jcal.token) }}" target="_blank" rel="noopener">📖 Open their printable journal</a></p>{% endif %}
       {% if fb_entries %}
         <ul class="feedback-list">
           {% for e in fb_entries %}
-          <li>
+          <li id="note-{{ e.id }}">
             <p class="small">{% if not e.seen_at %}<span class="badge badge-unread">New</span> {% endif %}<strong>{% if e.source == 'calendar' %}Calendar journal{% else %}{{ feedback_day_label(e) or e.entry_date }}{% endif %}</strong>
               <span class="muted">· {{ e.entry_date }}{% if e.source == 'calendar' %} · {{ journal_time(e) }}{% endif %}{% if feedback_session_label(e) %} · {{ feedback_session_label(e) }}{% endif %}{% if e.feeling %} · {{ feedback_feelings[e.feeling] }}{% endif %}</span></p>
             {% if e.body %}<p class="pre-line">{{ e.body }}</p>
             <p class="small muted">Translate:
               <a href="https://translate.google.com/?sl=auto&amp;tl=en&amp;op=translate&amp;text={{ e.body | urlencode }}" target="_blank" rel="noopener noreferrer">English</a> ·
               <a href="https://translate.google.com/?sl=auto&amp;tl=es&amp;op=translate&amp;text={{ e.body | urlencode }}" target="_blank" rel="noopener noreferrer">Español</a></p>{% endif %}
+            {% set thread = fb_replies.get(e.id, []) %}
+            {% if thread %}
+            <ul class="journal-thread">
+              {% for r in thread %}
+              <li class="bubble {{ 'bubble-staff' if r.author == 'staff' else 'bubble-client' }}">
+                <p class="small muted"><strong>{{ r.staff_name or 'Team' if r.author == 'staff' else lead.full_name.split(' ')[0] }}</strong> · {{ journal_time(r) }}</p>
+                <p class="pre-line">{{ r.body }}</p>
+                {% if r.author == 'client' %}<p class="small muted">Translate: <a href="https://translate.google.com/?sl=auto&amp;tl=en&amp;op=translate&amp;text={{ r.body | urlencode }}" target="_blank" rel="noopener noreferrer">English</a> · <a href="https://translate.google.com/?sl=auto&amp;tl=es&amp;op=translate&amp;text={{ r.body | urlencode }}" target="_blank" rel="noopener noreferrer">Español</a></p>{% endif %}
+              </li>
+              {% endfor %}
+            </ul>
+            {% endif %}
+            {% if lead_calendar(lead.id) %}
+            <details class="journal-reply"{% if thread and thread[-1].author == 'client' %} open{% endif %}>
+              <summary class="note-btn">💬 Reply to {{ lead.full_name.split(' ')[0] }}</summary>
+              <form method="post" action="{{ url_for('journal_staff_reply', lead_id=lead.id, entry_id=e.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <textarea name="body" rows="3" maxlength="4000" required aria-label="Reply"></textarea>
+                <p class="hint">They get an email with your reply and a link to this note in their calendar.</p>
+                <p><button type="submit" class="note-btn">Send reply</button></p>
+              </form>
+            </details>
+            {% endif %}
           </li>
           {% endfor %}
         </ul>
