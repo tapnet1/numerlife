@@ -2,6 +2,7 @@
 {% block title %}{{ labels.calendar }} · {{ month_name }} {{ year }} | {{ site_name }}{% endblock %}
 {% block body_class %}app-page calendar-page{% endblock %}
 {% block content %}
+{% include "_client_home.html" %}
 <header class="app-head">
   <div>
     <p class="eyebrow">{{ labels.calendar }}{% if card %} · {{ labels.prepared_by }} {{ card.name }}{% endif %}</p>

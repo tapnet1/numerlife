@@ -562,3 +562,7 @@ details > summary.btn-secondary::-webkit-details-marker { display: none; }
 /* Calendar yearly plan */
 .sub-banner { border: 1px solid var(--gold); background: #fffaf0; }
 .sub-banner form button { margin-top: .4rem; }
+
+/* Back to the client page */
+.client-home { margin: 0 0 .8rem; font-size: .92rem; }
+.client-home a { text-decoration: none; font-weight: 600; }

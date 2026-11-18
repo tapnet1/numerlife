@@ -102,3 +102,17 @@ class ClientPageShareTest(ClientPageTest):
     def test_whatsapp_number(self):
         self.assertEqual(numer.client_page.whatsapp_number("+52 1 55 1234 5678"), "5215512345678")
         self.assertEqual(numer.client_page.whatsapp_number(""), "")
+
+
+class ClientHomeLinkTest(ClientPageTest):
+    def test_client_pages_link_back_to_my_page(self):
+        lead = self.lead_via_liliana()
+        token = self.page_row(lead["id"])["token"]
+        visitor = numer.app.test_client()
+        report = visitor.get(f"/r/{lead['token']}").get_data(as_text=True)
+        self.assertIn(f'href="/me/{token}"', report)
+        html = visitor.get(f"/me/{token}").get_data(as_text=True)
+        visitor.post(f"/me/{token}/calendar", data={"csrf_token": token_from(html)})
+        cal = self.calendar()
+        for path in (f"/c/{cal['token']}", f"/c/{cal['token']}/journal"):
+            self.assertIn(f'href="/me/{token}"', visitor.get(path).get_data(as_text=True), path)

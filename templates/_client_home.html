@@ -1,0 +1,3 @@
+{# "← My page": back to the client's private page (/me/<token>), on every client page. Needs `lead`. #}
+{% set home = client_page(lead.id) if lead and lead.id else None %}
+{% if home and lead.status == 'captured' %}<p class="client-home no-print"><a href="{{ url_for('client_page_public', token=home.token) }}">← {{ client_home_label(home_lang if home_lang is defined else (lang if lang is defined else 'en')) }}</a></p>{% endif %}

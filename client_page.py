@@ -123,6 +123,15 @@ def whatsapp_number(phone: str | None) -> str:
     return digits if 8 <= len(digits) <= 15 else ""
 
 
+HOME_LABELS = {"en": "My page", "es": "Mi página", "fr": "Ma page", "pt": "Minha página", "it": "La mia pagina",
+               "de": "Meine Seite"}
+
+
+def home_label(lang: str | None) -> str:
+    return HOME_LABELS.get(lang or "en", HOME_LABELS["en"])
+
+
+app.jinja_env.globals.update(client_home_label=home_label)
 app.jinja_env.globals.update(client_page=page_for_lead, client_page_url=page_url, client_share_text=share_text,
                              whatsapp_number=whatsapp_number)
 
