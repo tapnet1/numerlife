@@ -307,6 +307,8 @@
         <p class="small">{{ calendar_kinds[cal.kind] }}{% if not cal.active %} · paused{% endif %}</p>
         <a class="btn" href="{{ url_for('edit_calendar', lead_id=lead.id) }}">Open calendar</a>
         {% set until = calendar_access_until(cal) %}
+        {% set csub = calendar_subscription_latest(cal.id) %}
+        {% if csub %}<p class="small mt"><strong>Yearly plan:</strong> {{ csub.status | lower | replace('_', ' ') }} · paid CAD {{ csub.paid_cents | money }}{% if csub.next_billing %} · next payment {{ csub.next_billing }}{% endif %} · via {{ 'their own PayPal' if csub.paypal_account.startswith('user:') else "TAPNET's PayPal" }}</p>{% endif %}
         <p class="small mt">Client can see their calendar until <strong>{{ until.isoformat() }}</strong>. After that, months are locked until they have the yearly plan (CAD $250), or you give access here.</p>
         <form method="post" action="{{ url_for('calendar_set_access', lead_id=lead.id) }}" class="inline-form">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

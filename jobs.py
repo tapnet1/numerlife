@@ -81,9 +81,20 @@ def capture_orders() -> dict:
     return result
 
 
+def sync_subscriptions() -> dict:
+    """Refresh calendar subscriptions from PayPal: access dates and new payments."""
+    import calendar_subscriptions
+
+    result = calendar_subscriptions.sync_open()
+    import emails
+    emails.send_pending()
+    return result
+
+
 JOBS = {"purge-attempts": purge_attempts, "send-push": send_push, "send-email": send_email,
         "send-nudges": send_nudges, "accrue-referrals": accrue_referrals,
-        "calendar-emails": calendar_emails, "capture-orders": capture_orders}
+        "calendar-emails": calendar_emails, "capture-orders": capture_orders,
+        "sync-subscriptions": sync_subscriptions}
 
 
 def main(argv: list[str]) -> int:

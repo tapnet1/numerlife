@@ -310,6 +310,31 @@ CREATE TABLE IF NOT EXISTS feedback_journals (
     invited_at  TEXT
 );
 
+CREATE TABLE IF NOT EXISTS paypal_plans (
+    account_key TEXT NOT NULL,                      -- tapnet | user:<id>
+    env         TEXT NOT NULL,
+    client_id   TEXT NOT NULL,
+    product_id  TEXT NOT NULL,
+    plan_id     TEXT NOT NULL,
+    created_at  TEXT NOT NULL,
+    PRIMARY KEY (account_key, env, client_id)
+);
+
+CREATE TABLE IF NOT EXISTS calendar_subscriptions (
+    id                     INTEGER PRIMARY KEY,
+    calendar_id            INTEGER NOT NULL REFERENCES calendars(id),
+    lead_id                INTEGER NOT NULL REFERENCES leads(id),
+    practitioner_id        INTEGER REFERENCES users(id),
+    paypal_account         TEXT NOT NULL,           -- tapnet | user:<id>
+    paypal_subscription_id TEXT UNIQUE,
+    status                 TEXT NOT NULL,           -- CREATED, APPROVAL_PENDING, ACTIVE, SUSPENDED, CANCELLED, EXPIRED, FAILED, ABANDONED
+    paid_cents             INTEGER NOT NULL DEFAULT 0,
+    next_billing           TEXT,
+    alerted_at             TEXT,
+    created_at             TEXT NOT NULL,
+    updated_at             TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS journal_replies (
     id         INTEGER PRIMARY KEY,
     entry_id   INTEGER NOT NULL REFERENCES feedback_entries(id),
@@ -885,3 +910,4 @@ import calendar_journal  # noqa: E402,F401  (day journal: client notes on any ca
 import client_page  # noqa: E402,F401  (client page /me/<token>: report, calendar, readings)
 import practitioner_paypal  # noqa: E402,F401  (practitioners connect their own PayPal)
 import calendar_access  # noqa: E402,F401  (free 30 days, then the yearly plan)
+import calendar_subscriptions  # noqa: E402,F401  (CAD $250 yearly plan via PayPal)
