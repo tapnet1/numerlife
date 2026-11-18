@@ -508,3 +508,6 @@ details > summary.btn-secondary::-webkit-details-marker { display: none; }
 .journal-add summary::-webkit-details-marker { display: none; }
 .journal-add[open] summary { margin-bottom: .6rem; }
 .journal-add textarea { width: 100%; }
+/* Client page */
+.client-tiles { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); margin: 1rem 0; }
+.client-tile h2 { font-size: 1.25rem; margin-top: 0; }

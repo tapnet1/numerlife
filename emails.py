@@ -38,6 +38,8 @@ KINDS = {
     "calendar_published": "Client calendar: month published",
     "lead_series": "Follow-up series (7 emails, client)",
     "password_reset": "Password reset link",
+    "client_welcome": "Client page link (client)",
+    "client_announce": "Calendar & journal announcement (client)",
 }
 
 
@@ -175,11 +177,12 @@ def _card_for_id(practitioner_id) -> dict | None:
     return _card(practitioner)
 
 
-def report_email(lead, practitioner, report_url: str | None = None) -> tuple[str, str, str]:
+def report_email(lead, practitioner, report_url: str | None = None,
+                 client_url: str | None = None) -> tuple[str, str, str]:
     items = _number_items(lead)
     teaser = items[0]
     context = {"first_name": _first_name(lead["full_name"]), "full_name": lead["full_name"],
-               "items": items, "teaser": teaser,
+               "items": items, "teaser": teaser, "client_url": client_url,
                "report_url": report_url or f"{BASE_URL}/r/{lead['token']}", "card": _card(practitioner)}
     subject = f"Your numerology report, {context['first_name']}: {teaser['label']} {teaser['display']}"
     return (subject, *_render_pair("report", **context))
@@ -282,7 +285,10 @@ def queue_unlock_emails(lead_id: int) -> None:
                                                  (practitioner["id"],)).fetchall()
         else:
             recipients = connection.execute("SELECT * FROM users WHERE role = 'admin' AND is_active = 1").fetchall()
-        subject, text, html = report_email(lead, practitioner if practitioner and practitioner["is_active"] else None)
+        import client_page  # loaded after this module
+        page = client_page.ensure_page(connection, lead["id"])
+        subject, text, html = report_email(lead, practitioner if practitioner and practitioner["is_active"] else None,
+                                           client_url=client_page.page_url(page))
         enqueue(connection, "report", lead["email"], subject, text, html, lead_id=lead["id"])
         for recipient in recipients:
             if recipient["email_alerts"]:
@@ -373,6 +379,9 @@ def _still_wanted(connection, row) -> bool:
     if row["kind"] == "lead_series":
         import lead_series  # loaded after this module
         return lead_series.still_wanted(connection, row["lead_id"])
+    if row["kind"] == "client_announce":
+        import client_page  # loaded after this module
+        return client_page.still_wanted(connection, row)
     if row["kind"] == "client_nudge":
         lead = connection.execute("SELECT marketing_opt_in FROM leads WHERE id = ?", (row["lead_id"],)).fetchone()
         return bool(lead and lead["marketing_opt_in"])
@@ -603,6 +612,9 @@ def admin_email_test():
             # one Spanish example: Spanish only goes to visitors whose browser is set to Spanish
             subject, *rest = lead_series.build({**series_lead, "lang": "es"}, practitioner, "expression")
             built.append((kind, f"(Spanish example) {subject}", *rest))
+        elif kind in ("client_welcome", "client_announce"):
+            import client_page  # loaded after this module
+            built.append((kind, *client_page.sample_email({**lead, "email": to}, practitioner, kind[7:])))
         elif kind.startswith("calendar_"):
             import calendar_mail  # loaded after this module
             built.append((kind, *calendar_mail.sample_email(kind, lead, practitioner)))

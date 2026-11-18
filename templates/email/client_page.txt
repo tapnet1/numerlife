@@ -1,0 +1,15 @@
+{{ (t.email_announce_lead if mode == 'announce' else t.email_lead).format(first_name=first_name) }}
+
+{{ t.intro.format(who=who) }}
+{% for f in features %}
+- {{ f }}{% endfor %}
+
+{{ t.button }}: {{ page_url }}
+
+{{ t.private }}
+{% if card %}
+{{ card.name }}{% if card.about_url %} · {{ card.about_url }}{% elif card.email %} · {{ card.email }}{% endif %}
+{% endif %}
+--
+{{ t.why }}{% if unsubscribe_url %}
+{{ t.unsubscribe }}: {{ unsubscribe_url }}{% endif %}

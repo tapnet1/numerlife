@@ -31,6 +31,38 @@
       {% endif %}
     </section>
 
+    {% if lead.status == 'captured' %}
+    {% set cp = client_page(lead.id) %}
+    <section class="panel" id="client-page">
+      <h2>Client page</h2>
+      <p class="small">{{ lead.full_name.split(' ')[0] }}'s private page with their report, their free personal calendar and journal, and any full reading. It's their sign-in: the link opens everything.</p>
+      {% if cp %}
+        <label for="cp-link" class="small">Private link</label>
+        <input id="cp-link" class="feedback-link" type="text" readonly value="{{ client_page_url(cp) }}">
+        <p class="hint">{% if cp.emailed_at %}Last emailed {{ cp.emailed_at | friendly_time }}. {% endif %}You can also send it by text or WhatsApp.</p>
+      {% endif %}
+      <div class="actions">
+        {% if lead.email %}
+        <form method="post" action="{{ url_for('client_page_send', lead_id=lead.id) }}" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" name="send" value="yes">{{ 'Email the client page again' if cp and cp.emailed_at else 'Email the client page' }}</button>
+        </form>
+        {% endif %}
+        {% if cp %}
+        <form method="post" action="{{ url_for('client_page_new_link', lead_id=lead.id) }}" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn-secondary">Replace link</button>
+        </form>
+        {% else %}
+        <form method="post" action="{{ url_for('client_page_send', lead_id=lead.id) }}" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" name="send" value="no" class="btn-secondary">Just make the link</button>
+        </form>
+        {% endif %}
+      </div>
+    </section>
+    {% endif %}
+
     <section class="panel" id="readings">
       <h2>Readings</h2>
       {% set rlist = readings_for_lead(lead.id) %}

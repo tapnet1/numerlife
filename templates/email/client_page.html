@@ -1,0 +1,11 @@
+{% extends "email/_layout.html" %}
+{% block preheader %}{{ (t.email_announce_lead if mode == 'announce' else t.email_lead).format(first_name=first_name) }}{% endblock %}
+{% block body %}
+<p style="margin:0 0 14px;">{{ (t.email_announce_lead if mode == 'announce' else t.email_lead).format(first_name=first_name) }}</p>
+<p style="margin:0 0 10px;">{{ t.intro.format(who=who) }}</p>
+<ul style="margin:0 0 22px;padding-left:20px;">{% for f in features %}<li style="margin:0 0 6px;">{{ f }}</li>{% endfor %}</ul>
+<p style="margin:0 0 22px;text-align:center;"><a href="{{ page_url }}" style="display:inline-block;background:#2b1a57;color:#ffffff;font-weight:600;text-decoration:none;padding:13px 26px;border-radius:999px;">{{ t.button }}</a></p>
+<p style="margin:0;font-size:13px;color:#4a4360;">{{ t.private }}</p>
+{% include "email/_card.html" %}
+{% endblock %}
+{% block footer %}<p style="margin:0;">{{ t.why }}{% if unsubscribe_url %} <a href="{{ unsubscribe_url }}" style="color:#7a7290;">{{ t.unsubscribe }}</a>{% endif %}</p>{% endblock %}
