@@ -65,12 +65,15 @@
               <span class="small muted"><time>{{ journal_time(e) }}</time>{% if e.feeling %} · {{ jt.feelings[e.feeling] }}{% endif %}</span>
               <span class="journal-actions">
                 <a class="note-btn" href="#edit-{{ e.id }}">✎ {{ jt.edit }}</a>
-                <form method="post" action="{{ url_for('journal_delete', token=cal.token, entry_id=e.id) }}" class="inline-form">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <button type="submit" class="note-btn note-btn-danger">✕ {{ jt.delete }}</button>
-                </form>
+                <a class="note-btn note-btn-danger" href="#del-{{ e.id }}">✕ {{ jt.delete }}</a>
               </span>
             </div>
+            <form id="del-{{ e.id }}" method="post" action="{{ url_for('journal_delete', token=cal.token, entry_id=e.id) }}" class="journal-confirm">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <span class="small"><strong>{{ jt.confirm_delete }}</strong></span>
+              <button type="submit" class="note-btn note-btn-danger">{{ jt.yes_delete }}</button>
+              <a class="note-btn" href="#d{{ d.date.day }}">{{ jt.cancel }}</a>
+            </form>
             {% if e.body %}<p class="pre-line journal-body">{{ e.body }}</p>{% endif %}
             <form id="edit-{{ e.id }}" method="post" action="{{ url_for('journal_edit', token=cal.token, entry_id=e.id) }}" class="journal-edit">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
