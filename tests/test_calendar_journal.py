@@ -100,3 +100,27 @@ class JournalTest(CalendarTestCase):
                                                                 "daily", self.today)
         self.assertIn("Escribir en tu diario", html)
         self.assertIn(f"#d{self.today.day}", text)
+
+
+class JournalEditTest(JournalTest):
+    def test_edit_note(self):
+        visitor, _ = self.write()
+        note = self.entries()[0]
+        with numer.open_db() as connection:
+            connection.execute("UPDATE feedback_entries SET seen_at = '2026-01-01' WHERE id = ?", (note["id"],))
+        page = visitor.get(f"/c/{self.cal['token']}/{self.key}").get_data(as_text=True)
+        self.assertIn(f'id="edit-{note["id"]}"', page)
+        self.assertIn("Editar", page)
+        visitor.post(f"/c/{self.cal['token']}/notes/{note['id']}/edit",
+                     data={"csrf_token": token_from(page), "body": "Corregido.", "feeling": "5"})
+        note = self.entries()[0]
+        self.assertEqual((note["body"], note["feeling"], note["seen_at"]), ("Corregido.", 5, None))
+        visitor.post(f"/c/{self.cal['token']}/notes/{note['id']}/edit",
+                     data={"csrf_token": token_from(page), "body": "", "feeling": ""})
+        self.assertEqual(self.entries()[0]["body"], "Corregido.")         # can't empty a note
+
+    def test_practitioner_can_translate(self):
+        self.write(body="Me siento bien")
+        page = self.client.get(f"/leads/{self.lead['id']}").get_data(as_text=True)
+        self.assertIn("translate.google.com/?sl=auto&amp;tl=en", page)
+        self.assertIn("text=Me%20siento%20bien", page)
