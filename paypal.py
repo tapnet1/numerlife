@@ -196,3 +196,23 @@ def completed_capture(result: dict, *, reference: str, cents: int, currency: str
                     or (((result.get("payment_source") or {}).get("paypal") or {}).get("email_address")) or ""
                 return {"capture_id": capture.get("id") or "", "payer_email": payer}
     return None
+
+
+# --------------------------------------------------------------------------
+# Subscriptions (calendar yearly plan) and invoicing (monthly 25% invoice)
+# --------------------------------------------------------------------------
+def call(method: str, path: str, body: dict | None = None, account: Account | None = None,
+         request_id: str | None = None) -> dict:
+    """A JSON call to PayPal's REST API with the given account."""
+    account = _account(account)
+    extra = {"Prefer": "return=representation"}
+    if request_id:
+        extra["PayPal-Request-Id"] = request_id
+    return _request(method, path, body, headers=_auth(account, extra), account=account)
+
+
+def approve_link(result: dict) -> str:
+    for link in result.get("links", []):
+        if link.get("rel") in ("approve", "payer-action"):
+            return link["href"]
+    raise PayPalError("PayPal returned no approval link")

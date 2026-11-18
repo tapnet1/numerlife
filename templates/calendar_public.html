@@ -19,6 +19,21 @@
   {% set jreplies = {} if preview else journal_month_replies(journal) %}
   {% if preview %}<p class="flash flash-info">Preview: {% if access_locked %}your client's access ends {{ access_until.isoformat() }}, so they can't see this month (extend it on their lead page).{% else %}your client can't see this month until you publish it.{% endif %}</p>{% endif %}
   {% if not preview %}
+  {% set sl = calendar_sub_labels(lang) %}
+  {% set sub = calendar_subscription(cal.id) %}
+  {% set days_left = (access_until - today).days if today else 99 %}
+  {% if sub and sub.status in ('ACTIVE', 'APPROVED') %}
+  <p class="flash flash-info small">✓ {{ sl.subscribed.format(date=access_until.isoformat()) }}</p>
+  {% elif not sub and days_left <= 30 and days_left >= 0 and calendar_can_subscribe(lead) %}
+  <section class="panel sub-banner">
+    <p>{{ sl.banner.format(date=access_until.isoformat()) }}</p>
+    <form method="post" action="{{ url_for('calendar_subscribe', token=cal.token) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit">{{ sl.subscribe }}</button>
+    </form>
+    <p class="hint">{{ sl.terms_later.format(date=access_until.isoformat()) if days_left >= 1 else sl.terms_now }}</p>
+  </section>
+  {% endif %}
   {% set today_cell = (days | selectattr('date', 'equalto', today) | list) if today else [] %}
   <section class="panel journal-prompt">
     {% if today_cell %}<p class="journal-prompt-text">✎ {{ jt.today_prompt.format(n=today_cell[0].number, title=today_cell[0].guide.title) }}</p>
@@ -144,7 +159,16 @@
   <section class="panel cal-locked">
     <h2>🔒 {{ al.title }}</h2>
     <p>{{ al.body.format(date=access_until.isoformat()) }}</p>
+    {% set sl = calendar_sub_labels(lang) %}
+    {% if calendar_can_subscribe(lead) and not calendar_subscription(cal.id) %}
+    <form method="post" action="{{ url_for('calendar_subscribe', token=cal.token) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="primary">{{ sl.subscribe }}</button>
+    </form>
+    <p class="hint">{{ sl.terms_now }}</p>
+    {% else %}
     <p>{{ al.ask.format(who=card.name if card else journal_labels(lang).your_numerologist) }}</p>
+    {% endif %}
     <p><a class="btn" href="{{ url_for('calendar_public', token=cal.token) }}">{{ al.back.format(month=labels.calendar) }}</a></p>
   </section>
 {% else %}
