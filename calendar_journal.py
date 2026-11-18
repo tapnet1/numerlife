@@ -27,7 +27,8 @@ SUBMIT_LIMIT_PER_HOUR = 30
 RANGE_DAYS = 400  # notes can be about any day within about a year of today, before or after
 
 T = {
-    "en": {"journal": "Your journal", "add": "Add a note", "placeholder": "What happened? How do you feel?",
+    "en": {"edit": "Edit", "save_changes": "Save changes", "cancel": "Cancel", "updated": "Note updated.",
+           "journal": "Your journal", "add": "Add a note", "placeholder": "What happened? How do you feel?",
            "feeling": "How do you feel? (optional)", "save": "Save note",
            "private": "Only {who} and their team see your notes.", "saved": "Note saved.", "deleted": "Note deleted.",
            "delete": "Delete", "written": "written", "error_empty": "Please write a few words or choose how you feel.",
@@ -35,7 +36,8 @@ T = {
            "error_limit": "Too many notes from your connection. Please try again in an hour.",
            "write_today": "Write in your journal", "your_numerologist": "your numerologist",
            "feelings": {1: "Very low", 2: "Low", 3: "Okay", 4: "Good", 5: "Very good"}},
-    "es": {"journal": "Tu diario", "add": "Añadir una nota", "placeholder": "¿Qué pasó? ¿Cómo te sientes?",
+    "es": {"edit": "Editar", "save_changes": "Guardar cambios", "cancel": "Cancelar", "updated": "Nota actualizada.",
+           "journal": "Tu diario", "add": "Añadir una nota", "placeholder": "¿Qué pasó? ¿Cómo te sientes?",
            "feeling": "¿Cómo te sientes? (opcional)", "save": "Guardar nota",
            "private": "Solo {who} y su equipo ven tus notas.", "saved": "Nota guardada.", "deleted": "Nota eliminada.",
            "delete": "Eliminar", "written": "escrita", "error_empty": "Escribe unas palabras o elige cómo te sientes.",
@@ -43,7 +45,8 @@ T = {
            "error_limit": "Demasiadas notas desde tu conexión. Inténtalo de nuevo en una hora.",
            "write_today": "Escribir en tu diario", "your_numerologist": "tu numeróloga",
            "feelings": {1: "Muy mal", 2: "Mal", 3: "Regular", 4: "Bien", 5: "Muy bien"}},
-    "fr": {"journal": "Votre journal", "add": "Ajouter une note", "placeholder": "Que s'est-il passé ? Comment vous sentez-vous ?",
+    "fr": {"edit": "Modifier", "save_changes": "Enregistrer", "cancel": "Annuler", "updated": "Note modifiée.",
+           "journal": "Votre journal", "add": "Ajouter une note", "placeholder": "Que s'est-il passé ? Comment vous sentez-vous ?",
            "feeling": "Comment vous sentez-vous ? (facultatif)", "save": "Enregistrer la note",
            "private": "Seuls {who} et son équipe voient vos notes.", "saved": "Note enregistrée.",
            "deleted": "Note supprimée.", "delete": "Supprimer", "written": "écrite",
@@ -52,7 +55,8 @@ T = {
            "error_limit": "Trop de notes depuis votre connexion. Réessayez dans une heure.",
            "write_today": "Écrire dans votre journal", "your_numerologist": "votre numérologue",
            "feelings": {1: "Très mal", 2: "Mal", 3: "Correct", 4: "Bien", 5: "Très bien"}},
-    "pt": {"journal": "Seu diário", "add": "Adicionar uma nota", "placeholder": "O que aconteceu? Como você se sente?",
+    "pt": {"edit": "Editar", "save_changes": "Salvar alterações", "cancel": "Cancelar", "updated": "Nota atualizada.",
+           "journal": "Seu diário", "add": "Adicionar uma nota", "placeholder": "O que aconteceu? Como você se sente?",
            "feeling": "Como você se sente? (opcional)", "save": "Salvar nota",
            "private": "Só {who} e a equipe veem suas notas.", "saved": "Nota salva.", "deleted": "Nota apagada.",
            "delete": "Apagar", "written": "escrita", "error_empty": "Escreva algumas palavras ou escolha como se sente.",
@@ -60,7 +64,8 @@ T = {
            "error_limit": "Muitas notas da sua conexão. Tente de novo em uma hora.",
            "write_today": "Escrever no seu diário", "your_numerologist": "sua numeróloga",
            "feelings": {1: "Muito mal", 2: "Mal", 3: "Mais ou menos", 4: "Bem", 5: "Muito bem"}},
-    "it": {"journal": "Il tuo diario", "add": "Aggiungi una nota", "placeholder": "Cosa è successo? Come ti senti?",
+    "it": {"edit": "Modifica", "save_changes": "Salva modifiche", "cancel": "Annulla", "updated": "Nota aggiornata.",
+           "journal": "Il tuo diario", "add": "Aggiungi una nota", "placeholder": "Cosa è successo? Come ti senti?",
            "feeling": "Come ti senti? (facoltativo)", "save": "Salva nota",
            "private": "Solo {who} e il suo team vedono le tue note.", "saved": "Nota salvata.",
            "deleted": "Nota eliminata.", "delete": "Elimina", "written": "scritta",
@@ -69,7 +74,8 @@ T = {
            "error_limit": "Troppe note dalla tua connessione. Riprova tra un'ora.",
            "write_today": "Scrivi nel tuo diario", "your_numerologist": "la tua numerologa",
            "feelings": {1: "Molto male", 2: "Male", 3: "Così così", 4: "Bene", 5: "Molto bene"}},
-    "de": {"journal": "Dein Tagebuch", "add": "Notiz hinzufügen", "placeholder": "Was ist passiert? Wie fühlst du dich?",
+    "de": {"edit": "Bearbeiten", "save_changes": "Änderungen speichern", "cancel": "Abbrechen", "updated": "Notiz aktualisiert.",
+           "journal": "Dein Tagebuch", "add": "Notiz hinzufügen", "placeholder": "Was ist passiert? Wie fühlst du dich?",
            "feeling": "Wie fühlst du dich? (optional)", "save": "Notiz speichern",
            "private": "Nur {who} und das Team sehen deine Notizen.", "saved": "Notiz gespeichert.",
            "deleted": "Notiz gelöscht.", "delete": "Löschen", "written": "geschrieben",
@@ -208,9 +214,34 @@ def journal_delete(token, entry_id):
     return redirect(_back(token, dt.date.fromisoformat(entry["entry_date"])))
 
 
+@app.post("/c/<token>/notes/<int:entry_id>/edit")
+def journal_edit(token, entry_id):
+    cal, lead = _calendar(token)
+    t = labels(cal["lang"])
+    body = (request.form.get("body") or "").replace("\r\n", "\n").strip()[:MAX_BODY]
+    feeling = request.form.get("feeling", type=int)
+    if feeling not in t["feelings"]:
+        feeling = None
+    with open_db() as connection:
+        entry = connection.execute("SELECT * FROM feedback_entries WHERE id = ? AND lead_id = ?",
+                                   (entry_id, lead["id"])).fetchone()
+        if entry is None:
+            abort(404)
+        day = dt.date.fromisoformat(entry["entry_date"])
+        if not body and feeling is None:
+            flash(t["error_empty"], "error")
+            return redirect(_back(token, day))
+        if body != entry["body"] or feeling != entry["feeling"]:
+            # an edited note shows as new again for the practitioner (no second alert)
+            connection.execute("UPDATE feedback_entries SET body = ?, feeling = ?, seen_at = NULL WHERE id = ?",
+                               (body, feeling, entry_id))
+    flash(t["updated"], "info")
+    return redirect(_back(token, day))
+
+
 @app.after_request
 def _journal_headers(response):
-    if request.endpoint in ("journal_add", "journal_delete", "calendar_public"):
+    if request.endpoint in ("journal_add", "journal_edit", "journal_delete", "calendar_public"):
         response.headers["X-Robots-Tag"] = "noindex, nofollow"
         response.headers["Cache-Control"] = "no-store"
         response.headers["Referrer-Policy"] = "no-referrer"

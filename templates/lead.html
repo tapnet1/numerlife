@@ -106,7 +106,10 @@
           <li>
             <p class="small">{% if not e.seen_at %}<span class="badge badge-unread">New</span> {% endif %}<strong>{% if e.source == 'calendar' %}Calendar journal{% else %}{{ feedback_day_label(e) or e.entry_date }}{% endif %}</strong>
               <span class="muted">· {{ e.entry_date }}{% if e.source == 'calendar' %} · {{ journal_time(e) }}{% endif %}{% if feedback_session_label(e) %} · {{ feedback_session_label(e) }}{% endif %}{% if e.feeling %} · {{ feedback_feelings[e.feeling] }}{% endif %}</span></p>
-            {% if e.body %}<p class="pre-line">{{ e.body }}</p>{% endif %}
+            {% if e.body %}<p class="pre-line">{{ e.body }}</p>
+            <p class="small muted">Translate:
+              <a href="https://translate.google.com/?sl=auto&amp;tl=en&amp;op=translate&amp;text={{ e.body | urlencode }}" target="_blank" rel="noopener noreferrer">English</a> ·
+              <a href="https://translate.google.com/?sl=auto&amp;tl=es&amp;op=translate&amp;text={{ e.body | urlencode }}" target="_blank" rel="noopener noreferrer">Español</a></p>{% endif %}
           </li>
           {% endfor %}
         </ul>

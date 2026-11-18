@@ -60,12 +60,25 @@
         <h3>{{ jt.journal }}</h3>
         <ul class="journal-notes">
           {% for e in jn %}
-          <li>
-            <p class="small muted"><time>{{ journal_time(e) }}</time>{% if e.feeling %} · {{ jt.feelings[e.feeling] }}{% endif %}</p>
-            {% if e.body %}<p class="pre-line">{{ e.body }}</p>{% endif %}
-            <form method="post" action="{{ url_for('journal_delete', token=cal.token, entry_id=e.id) }}" class="journal-delete">
+          <li class="journal-note">
+            <div class="journal-meta">
+              <span class="small muted"><time>{{ journal_time(e) }}</time>{% if e.feeling %} · {{ jt.feelings[e.feeling] }}{% endif %}</span>
+              <span class="journal-actions">
+                <a class="small" href="#edit-{{ e.id }}" data-edit="{{ e.id }}">{{ jt.edit }}</a>
+                <form method="post" action="{{ url_for('journal_delete', token=cal.token, entry_id=e.id) }}" class="inline-form">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn-link small">{{ jt.delete }}</button>
+                </form>
+              </span>
+            </div>
+            {% if e.body %}<p class="pre-line journal-body">{{ e.body }}</p>{% endif %}
+            <form id="edit-{{ e.id }}" method="post" action="{{ url_for('journal_edit', token=cal.token, entry_id=e.id) }}" class="journal-edit">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn-link small">{{ jt.delete }}</button>
+              <label for="edit-body-{{ e.id }}" class="sr-only">{{ jt.edit }}</label>
+              <textarea id="edit-body-{{ e.id }}" name="body" rows="4" maxlength="4000">{{ e.body }}</textarea>
+              <label for="edit-feeling-{{ e.id }}" class="small">{{ jt.feeling }}</label>
+              <select id="edit-feeling-{{ e.id }}" name="feeling"><option value="">—</option>{% for n, name in jt.feelings.items() %}<option value="{{ n }}"{% if e.feeling == n %} selected{% endif %}>{{ name }}</option>{% endfor %}</select>
+              <p class="actions"><button type="submit">{{ jt.save_changes }}</button> <a class="btn-secondary" href="#d{{ d.date.day }}" data-cancel="{{ e.id }}">{{ jt.cancel }}</a></p>
             </form>
           </li>
           {% endfor %}
