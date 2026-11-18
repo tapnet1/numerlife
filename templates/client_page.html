@@ -12,11 +12,26 @@
 
 <div class="client-tiles">
   <section class="panel client-tile">
+    <h2>{{ t.report }}</h2>
+    <p class="small">{{ t.report_desc }}</p>
+    <div class="tile-actions"><a class="btn" href="{{ url_for('report', token=lead.token) }}">{{ t.report_open }}</a></div>
+  </section>
+
+  {% for r in readings %}
+  <section class="panel client-tile">
+    <h2>{{ t.reading }}</h2>
+    <div class="tile-actions"><a class="btn" href="{{ url_for('order_public', token=r.token) }}">{{ t.reading_open }}</a></div>
+  </section>
+  {% endfor %}
+
+  <section class="panel client-tile">
     <h2>{{ t.calendar }}</h2>
     <p class="small">{{ t.calendar_desc.format(who=who) }}</p>
     {% if cal and cal.active %}
-      <a class="btn" href="{{ url_for('calendar_public', token=cal.token, month_key=month_key) }}">{{ t.calendar_open }}</a>
-      <a class="btn-secondary" href="{{ url_for('journal_book', token=cal.token) }}">📖 {{ journal_labels(cal.lang).my_journal }}</a>
+      <div class="tile-actions">
+        <a class="btn" href="{{ url_for('calendar_public', token=cal.token, month_key=month_key) }}">📅 {{ t.calendar_open }}</a>
+        <a class="btn-secondary" href="{{ url_for('journal_book', token=cal.token) }}">📖 {{ journal_labels(cal.lang).my_journal }}</a>
+      </div>
     {% elif not cal %}
       <form method="post" action="{{ url_for('client_page_start_calendar', token=page.token) }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -25,18 +40,6 @@
     {% endif %}
   </section>
 
-  <section class="panel client-tile">
-    <h2>{{ t.report }}</h2>
-    <p class="small">{{ t.report_desc }}</p>
-    <a class="btn-secondary" href="{{ url_for('report', token=lead.token) }}">{{ t.open }}</a>
-  </section>
-
-  {% for r in readings %}
-  <section class="panel client-tile">
-    <h2>{{ t.reading }}</h2>
-    <a class="btn-secondary" href="{{ url_for('order_public', token=r.token) }}">{{ t.open }}</a>
-  </section>
-  {% endfor %}
 </div>
 
 <p class="hint">{{ t.private }}</p>
