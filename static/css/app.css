@@ -514,10 +514,14 @@ details > summary.btn-secondary::-webkit-details-marker { display: none; }
 .note-btn-danger:hover, .note-btn-danger:focus-visible { border-color: #9b2c3a; background: #fdf2f3; }
 .journal-body { margin-top: .35rem; }
 .journal-edit { display: none; margin-top: .5rem; }
+.journal-confirm { display: none; align-items: center; flex-wrap: wrap; gap: .5rem; margin: .5rem 0 0; padding: .5rem .6rem;
+  background: #fdf2f3; border-radius: 8px; }
+.journal-confirm:target { display: flex; }
 .journal-edit:target { display: block; }
 .journal-edit textarea { width: 100%; }
 .journal-note:has(.journal-edit:target) .journal-body,
-.journal-note:has(.journal-edit:target) .journal-actions { display: none; }
+.journal-note:has(.journal-edit:target) .journal-actions,
+.journal-note:has(.journal-confirm:target) .journal-actions { display: none; }
 .btn-link { background: none; border: 0; padding: 0; color: var(--muted); text-decoration: underline; cursor: pointer; font: inherit; }
 .journal-add summary { display: inline-block; cursor: pointer; list-style: none; }
 .journal-add summary::-webkit-details-marker { display: none; }
