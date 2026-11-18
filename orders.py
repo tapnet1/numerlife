@@ -679,3 +679,15 @@ def admin_mark_refunded(order_id):
 def capture_orders_command():
     """Capture approved PayPal orders whose buyer didn't come back to the site."""
     click.echo(capture_open_orders())
+
+
+def sales_status() -> dict:
+    """Short status for the Paid reports page (admins)."""
+    import intake
+    import practitioner_paypal
+    return {"switch_on": intake.paid_reports_on(), "tapnet_paypal": paypal.configured(),
+            "paypal_env": paypal.environment(), "platform_ready": platform_ready(),
+            "practitioner_paypal": practitioner_paypal.any_connected()}
+
+
+app.jinja_env.globals["paid_sales_status"] = sales_status
