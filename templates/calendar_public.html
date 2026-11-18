@@ -16,7 +16,17 @@
 {% if visible or preview %}
   {% set jt = journal_labels(lang) %}
   {% set journal = {} if preview else journal_month_entries(lead.id, key) %}
+  {% set jreplies = {} if preview else journal_month_replies(journal) %}
   {% if preview %}<p class="flash flash-info">Preview: {% if access_locked %}your client's access ends {{ access_until.isoformat() }}, so they can't see this month (extend it on their lead page).{% else %}your client can't see this month until you publish it.{% endif %}</p>{% endif %}
+  {% if not preview %}
+  {% set today_cell = (days | selectattr('date', 'equalto', today) | list) if today else [] %}
+  <section class="panel journal-prompt">
+    {% if today_cell %}<p class="journal-prompt-text">✎ {{ jt.today_prompt.format(n=today_cell[0].number, title=today_cell[0].guide.title) }}</p>
+    <a class="btn" href="#d{{ today.day }}">{{ jt.write_today }}</a>{% endif %}
+    {% set n_notes = journal_note_count(lead.id) %}
+    <a class="btn-secondary" href="{{ url_for('journal_book', token=cal.token) }}">📖 {{ jt.my_journal }}{% if n_notes %} · {{ jt.notes_count.format(n=n_notes) }}{% endif %}</a>
+  </section>
+  {% endif %}
   <section class="panel cal-summary">
     <p><span class="lp lp-lg">{{ personal_year }}</span> <strong>{{ labels.personal_year }}</strong> · {{ year_guide.title }}</p>
     <p><span class="lp lp-lg">{{ personal_month }}</span> <strong>{{ labels.personal_month }}</strong> · {{ month_guide.title }}</p>
@@ -83,6 +93,27 @@
               <select id="edit-feeling-{{ e.id }}" name="feeling"><option value="">—</option>{% for n, name in jt.feelings.items() %}<option value="{{ n }}"{% if e.feeling == n %} selected{% endif %}>{{ name }}</option>{% endfor %}</select>
               <p class="actions"><button type="submit">{{ jt.save_changes }}</button> <a class="btn-secondary" href="#d{{ d.date.day }}" data-cancel="{{ e.id }}">{{ jt.cancel }}</a></p>
             </form>
+            {% set thread = jreplies.get(e.id, []) %}
+            {% if thread %}
+            <ul class="journal-thread">
+              {% for r in thread %}
+              <li class="bubble {{ 'bubble-staff' if r.author == 'staff' else 'bubble-client' }}">
+                <p class="small muted"><strong>{{ (r.staff_name or (card.name if card else jt.your_numerologist)) if r.author == 'staff' else jt.you }}</strong> · {{ journal_time(r) }}</p>
+                <p class="pre-line">{{ r.body }}</p>
+              </li>
+              {% endfor %}
+            </ul>
+            {% endif %}
+            <details class="journal-reply"{% if thread and thread[-1].author == 'staff' %} open{% endif %}>
+              <summary class="note-btn">💬 {{ jt.reply }}</summary>
+              <form method="post" action="{{ url_for('journal_client_reply', token=cal.token, entry_id=e.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="tz" value="" class="journal-tz">
+                <label for="reply-{{ e.id }}" class="sr-only">{{ jt.reply }}</label>
+                <textarea id="reply-{{ e.id }}" name="body" rows="2" maxlength="4000" placeholder="{{ jt.reply_placeholder }}" required></textarea>
+                <p><button type="submit" class="note-btn">{{ jt.send }}</button></p>
+              </form>
+            </details>
           </li>
           {% endfor %}
         </ul>

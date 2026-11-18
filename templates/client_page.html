@@ -16,6 +16,7 @@
     <p class="small">{{ t.calendar_desc.format(who=who) }}</p>
     {% if cal and cal.active %}
       <a class="btn" href="{{ url_for('calendar_public', token=cal.token, month_key=month_key) }}">{{ t.calendar_open }}</a>
+      <a class="btn-secondary" href="{{ url_for('journal_book', token=cal.token) }}">📖 {{ journal_labels(cal.lang).my_journal }}</a>
     {% elif not cal %}
       <form method="post" action="{{ url_for('client_page_start_calendar', token=page.token) }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

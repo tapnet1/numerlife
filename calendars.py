@@ -358,6 +358,7 @@ def calendar_public(token, month_key=None):
     if locked and not staff:
         view["visible"] = False
     return render_template("calendar_public.html", preview=preview, locked=locked and not staff,
+                           today=engine.local_today(),
                            access_locked=locked, access_until=calendar_access.access_until(cal), **view)
 
 
