@@ -64,10 +64,10 @@
             <div class="journal-meta">
               <span class="small muted"><time>{{ journal_time(e) }}</time>{% if e.feeling %} · {{ jt.feelings[e.feeling] }}{% endif %}</span>
               <span class="journal-actions">
-                <a class="small" href="#edit-{{ e.id }}" data-edit="{{ e.id }}">{{ jt.edit }}</a>
+                <a class="note-btn" href="#edit-{{ e.id }}">✎ {{ jt.edit }}</a>
                 <form method="post" action="{{ url_for('journal_delete', token=cal.token, entry_id=e.id) }}" class="inline-form">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <button type="submit" class="btn-link small">{{ jt.delete }}</button>
+                  <button type="submit" class="note-btn note-btn-danger">✕ {{ jt.delete }}</button>
                 </form>
               </span>
             </div>
