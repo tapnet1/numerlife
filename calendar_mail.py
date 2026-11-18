@@ -254,6 +254,9 @@ def run(now: dt.datetime | None = None) -> dict:
             lead = _lead(connection, cal)
             if lead is None:
                 continue
+            import calendar_access
+            if not calendar_access.day_open(cal, today):
+                continue  # free days over and no plan: no more calendar emails
             published = _month_published(connection, cal, key) if cal["kind"] == "magialogia" else None
             if cal["kind"] == "magialogia" and published is None:
                 continue  # nothing the client can see yet; try again next hour

@@ -350,9 +350,15 @@ def _can_preview(lead) -> bool:
 def calendar_public(token, month_key=None):
     cal, lead = _public_calendar(token)
     year, month = engine.parse_month(month_key, engine.local_today())
+    import calendar_access
     view = month_view(cal, lead, year, month)
-    preview = not view["visible"] and _can_preview(lead)
-    return render_template("calendar_public.html", preview=preview, **view)
+    locked = not calendar_access.month_open(cal, year, month)
+    staff = _can_preview(lead)
+    preview = (not view["visible"] or locked) and staff
+    if locked and not staff:
+        view["visible"] = False
+    return render_template("calendar_public.html", preview=preview, locked=locked and not staff,
+                           access_locked=locked, access_until=calendar_access.access_until(cal), **view)
 
 
 @app.post("/c/<token>/emails")
@@ -397,8 +403,9 @@ def calendar_pdf(token, month_key):
     year, month = engine.parse_month(month_key)
     if f"{year:04d}-{month:02d}" != month_key:
         abort(404)
+    import calendar_access
     view = month_view(cal, lead, year, month)
-    if not view["visible"] and not _can_preview(lead):
+    if (not view["visible"] or not calendar_access.month_open(cal, year, month)) and not _can_preview(lead):
         abort(404)
     pdf = render_pdf(view)
     filename = f"calendar-{view['client_first'].lower() or 'client'}-{view['key']}.pdf"

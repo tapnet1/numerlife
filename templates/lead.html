@@ -265,11 +265,20 @@
       {% endif %}
     </section>
     {% set cal = lead_calendar(lead.id) %}
-    <section class="panel">
+    <section class="panel" id="calendar">
       <h2>Personal calendar</h2>
       {% if cal %}
         <p class="small">{{ calendar_kinds[cal.kind] }}{% if not cal.active %} · paused{% endif %}</p>
         <a class="btn" href="{{ url_for('edit_calendar', lead_id=lead.id) }}">Open calendar</a>
+        {% set until = calendar_access_until(cal) %}
+        <p class="small mt">Client can see their calendar until <strong>{{ until.isoformat() }}</strong>. After that, months are locked until they have the yearly plan (CAD $250), or you give access here.</p>
+        <form method="post" action="{{ url_for('calendar_set_access', lead_id=lead.id) }}" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <label for="cal-until" class="small">Access until</label>
+          <input id="cal-until" name="until" type="date" value="{{ until.isoformat() }}">
+          <button type="submit" class="btn-secondary">Save date</button>
+          <button type="submit" name="year" value="yes" class="btn-secondary">Give one more year</button>
+        </form>
       {% elif lead.status == 'captured' %}
         <form method="post" action="{{ url_for('start_calendar', lead_id=lead.id) }}" class="stack">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
