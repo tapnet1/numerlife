@@ -8,6 +8,16 @@
     <h1>Full written readings</h1>
   </div>
 </header>
+{% if user.role == 'admin' %}
+{% set st = paid_sales_status() %}
+<p class="flash flash-info small">
+  Sales are <strong>{{ 'on' if st.switch_on else 'off' }}</strong> ·
+  TAPNET PayPal: {% if st.tapnet_paypal %}<strong>{{ st.paypal_env }}</strong> keys on the server{% else %}<strong>not set up</strong>{% endif %} ·
+  Practitioner PayPal: {{ 'connected' if st.practitioner_paypal else 'none yet' }}
+  {% if not st.platform_ready %}· TAPNET account (numer.life/tapnet) missing{% endif %}
+  · <a href="{{ url_for('admin') }}#paid-reports">Change in Admin</a>
+</p>
+{% endif %}
 <section class="panel">
   {% if orders %}
   <ul class="reading-list">

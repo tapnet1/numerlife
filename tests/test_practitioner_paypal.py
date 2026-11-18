@@ -90,3 +90,9 @@ class PractitionerPayPalTest(OrdersTestCase):
             total = connection.execute("SELECT SUM(amount_cents) FROM ledger WHERE user_id = ?",
                                        (self.practitioner_id,)).fetchone()[0]
         self.assertEqual(total, 0)
+
+    def test_admin_sees_sales_status_on_paid_reports(self):
+        self.login("owner@example.com")
+        html = self.client.get("/settings/orders").get_data(as_text=True)
+        self.assertIn("Sales are <strong>on</strong>", html)
+        self.assertIn("TAPNET PayPal: <strong>sandbox</strong> keys on the server", html)
