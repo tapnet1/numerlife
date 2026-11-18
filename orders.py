@@ -88,7 +88,10 @@ def platform_ready() -> bool:
 def seller_account(lead) -> paypal.Account | None:
     """Who the client pays: their practitioner's own PayPal if connected, otherwise TAPNET's
     (which also needs the numer.life/tapnet account, so the practitioner's share can be credited)."""
+    import invoicing
     import practitioner_paypal
+    if lead is not None and invoicing.is_paused(lead["practitioner_id"]):
+        return None  # an invoice is more than 14 days overdue: sales pause until it's paid
     if lead is not None and lead["practitioner_id"]:
         practitioner = db().execute("SELECT * FROM users WHERE id = ? AND is_active = 1",
                                     (lead["practitioner_id"],)).fetchone()

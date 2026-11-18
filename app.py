@@ -310,6 +310,27 @@ CREATE TABLE IF NOT EXISTS feedback_journals (
     invited_at  TEXT
 );
 
+CREATE TABLE IF NOT EXISTS invoices (
+    id                INTEGER PRIMARY KEY,
+    user_id           INTEGER NOT NULL REFERENCES users(id),
+    period            TEXT NOT NULL,                  -- YYYY-MM
+    fee_cents         INTEGER NOT NULL,               -- 25% fees owed (net of what TAPNET owes them)
+    plan_cents        INTEGER NOT NULL DEFAULT 0,     -- CAD $5 practitioner plan
+    amount_cents      INTEGER NOT NULL,
+    lines             TEXT NOT NULL,                  -- JSON [{name, cents}]
+    status            TEXT NOT NULL,                  -- draft | sent | paid | cancelled
+    paypal_invoice_id TEXT,
+    paypal_status     TEXT,
+    view_url          TEXT,
+    due_date          TEXT,
+    sent_at           TEXT,
+    reminded_at       TEXT,
+    paid_at           TEXT,
+    last_error        TEXT,
+    created_at        TEXT NOT NULL,
+    UNIQUE (user_id, period)
+);
+
 CREATE TABLE IF NOT EXISTS paypal_plans (
     account_key TEXT NOT NULL,                      -- tapnet | user:<id>
     env         TEXT NOT NULL,
@@ -911,3 +932,4 @@ import client_page  # noqa: E402,F401  (client page /me/<token>: report, calenda
 import practitioner_paypal  # noqa: E402,F401  (practitioners connect their own PayPal)
 import calendar_access  # noqa: E402,F401  (free 30 days, then the yearly plan)
 import calendar_subscriptions  # noqa: E402,F401  (CAD $250 yearly plan via PayPal)
+import invoicing  # noqa: E402,F401  (monthly 25% invoice from TAPNET's PayPal)

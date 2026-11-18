@@ -125,6 +125,36 @@
   {% else %}<p class="muted">No entries yet. Entries can't be edited or deleted; corrections are new adjustments.</p>{% endif %}
 </section>
 
+{% set inv = invoices_overview() %}
+<section class="card" id="invoices">
+  <h2>Monthly invoices (25%)</h2>
+  <p class="small">For practitioners paid directly into their own PayPal: one invoice a month for TAPNET's 25%, net of anything TAPNET owes them, plus the CAD $5 plan on paid plans. Sent from TAPNET's PayPal, due in {{ invoice_due_days }} days; PayPal reminds them a week after the due date, and their sales pause {{ invoice_pause_days }} days after it until it's paid. Payments are picked up every hour.</p>
+  <form method="post" action="{{ url_for('admin_prepare_invoices') }}" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="period" value="{{ inv.period }}">
+    <button type="submit" class="btn-secondary">Prepare invoices for {{ inv.period }}</button>
+  </form>
+  {% if inv.rows %}
+  <div class="table-wrap mt"><table>
+    <thead><tr><th>Practitioner</th><th>Period</th><th>Amount</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for r in inv.rows %}
+      <tr>
+        <td>{{ r.display_name }}</td><td>{{ r.period }}</td><td>CAD {{ r.amount_cents | money }}</td>
+        <td>{{ r.status }}{% if r.status == 'sent' and r.due_date %} · due {{ r.due_date }}{% endif %}{% if r.last_error %}<br><span class="small flash-error">{{ r.last_error }}</span>{% endif %}</td>
+        <td>{% if r.status == 'draft' %}
+          <form method="post" action="{{ url_for('admin_send_invoice', invoice_id=r.id) }}" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="note-btn">Send by PayPal</button></form>
+          <form method="post" action="{{ url_for('admin_cancel_invoice', invoice_id=r.id) }}" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="note-btn note-btn-danger">Remove</button></form>
+        {% elif r.view_url %}<a href="{{ r.view_url }}" target="_blank" rel="noopener noreferrer">View</a>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% endif %}
+</section>
+
 {% set paid_info = paid_reports_overview() %}
 <section class="card" id="paid-reports">
   <h2 id="paid-reports">Paid reports</h2>
