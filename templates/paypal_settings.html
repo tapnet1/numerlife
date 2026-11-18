@@ -22,6 +22,16 @@
       <li>Copy the <strong>Client ID</strong> and the <strong>Secret</strong> (click "Show") into the boxes below, pick the same Live/Sandbox, and press Save. <em>Done when</em> this page says "Connected".</li>
     </ol>
   {% endif %}
+  {% set my_invoices = invoices_for_user(account.id) %}
+  {% if my_invoices %}
+  <h2 class="mt">Your numer.life invoices</h2>
+  {% if invoices_paused(account.id) %}<p class="flash flash-error">Your sales are paused because an invoice is overdue. They restart within the hour after it's paid.</p>{% endif %}
+  <ul class="small">
+    {% for r in my_invoices if r.status != 'draft' and r.status != 'cancelled' %}
+    <li>{{ r.period }} · CAD {{ r.amount_cents | money }} · {{ r.status }}{% if r.status == 'sent' %} · due {{ r.due_date }}{% endif %}{% if r.view_url %} · <a href="{{ r.view_url }}" target="_blank" rel="noopener noreferrer">Pay or view</a>{% endif %}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
   <form method="post" action="{{ url_for('paypal_settings_save') }}" class="stack">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label for="pp-env">Account type</label>

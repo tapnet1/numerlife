@@ -86,6 +86,10 @@ def sync_subscriptions() -> dict:
     import calendar_subscriptions
 
     result = calendar_subscriptions.sync_open()
+    import invoicing
+    from app import app
+    with app.app_context():
+        result["invoices"] = invoicing.sync_open()
     import emails
     emails.send_pending()
     return result

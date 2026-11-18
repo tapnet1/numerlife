@@ -40,6 +40,7 @@ KINDS = {
     "sale_share": "Sale share (75%)",
     "platform_share": "Platform share (25%)",
     "platform_fee": "Platform fee owed (25%)",
+    "invoice_payment": "Invoice paid",
     "subscription_payment": "Subscription payment",
     "payout": "Payout",
     "adjustment": "Adjustment",
