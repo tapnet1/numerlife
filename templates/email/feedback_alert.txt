@@ -1,6 +1,6 @@
 Hi {{ recipient_name or 'there' }},
 
-{{ full_name }} wrote about how they feel{% if when %} ({{ when }}{% if session %}, {{ session }}{% endif %}){% endif %}.
+{% if journal %}{{ full_name }} wrote in their calendar journal about {{ when }}.{% else %}{{ full_name }} wrote about how they feel{% if when %} ({{ when }}{% if session %}, {{ session }}{% endif %}){% endif %}.{% endif %}
 {% if feeling %}
 Overall: {{ feeling }}
 {% endif %}{% if body %}

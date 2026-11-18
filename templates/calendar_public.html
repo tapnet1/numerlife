@@ -14,6 +14,8 @@
 </header>
 
 {% if visible or preview %}
+  {% set jt = journal_labels(lang) %}
+  {% set journal = {} if preview else journal_month_entries(lead.id, key) %}
   {% if preview %}<p class="flash flash-info">Preview: your client can't see this month until you publish it.</p>{% endif %}
   <section class="panel cal-summary">
     <p><span class="lp lp-lg">{{ personal_year }}</span> <strong>{{ labels.personal_year }}</strong> · {{ year_guide.title }}</p>
@@ -28,11 +30,13 @@
     <div class="cal-row" role="row">
       {% for d in week %}
         {% if d %}
-        <a class="cal-cell{% if d.note %} has-note{% endif %}" href="#d{{ d.date.day }}" role="cell">
+        {% set jn = journal.get(d.date.isoformat(), []) %}
+        <a class="cal-cell{% if d.note %} has-note{% endif %}{% if jn %} has-journal{% endif %}" href="#d{{ d.date.day }}" role="cell">
           <span class="cal-num">{{ d.date.day }}</span><span class="lp">{{ d.number }}</span>
           <span class="cal-title">{{ d.guide.title }}</span>
           {% if d.moon %}<span class="cal-moon moon-{{ d.moon }}" title="{{ labels.moon[d.moon] }}"></span>{% endif %}
           {% if d.holiday %}<span class="cal-hol">{{ d.holiday }}</span>{% endif %}
+          {% if jn %}<span class="cal-journal" title="{{ jt.journal }}">✎ {{ jn | length }}</span>{% endif %}
         </a>
         {% else %}<span class="cal-cell empty" role="cell"></span>{% endif %}
       {% endfor %}
@@ -49,6 +53,42 @@
       <p><strong>{{ labels.focus }}:</strong> {{ d.guide.focus }}</p>
       <p><strong>{{ labels.avoid }}:</strong> {{ d.guide.avoid }}</p>
       <p class="muted small">{{ labels.lucky }}: {{ d.guide.lucky }} · {{ labels.color }}: {{ d.guide.color }}</p>
+      {% if not preview %}
+      {% set jn = journal.get(d.date.isoformat(), []) %}
+      <div class="journal">
+        {% if jn %}
+        <h3>{{ jt.journal }}</h3>
+        <ul class="journal-notes">
+          {% for e in jn %}
+          <li>
+            <p class="small muted"><time>{{ journal_time(e) }}</time>{% if e.feeling %} · {{ jt.feelings[e.feeling] }}{% endif %}</p>
+            {% if e.body %}<p class="pre-line">{{ e.body }}</p>{% endif %}
+            <form method="post" action="{{ url_for('journal_delete', token=cal.token, entry_id=e.id) }}" class="journal-delete">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn-link small">{{ jt.delete }}</button>
+            </form>
+          </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+        <details class="journal-add">
+          <summary class="btn-secondary">✎ {{ jt.add }}</summary>
+          <form method="post" action="{{ url_for('journal_add', token=cal.token) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="day" value="{{ d.date.isoformat() }}">
+            <input type="hidden" name="month" value="{{ key }}">
+            <input type="hidden" name="tz" value="" class="journal-tz">
+            <div class="hp" aria-hidden="true"><label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
+            <label for="body-{{ d.date.day }}" class="sr-only">{{ jt.add }}</label>
+            <textarea id="body-{{ d.date.day }}" name="body" rows="4" maxlength="4000" placeholder="{{ jt.placeholder }}"></textarea>
+            <label for="feeling-{{ d.date.day }}" class="small">{{ jt.feeling }}</label>
+            <select id="feeling-{{ d.date.day }}" name="feeling"><option value="">—</option>{% for n, name in jt.feelings.items() %}<option value="{{ n }}">{{ name }}</option>{% endfor %}</select>
+            <p><button type="submit">{{ jt.save }}</button></p>
+            <p class="hint">{{ jt.private.format(who=card.name if card else jt.your_numerologist) }}</p>
+          </form>
+        </details>
+      </div>
+      {% endif %}
     </li>
     {% endfor %}
   </ol>
@@ -68,3 +108,4 @@
 {% endif %}
 {% if card %}{% include "_contact_card.html" %}{% endif %}
 {% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/journal.js') }}" defer></script>{% endblock %}

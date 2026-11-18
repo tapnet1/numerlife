@@ -19,6 +19,7 @@
   {% if intro %}{% for para in intro.split('\n') if para.strip() %}<p style="margin:0 0 12px;">{{ para }}</p>{% endfor %}{% endif %}
 {% endif %}
 <p style="margin:20px 0 6px;"><a href="{{ client_url }}" style="display:inline-block;background:#4b2d8f;color:#ffffff;font-weight:600;text-decoration:none;padding:12px 24px;border-radius:999px;">{{ el.open_calendar }}</a></p>
+{% if mode == 'daily' %}<p style="margin:0 0 10px;"><a href="{{ client_url }}#d{{ today.date.day }}" style="display:inline-block;background:#d4af5a;color:#1b1038;font-weight:600;text-decoration:none;padding:10px 22px;border-radius:999px;">✎ {{ journal_labels(lang).write_today }}</a></p>{% endif %}
 <p style="margin:0 0 6px;font-size:14px;"><a href="{{ pdf_url }}" style="color:#4b2d8f;">{{ labels.download_pdf }}</a></p>
 {% include "email/_card.html" %}
 {% endblock %}

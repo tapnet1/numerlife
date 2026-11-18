@@ -370,6 +370,8 @@ ADDED_COLUMNS = (
     ("leads", "client_at", "TEXT"),                          # first time the lead was marked a client
     ("email_outbox", "campaign", "TEXT"),                    # series step key
     ("email_outbox", "track", "TEXT"),                       # open/click tracking token
+    ("feedback_entries", "source", "TEXT NOT NULL DEFAULT 'feedback'"),  # feedback | calendar (day journal)
+    ("feedback_entries", "tz", "TEXT"),                      # writer's time zone (for the note's time)
     ("users", "report_method", "TEXT NOT NULL DEFAULT 'classic'"),  # classic | kdp (Karma, Destiny, Personality)
     ("users", "name_totalling", "TEXT NOT NULL DEFAULT 'whole'"),   # whole | per_name
     ("users", "y_rule", "TEXT NOT NULL DEFAULT 'standard'"),        # standard | always | never
@@ -849,3 +851,4 @@ import orders  # noqa: E402,F401  (paid full reports: PayPal checkout, review, d
 import healy_contact  # noqa: E402,F401  (client contact card for the Healy app, via Contacts)
 import password_reset  # noqa: E402,F401  (forgot password: emailed one-time reset link)
 import feedback  # noqa: E402,F401  (client feedback journal in the days after a reading)
+import calendar_journal  # noqa: E402,F401  (day journal: client notes on any calendar day)

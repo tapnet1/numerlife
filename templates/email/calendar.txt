@@ -21,7 +21,8 @@
 {{ intro }}
 {% endif %}
 {% endif %}
-{{ el.open_calendar }}: {{ client_url }}
+{% if mode == 'daily' %}{{ journal_labels(lang).write_today }}: {{ client_url }}#d{{ today.date.day }}
+{% endif %}{{ el.open_calendar }}: {{ client_url }}
 {{ labels.download_pdf }}: {{ pdf_url }}
 {% if card %}
 {{ labels.prepared_by }} {{ card.name }}{% if card.about_url %} · {{ card.about_url }}{% elif card.email %} · {{ card.email }}{% endif %}

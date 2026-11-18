@@ -492,3 +492,19 @@ details > summary.btn-secondary::-webkit-details-marker { display: none; }
 .feedback-list li:first-child { border-top: 0; padding-top: 0; }
 .feedback-list p { margin: 0 0 .3rem; }
 .feedback-link { width: 100%; font-size: .85rem; }
+
+/* Day journal on the client's calendar */
+.cal-journal { position: absolute; left: .45rem; bottom: .3rem; font-size: .75rem; color: var(--gold); font-weight: 600; }
+.cal-cell.has-journal { box-shadow: inset 0 -3px 0 var(--gold); }
+.cal-list li:target { outline: 2px solid var(--gold); outline-offset: 2px; }
+.journal { margin-top: .9rem; padding-top: .7rem; border-top: 1px dashed var(--line); }
+.journal h3 { font-size: 1rem; margin: 0 0 .4rem; }
+.journal-notes { list-style: none; padding: 0; margin: 0 0 .7rem; }
+.journal-notes li { position: relative; padding: .5rem .7rem; margin-bottom: .45rem; background: #faf6ff; border-left: 3px solid var(--gold); border-radius: 4px; }
+.journal-notes p { margin: .15rem 0; }
+.journal-delete { position: absolute; top: .35rem; right: .5rem; margin: 0; }
+.btn-link { background: none; border: 0; padding: 0; color: var(--muted); text-decoration: underline; cursor: pointer; font: inherit; }
+.journal-add summary { display: inline-block; cursor: pointer; list-style: none; }
+.journal-add summary::-webkit-details-marker { display: none; }
+.journal-add[open] summary { margin-bottom: .6rem; }
+.journal-add textarea { width: 100%; }

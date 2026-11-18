@@ -300,7 +300,7 @@ def feedback_submit(token):
     return redirect(url_for("feedback_public", token=token) + "#history")
 
 
-def _queue_alerts(connection, lead, entry) -> list:
+def _queue_alerts(connection, lead, entry, subject: str = "Feedback from {name}") -> list:
     import emails
     import orders
     recipients = orders._staff_recipients(connection, lead["practitioner_id"])
@@ -310,9 +310,10 @@ def _queue_alerts(connection, lead, entry) -> list:
         context = {"recipient_name": (recipient["display_name"] or "").split(" ")[0], "full_name": lead["full_name"],
                    "when": day_label(entry) or entry["entry_date"], "session": session_label(entry),
                    "feeling": STAFF_FEELINGS.get(entry["feeling"]) if entry["feeling"] else "",
-                   "body": entry["body"], "lead_url": f"{BASE_URL}/leads/{lead['id']}#feedback"}
+                   "body": entry["body"], "journal": entry["source"] == "calendar",
+                   "lead_url": f"{BASE_URL}/leads/{lead['id']}#feedback"}
         text, html = emails._render_pair("feedback_alert", **context)
-        emails.enqueue(connection, "feedback_alert", recipient["email"], f"Feedback from {lead['full_name']}",
+        emails.enqueue(connection, "feedback_alert", recipient["email"], subject.format(name=lead["full_name"]),
                        text, html, lead_id=lead["id"], user_id=recipient["id"])
     return list(recipients)
 
