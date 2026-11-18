@@ -16,6 +16,7 @@
 </tr></table>
 {% endfor %}
 <p style="margin:22px 0 0;text-align:center;"><a href="{{ report_url }}" style="display:inline-block;background:#2b1a57;color:#ffffff;font-weight:600;text-decoration:none;padding:13px 26px;border-radius:999px;">View my full report</a></p>
+{% if client_url %}<p style="margin:16px 0 0;text-align:center;font-size:14px;color:#4a4360;">Your private client page, with your free personal calendar and journal:<br><a href="{{ client_url }}" style="color:#4b2d8f;font-weight:600;">Open my client page</a></p>{% endif %}
 {% include "email/_card.html" %}
 {% endblock %}
 {% block footer %}<p style="margin:0;">You're receiving this because you asked for your report at {{ base_url.split('://')[-1] }}. We don't send marketing unless you opted in.</p>{% endblock %}

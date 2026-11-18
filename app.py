@@ -310,6 +310,15 @@ CREATE TABLE IF NOT EXISTS feedback_journals (
     invited_at  TEXT
 );
 
+CREATE TABLE IF NOT EXISTS client_pages (
+    id           INTEGER PRIMARY KEY,
+    lead_id      INTEGER NOT NULL UNIQUE REFERENCES leads(id),
+    token        TEXT NOT NULL UNIQUE,                -- client's private page /me/<token>
+    created_at   TEXT NOT NULL,
+    emailed_at   TEXT,                                -- last emailed by the practitioner
+    announced_at TEXT                                 -- calendar/journal announcement sent
+);
+
 CREATE TABLE IF NOT EXISTS feedback_entries (
     id           INTEGER PRIMARY KEY,
     lead_id      INTEGER NOT NULL REFERENCES leads(id),
@@ -852,3 +861,4 @@ import healy_contact  # noqa: E402,F401  (client contact card for the Healy app,
 import password_reset  # noqa: E402,F401  (forgot password: emailed one-time reset link)
 import feedback  # noqa: E402,F401  (client feedback journal in the days after a reading)
 import calendar_journal  # noqa: E402,F401  (day journal: client notes on any calendar day)
+import client_page  # noqa: E402,F401  (client page /me/<token>: report, calendar, readings)

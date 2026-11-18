@@ -6,7 +6,8 @@ Here are the numbers in your name and birth date.
 {{ item.text }}
 {% endfor %}
 View your full report: {{ report_url }}
-{% if card %}
+{% if client_url %}Your client page (free personal calendar and journal): {{ client_url }}
+{% endif %}{% if card %}
 Your numerologist: {{ card.name }}{% if card.headline %}, {{ card.headline }}{% endif %}
 {% if card.booking_url %}Book a reading: {{ card.booking_url }}
 {% endif %}{% if card.about_url %}Profile: {{ card.about_url }}

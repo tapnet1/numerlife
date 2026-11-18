@@ -181,6 +181,15 @@
     <button type="submit" class="primary">Send test emails</button>
   </form>
 
+  <h3 class="mt">Announce the calendar &amp; journal</h3>
+  {% set n_announce = client_announce_count() %}
+  <form method="post" action="{{ url_for('admin_announce_client_pages') }}" class="stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <p class="small">Emails each client their private client page (report, free personal calendar, day journal, readings) with an introduction to the features, in English or Spanish. Only clients who opted in to emails get it (CASL), once each, with an unsubscribe link. Practitioners can send any client their page from the lead page. Send yourself the test version above first.</p>
+    <label class="check"><input type="checkbox" name="confirm" value="yes"><span>Send to {{ n_announce }} client{{ '' if n_announce == 1 else 's' }} who opted in and haven't had it yet</span></label>
+    <button type="submit"{% if not n_announce %} disabled{% endif %}>Send the announcement</button>
+  </form>
+
   <h3 class="mt">Automatic nudges</h3>
   <form method="post" action="{{ url_for('admin_email_settings') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
