@@ -41,6 +41,8 @@ T = {
         "button": "Open my page",
         "why": "You're receiving this because you asked for your numerology report at numer.life.",
         "unsubscribe": "Stop these emails",
+        "share_text": "Hi {first_name}, here's your private numer.life page with your numerology report, your "
+                      "personal calendar and your journal. Keep this link, it's just for you:",
     },
     "es": {
         "title": "Tu página de numer.life",
@@ -65,6 +67,8 @@ T = {
         "button": "Abrir mi página",
         "why": "Recibes este correo porque pediste tu informe de numerología en numer.life.",
         "unsubscribe": "Dejar de recibir estos correos",
+        "share_text": "Hola {first_name}, aquí tienes tu página privada de numer.life con tu informe de numerología, "
+                      "tu calendario personal y tu diario. Guarda este enlace, es solo para ti:",
     },
 }
 
@@ -106,7 +110,21 @@ def page_url_for_lead(lead_id: int) -> str | None:
     return page_url(page) if page is not None else None
 
 
-app.jinja_env.globals.update(client_page=page_for_lead, client_page_url=page_url)
+def share_text(lead) -> str:
+    """The message a practitioner sends with the link (text, WhatsApp, Messenger...), in the client's language."""
+    return T[_lang(lead)]["share_text"].format(first_name=_first_name(lead))
+
+
+def whatsapp_number(phone: str | None) -> str:
+    """Digits for wa.me (international format). Canada/US 10-digit numbers get the leading 1."""
+    digits = "".join(ch for ch in (phone or "") if ch.isdigit())
+    if len(digits) == 10:
+        digits = "1" + digits
+    return digits if 8 <= len(digits) <= 15 else ""
+
+
+app.jinja_env.globals.update(client_page=page_for_lead, client_page_url=page_url, client_share_text=share_text,
+                             whatsapp_number=whatsapp_number)
 
 
 # --------------------------------------------------------------------------

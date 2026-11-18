@@ -82,3 +82,23 @@ class ClientPageTest(CalendarTestCase):
                                                                      "confirm": "yes"})
         self.assertEqual(len(self.outbox("client_announce")), 1)       # once each
         self.assertNotIn(second["id"], [r["lead_id"] for r in sent])
+
+
+class ClientPageShareTest(ClientPageTest):
+    def test_share_options_on_the_lead_page(self):
+        lead = self.lead_via_liliana()
+        with numer.open_db() as connection:
+            connection.execute("UPDATE leads SET phone = '(780) 555-0123' WHERE id = ?", (lead["id"],))
+        self.login("liliana@example.com")
+        html = self.client.get(f"/leads/{lead['id']}").get_data(as_text=True)
+        token = self.page_row(lead["id"])["token"]
+        self.assertIn("data-share-url=\"http", html)
+        self.assertIn(f"/me/{token}", html)
+        self.assertIn("https://wa.me/17805550123?text=", html)
+        self.assertIn("sms:(780) 555-0123?&amp;body=", html)
+        self.assertIn("Copy message", html)
+        self.assertIn("js/share.js", html)
+
+    def test_whatsapp_number(self):
+        self.assertEqual(numer.client_page.whatsapp_number("+52 1 55 1234 5678"), "5215512345678")
+        self.assertEqual(numer.client_page.whatsapp_number(""), "")
