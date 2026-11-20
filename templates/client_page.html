@@ -56,7 +56,7 @@
     <a class="btn-secondary" href="https://wa.me/?text={{ ref_full | urlencode }}" target="_blank" rel="noopener noreferrer">WhatsApp</a>
     <a class="btn-secondary" href="sms:?&amp;body={{ ref_full | urlencode }}">SMS</a>
     <a class="btn-secondary" href="mailto:?subject={{ 'numer.life' | urlencode }}&amp;body={{ ref_full | urlencode }}">{{ rl.email }}</a>
-    <button type="button" class="btn-secondary" data-copy="{{ ref_full }}">{{ rl.copy }}</button>
+    <button type="button" class="btn-secondary" data-copy="{{ ref_full }}">{{ rl.copy_label }}</button>
   </div>
   <p class="small mt">{% if joined %}🎉 {{ rl.joined.format(names=referral_first_names(joined)) }}{% else %}{{ rl.none }}{% endif %}</p>
   {% set earned = referral_months_earned(lead.id) %}
