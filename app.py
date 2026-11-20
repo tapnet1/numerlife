@@ -310,6 +310,15 @@ CREATE TABLE IF NOT EXISTS feedback_journals (
     invited_at  TEXT
 );
 
+CREATE TABLE IF NOT EXISTS referral_rewards (
+    id               INTEGER PRIMARY KEY,
+    referrer_lead_id INTEGER NOT NULL REFERENCES leads(id),
+    friend_lead_id   INTEGER NOT NULL UNIQUE REFERENCES leads(id),
+    months           INTEGER NOT NULL DEFAULT 1,
+    created_at       TEXT NOT NULL,
+    applied_at       TEXT                            -- added to the referrer's calendar access
+);
+
 CREATE TABLE IF NOT EXISTS invoices (
     id                INTEGER PRIMARY KEY,
     user_id           INTEGER NOT NULL REFERENCES users(id),

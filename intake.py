@@ -379,6 +379,11 @@ def unlock_report(token):
             emails.queue_unlock_emails(lead["id"])
         except Exception:  # an email problem must never break the visitor's report
             app.logger.exception("Could not queue the report emails")
+        import client_referrals  # loaded after this module
+        try:
+            client_referrals.reward(lead["id"])
+        except Exception:  # a reward problem must never break the visitor's report
+            app.logger.exception("Could not record the referral reward")
     return redirect(url_for("report", token=token))
 
 

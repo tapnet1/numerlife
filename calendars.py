@@ -351,6 +351,9 @@ def calendar_public(token, month_key=None):
     cal, lead = _public_calendar(token)
     year, month = engine.parse_month(month_key, engine.local_today())
     import calendar_access
+    import client_referrals
+    if client_referrals.apply_pending(lead["id"]):
+        cal = db().execute("SELECT * FROM calendars WHERE id = ?", (cal["id"],)).fetchone()
     view = month_view(cal, lead, year, month)
     locked = not calendar_access.month_open(cal, year, month)
     staff = _can_preview(lead)
