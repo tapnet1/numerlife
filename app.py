@@ -440,6 +440,8 @@ ADDED_COLUMNS = (
     ("feedback_entries", "source", "TEXT NOT NULL DEFAULT 'feedback'"),  # feedback | calendar (day journal)
     ("feedback_entries", "tz", "TEXT"),
     ("calendars", "access_until", "TEXT"),                    # last day the client can see (free 30 days, plan)
+    ("leads", "ref_code", "TEXT"),                            # client's referral code (?r=)
+    ("leads", "referred_by", "INTEGER"),                      # lead id of the client who referred them
     ("calendars", "send_hour", "INTEGER"),                    # daily email hour learned from opens (local)
     ("calendars", "send_hour_set_at", "TEXT"),                # first time it was adjusted (before/after rates)
     ("calendars", "send_hour_checked_at", "TEXT"),
@@ -504,6 +506,8 @@ def initialize(path: str | None = None) -> None:
                 connection.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
         connection.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_slug ON users (slug)")
         connection.execute("CREATE INDEX IF NOT EXISTS idx_email_outbox_track ON email_outbox (track)")
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_leads_ref_code ON leads (ref_code)")
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_leads_referred_by ON leads (referred_by)")
         # Calendars started before access limits existed (2026-11-18) get their 30 free days from then.
         connection.execute("UPDATE calendars SET access_until = '2026-12-18' WHERE access_until IS NULL"
                            " AND created_at < '2026-11-18T13:00'")
@@ -937,3 +941,4 @@ import calendar_access  # noqa: E402,F401  (free 30 days, then the yearly plan)
 import calendar_subscriptions  # noqa: E402,F401  (CAD $250 yearly plan via PayPal)
 import invoicing  # noqa: E402,F401  (monthly 25% invoice from TAPNET's PayPal)
 import calendar_send_time  # noqa: E402,F401  (daily email at the time each client reads it)
+import client_referrals  # noqa: E402,F401  (clients share their link; friends who join are tracked)
