@@ -440,6 +440,9 @@ ADDED_COLUMNS = (
     ("feedback_entries", "source", "TEXT NOT NULL DEFAULT 'feedback'"),  # feedback | calendar (day journal)
     ("feedback_entries", "tz", "TEXT"),
     ("calendars", "access_until", "TEXT"),                    # last day the client can see (free 30 days, plan)
+    ("calendars", "send_hour", "INTEGER"),                    # daily email hour learned from opens (local)
+    ("calendars", "send_hour_set_at", "TEXT"),                # first time it was adjusted (before/after rates)
+    ("calendars", "send_hour_checked_at", "TEXT"),
     ("users", "paypal_env", "TEXT"),                          # practitioner's own PayPal: sandbox | live
     ("users", "paypal_client_id", "TEXT"),
     ("users", "paypal_secret", "TEXT"),                       # encrypted (secretbox)
@@ -933,3 +936,4 @@ import practitioner_paypal  # noqa: E402,F401  (practitioners connect their own 
 import calendar_access  # noqa: E402,F401  (free 30 days, then the yearly plan)
 import calendar_subscriptions  # noqa: E402,F401  (CAD $250 yearly plan via PayPal)
 import invoicing  # noqa: E402,F401  (monthly 25% invoice from TAPNET's PayPal)
+import calendar_send_time  # noqa: E402,F401  (daily email at the time each client reads it)
