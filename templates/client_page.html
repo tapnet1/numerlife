@@ -42,6 +42,25 @@
 
 </div>
 
+{% set rl = referral_labels(lang) %}
+{% set ref_url = referral_url(lead) %}
+{% set ref_msg = rl.message.format(who=who) %}
+{% set ref_full = ref_msg ~ ' ' ~ ref_url %}
+{% set joined = referral_friends(lead.id) %}
+<section class="panel client-tile">
+  <h2>💌 {{ rl.title }}</h2>
+  <p class="small">{{ rl.desc }}</p>
+  <div class="share-row tile-actions" data-share-title="numer.life" data-share-text="{{ ref_msg }}" data-share-url="{{ ref_url }}">
+    <button type="button" class="btn" data-share hidden>{{ rl.share }}</button>
+    <a class="btn-secondary" href="https://wa.me/?text={{ ref_full | urlencode }}" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+    <a class="btn-secondary" href="sms:?&amp;body={{ ref_full | urlencode }}">SMS</a>
+    <a class="btn-secondary" href="mailto:?subject={{ 'numer.life' | urlencode }}&amp;body={{ ref_full | urlencode }}">{{ rl.email }}</a>
+    <button type="button" class="btn-secondary" data-copy="{{ ref_full }}">{{ rl.copy }}</button>
+  </div>
+  <p class="small mt">{% if joined %}🎉 {{ rl.joined.format(names=referral_first_names(joined)) }}{% else %}{{ rl.none }}{% endif %}</p>
+</section>
+
 <p class="hint">{{ t.private }}</p>
 {% if card %}{% include "_contact_card.html" %}{% endif %}
 {% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/share.js') }}" defer></script>{% endblock %}

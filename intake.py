@@ -244,7 +244,7 @@ def start_report():
             session["ref_id"] = practitioner["id"]  # later reports and shares stay with them
     numbers, report_json = lead_numbers_for(data, practitioner["id"] if practitioner else None)
     connection = db()
-    connection.execute(
+    cursor = connection.execute(
         "INSERT INTO leads (practitioner_id, ref_slug, source, token, full_name, birth_date, birth_city,"
         " birth_region, birth_country, numbers, report, created_at, lang)"
         " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -254,6 +254,8 @@ def start_report():
          data["birth_country"], numbers, report_json, iso(now_utc()),
          request.accept_languages.best_match(["en", "es"]) or "en"),
     )
+    import client_referrals
+    client_referrals.attach(connection, cursor.lastrowid)
     connection.commit()
     return redirect(url_for("report", token=token))
 
