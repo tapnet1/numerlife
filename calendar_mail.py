@@ -11,6 +11,7 @@ carries a one-click way to stop them (signed link, no account needed).
 from __future__ import annotations
 
 import datetime as dt
+import secrets
 from zoneinfo import ZoneInfo
 
 import calendar_content as content
@@ -79,7 +80,7 @@ def _unsubscribe(cal) -> str:
     return emails.unsubscribe_url("calendar", cal["id"])
 
 
-def _build(cal, lead, year: int, month: int, mode: str, day: dt.date | None = None):
+def _build(cal, lead, year: int, month: int, mode: str, day: dt.date | None = None, track: str | None = None):
     """(subject, text, html, headers) for one calendar email."""
     import calendars
     import emails
@@ -99,15 +100,16 @@ def _build(cal, lead, year: int, month: int, mode: str, day: dt.date | None = No
                "first_name": view["client_first"], "practitioner_name": practitioner_name,
                "unsubscribe_url": unsubscribe, "email_lang": view["lang"],
                "pdf_url": f"{BASE_URL}/c/{cal['token']}/{view['key']}.pdf",
-               "card": emails._card_for_id(lead["practitioner_id"])}
+               "card": emails._card_for_id(lead["practitioner_id"]),
+               "pixel_url": f"{BASE_URL}/e/o/{track}.gif" if track else None}
     text, html = emails._render_pair("calendar", **context)
     return subject, text, html, {"List-Unsubscribe": f"<{unsubscribe}>"}
 
 
-def _queue(connection, kind: str, cal, lead, built) -> None:
+def _queue(connection, kind: str, cal, lead, built, track: str | None = None) -> None:
     import emails
     subject, text, html, headers = built
-    emails.enqueue(connection, kind, lead["email"], subject, text, html, headers, lead_id=lead["id"])
+    emails.enqueue(connection, kind, lead["email"], subject, text, html, headers, lead_id=lead["id"], track=track)
 
 
 def _lead(connection, cal):
@@ -238,12 +240,15 @@ def queue_published(cal_id: int, key: str) -> bool:
 
 def run(now: dt.datetime | None = None) -> dict:
     """Hourly: queue today's daily emails and this month's monthly emails that haven't gone yet."""
+    import calendar_send_time
     now = now or now_utc()
     local = now.astimezone(ZoneInfo(engine.DEFAULT_TZ))
-    if local.hour < SEND_HOUR:
+    if local.hour < calendar_send_time.EARLIEST_HOUR:
         return {"daily": 0, "monthly": 0, "waiting": "before morning"}
     today, key = local.date(), local.strftime("%Y-%m")
     counts = {"daily": 0, "monthly": 0}
+    with app.app_context():
+        counts["send_times_changed"] = calendar_send_time.refresh()
     with app.test_request_context("/", base_url=BASE_URL), open_db() as connection:
         rows = connection.execute(
             "SELECT * FROM calendars WHERE active = 1 AND ("
@@ -261,11 +266,16 @@ def run(now: dt.datetime | None = None) -> dict:
             if cal["kind"] == "magialogia" and published is None:
                 continue  # nothing the client can see yet; try again next hour
             if cal["email_freq"] == "daily":
+                if local.hour < calendar_send_time.send_hour(cal):
+                    continue  # this client's own morning time hasn't come yet
+                track = secrets.token_urlsafe(16)
                 _queue(connection, "calendar_daily", cal, lead,
-                       _build(cal, lead, today.year, today.month, "daily", day=today))
+                       _build(cal, lead, today.year, today.month, "daily", day=today, track=track), track=track)
                 connection.execute("UPDATE calendars SET last_emailed = ? WHERE id = ?", (today.isoformat(), cal["id"]))
                 counts["daily"] += 1
             else:
+                if local.hour < SEND_HOUR:
+                    continue
                 if not _overview_sent(connection, cal["id"], key):  # a welcome or publish email covers it
                     _queue(connection, "calendar_monthly", cal, lead,
                            _build(cal, lead, today.year, today.month, "monthly"))

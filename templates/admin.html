@@ -212,6 +212,18 @@
     <button type="submit" class="primary">Send test emails</button>
   </form>
 
+  <h3 class="mt">Daily calendar emails: send time &amp; opens</h3>
+  {% set dr = daily_open_report() %}
+  <p class="small">Each client's daily email moves to one hour before the time they usually open it, once we've seen {{ dr.min_opens }} opens (rechecked weekly; 7 am until then). Opens within 2 minutes of sending are ignored (automatic image preloading); some mail apps block or preload images, so true rates are a little higher.</p>
+  <p>Last 30 days: <strong>{{ dr.rate if dr.rate is not none else '–' }}%</strong> opened ({{ dr.opened }} of {{ dr.sent }}).
+  {% if dr.clients %}Clients with a learned time: before <strong>{{ dr.before.rate if dr.before.rate is not none else '–' }}%</strong> ({{ dr.before.sent }} emails) → after <strong>{{ dr.after.rate if dr.after.rate is not none else '–' }}%</strong> ({{ dr.after.sent }} emails).{% else %}No client has a learned time yet.{% endif %}</p>
+  {% if dr.clients %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Client</th><th>Send hour</th><th>Before</th><th>After</th></tr></thead>
+    <tbody>{% for c in dr.clients %}<tr><td>{{ c.name }}</td><td>{{ '%02d:00' | format(c.hour) }}</td><td>{{ c.before[1] }}/{{ c.before[0] }}</td><td>{{ c.after[1] }}/{{ c.after[0] }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% endif %}
+
   <h3 class="mt">Announce the calendar &amp; journal</h3>
   {% set n_announce = client_announce_count() %}
   <form method="post" action="{{ url_for('admin_announce_client_pages') }}" class="stack">
