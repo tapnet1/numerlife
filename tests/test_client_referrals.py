@@ -98,3 +98,11 @@ class ReferralRewardTest(ClientPageTest):
 def numer_token(html):
     from test_app import token_from
     return token_from(html)
+
+
+class CopyLabelTest(ClientPageTest):
+    def test_copy_button_has_a_real_label(self):
+        lead = self.lead_via_liliana()
+        page = numer.app.test_client().get(f"/me/{self.page_row(lead['id'])['token']}").get_data(as_text=True)
+        self.assertIn(">Copy message</button>", page)
+        self.assertNotIn("built-in method", page)
