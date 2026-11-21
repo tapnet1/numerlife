@@ -27,7 +27,8 @@ SUBMIT_LIMIT_PER_HOUR = 30
 RANGE_DAYS = 400  # notes can be about any day within about a year of today, before or after
 
 T = {
-    "en": {"reply": "Reply", "reply_placeholder": "Write a reply…", "send": "Send", "you": "You",
+    "en": {"sharing_on": "Your journal is shared with {who}, who can read and reply.", "sharing_off": "Your journal is private: {who} can't see your notes.", "share_btn": "Share my journal with {who}", "private_btn": "Keep my journal private",
+           "reply": "Reply", "reply_placeholder": "Write a reply…", "send": "Send", "you": "You",
            "today_prompt": "Today is a {n} day: {title}. How is your day going?", "my_journal": "My journal",
            "notes_count": "{n} notes so far", "book_title": "{name}'s journal", "print": "Print or save as PDF",
            "book_empty": "No notes yet. Tap any day on your calendar to write your first note.",
@@ -44,7 +45,8 @@ T = {
            "error_limit": "Too many notes from your connection. Please try again in an hour.",
            "write_today": "Write in your journal", "your_numerologist": "your numerologist",
            "feelings": {1: "Very low", 2: "Low", 3: "Okay", 4: "Good", 5: "Very good"}},
-    "es": {"reply": "Responder", "reply_placeholder": "Escribe una respuesta…", "send": "Enviar", "you": "Tú",
+    "es": {"sharing_on": "Tu diario se comparte con {who}, que puede leerlo y responder.", "sharing_off": "Tu diario es privado: {who} no ve tus notas.", "share_btn": "Compartir mi diario con {who}", "private_btn": "Mantener mi diario privado",
+           "reply": "Responder", "reply_placeholder": "Escribe una respuesta…", "send": "Enviar", "you": "Tú",
            "today_prompt": "Hoy es un día {n}: {title}. ¿Cómo va tu día?", "my_journal": "Mi diario",
            "notes_count": "{n} notas hasta ahora", "book_title": "Diario de {name}", "print": "Imprimir o guardar como PDF",
            "book_empty": "Aún no hay notas. Toca cualquier día de tu calendario para escribir tu primera nota.",
@@ -61,7 +63,8 @@ T = {
            "error_limit": "Demasiadas notas desde tu conexión. Inténtalo de nuevo en una hora.",
            "write_today": "Escribir en tu diario", "your_numerologist": "tu numeróloga",
            "feelings": {1: "Muy mal", 2: "Mal", 3: "Regular", 4: "Bien", 5: "Muy bien"}},
-    "fr": {"reply": "Répondre", "reply_placeholder": "Écrire une réponse…", "send": "Envoyer", "you": "Vous",
+    "fr": {"sharing_on": "Votre journal est partagé avec {who}, qui peut le lire et répondre.", "sharing_off": "Votre journal est privé : {who} ne voit pas vos notes.", "share_btn": "Partager mon journal avec {who}", "private_btn": "Garder mon journal privé",
+           "reply": "Répondre", "reply_placeholder": "Écrire une réponse…", "send": "Envoyer", "you": "Vous",
            "today_prompt": "Aujourd'hui est un jour {n} : {title}. Comment se passe votre journée ?", "my_journal": "Mon journal",
            "notes_count": "{n} notes jusqu'ici", "book_title": "Journal de {name}", "print": "Imprimer ou enregistrer en PDF",
            "book_empty": "Pas encore de notes. Touchez un jour de votre calendrier pour écrire votre première note.",
@@ -79,7 +82,8 @@ T = {
            "error_limit": "Trop de notes depuis votre connexion. Réessayez dans une heure.",
            "write_today": "Écrire dans votre journal", "your_numerologist": "votre numérologue",
            "feelings": {1: "Très mal", 2: "Mal", 3: "Correct", 4: "Bien", 5: "Très bien"}},
-    "pt": {"reply": "Responder", "reply_placeholder": "Escreva uma resposta…", "send": "Enviar", "you": "Você",
+    "pt": {"sharing_on": "Seu diário é compartilhado com {who}, que pode ler e responder.", "sharing_off": "Seu diário é privado: {who} não vê suas notas.", "share_btn": "Compartilhar meu diário com {who}", "private_btn": "Manter meu diário privado",
+           "reply": "Responder", "reply_placeholder": "Escreva uma resposta…", "send": "Enviar", "you": "Você",
            "today_prompt": "Hoje é um dia {n}: {title}. Como está o seu dia?", "my_journal": "Meu diário",
            "notes_count": "{n} notas até agora", "book_title": "Diário de {name}", "print": "Imprimir ou salvar como PDF",
            "book_empty": "Ainda não há notas. Toque em qualquer dia do calendário para escrever sua primeira nota.",
@@ -96,7 +100,8 @@ T = {
            "error_limit": "Muitas notas da sua conexão. Tente de novo em uma hora.",
            "write_today": "Escrever no seu diário", "your_numerologist": "sua numeróloga",
            "feelings": {1: "Muito mal", 2: "Mal", 3: "Mais ou menos", 4: "Bem", 5: "Muito bem"}},
-    "it": {"reply": "Rispondi", "reply_placeholder": "Scrivi una risposta…", "send": "Invia", "you": "Tu",
+    "it": {"sharing_on": "Il tuo diario è condiviso con {who}, che può leggerlo e rispondere.", "sharing_off": "Il tuo diario è privato: {who} non vede le tue note.", "share_btn": "Condividi il mio diario con {who}", "private_btn": "Mantieni privato il mio diario",
+           "reply": "Rispondi", "reply_placeholder": "Scrivi una risposta…", "send": "Invia", "you": "Tu",
            "today_prompt": "Oggi è un giorno {n}: {title}. Come sta andando la tua giornata?", "my_journal": "Il mio diario",
            "notes_count": "{n} note finora", "book_title": "Diario di {name}", "print": "Stampa o salva come PDF",
            "book_empty": "Ancora nessuna nota. Tocca un giorno del calendario per scrivere la tua prima nota.",
@@ -114,7 +119,8 @@ T = {
            "error_limit": "Troppe note dalla tua connessione. Riprova tra un'ora.",
            "write_today": "Scrivi nel tuo diario", "your_numerologist": "la tua numerologa",
            "feelings": {1: "Molto male", 2: "Male", 3: "Così così", 4: "Bene", 5: "Molto bene"}},
-    "de": {"reply": "Antworten", "reply_placeholder": "Antwort schreiben…", "send": "Senden", "you": "Du",
+    "de": {"sharing_on": "Dein Tagebuch ist mit {who} geteilt, die es lesen und antworten kann.", "sharing_off": "Dein Tagebuch ist privat: {who} sieht deine Notizen nicht.", "share_btn": "Mein Tagebuch mit {who} teilen", "private_btn": "Mein Tagebuch privat halten",
+           "reply": "Antworten", "reply_placeholder": "Antwort schreiben…", "send": "Senden", "you": "Du",
            "today_prompt": "Heute ist ein {n}er-Tag: {title}. Wie läuft dein Tag?", "my_journal": "Mein Tagebuch",
            "notes_count": "Bisher {n} Notizen", "book_title": "Tagebuch von {name}", "print": "Drucken oder als PDF speichern",
            "book_empty": "Noch keine Notizen. Tippe auf einen Tag im Kalender, um deine erste Notiz zu schreiben.",
@@ -266,15 +272,17 @@ def journal_add(token):
             (lead["id"], day.isoformat(), feeling, body, clean_tz(request.form.get("tz")),
              iso(now_utc()))).lastrowid
         entry = connection.execute("SELECT * FROM feedback_entries WHERE id = ?", (entry_id,)).fetchone()
-        recipients = feedback._queue_alerts(connection, lead, entry, subject="Journal note from {name}")
+        recipients = feedback._queue_alerts(connection, lead, entry, subject="Journal note from {name}") \
+            if cal["journal_shared"] else []
     import emails
     import notify
     emails.kick()
     first = feedback._first_name(lead)
-    notify.queue([r["id"] for r in recipients], {
-        "title": f"Journal note from {first}",
-        "body": f"{day.isoformat()}: {(body or feedback.STAFF_FEELINGS[feeling])[:120]}",
-        "url": f"/leads/{lead['id']}#feedback", "tag": f"feedback-{lead['id']}"})
+    if recipients:
+        notify.queue([r["id"] for r in recipients], {
+            "title": f"Journal note from {first}",
+            "body": f"{day.isoformat()}: {(body or feedback.STAFF_FEELINGS[feeling])[:120]}",
+            "url": f"/journal?client={lead['id']}#note-{entry_id}", "tag": f"journal-{lead['id']}"})
     flash(t["saved"], "info")
     return redirect(_back(token, day))
 
@@ -334,7 +342,7 @@ def journal_client_reply(token, entry_id):
     body = _clean_body()
     entry = db().execute("SELECT * FROM feedback_entries WHERE id = ? AND lead_id = ?",
                          (entry_id, lead["id"])).fetchone()
-    if entry is None:
+    if entry is None or not cal["journal_shared"]:
         abort(404)
     day = dt.date.fromisoformat(entry["entry_date"])
     if not body:
@@ -354,7 +362,7 @@ def journal_client_reply(token, entry_id):
     emails.kick()
     notify.queue([r["id"] for r in recipients], {
         "title": f"Journal reply from {feedback._first_name(lead)}", "body": body[:120],
-        "url": f"/leads/{lead['id']}#note-{entry_id}", "tag": f"feedback-{lead['id']}"})
+        "url": f"/journal?client={lead['id']}#note-{entry_id}", "tag": f"journal-{lead['id']}"})
     flash(t["replied"], "info")
     return redirect(_back(token, day))
 
@@ -369,8 +377,10 @@ def journal_staff_reply(lead_id, entry_id):
     body = _clean_body()
     back = url_for("lead_detail", lead_id=lead_id) + f"#note-{entry_id}"
     entry = db().execute("SELECT * FROM feedback_entries WHERE id = ? AND lead_id = ?", (entry_id, lead_id)).fetchone()
-    if entry is None:
+    private = db().execute("SELECT 1 FROM calendars WHERE lead_id = ? AND journal_shared = 0", (lead_id,)).fetchone()
+    if entry is None or (private and entry["source"] == "calendar"):
         abort(404)
+    back = request.form.get("back") if (request.form.get("back") or "").startswith("/journal") else back
     if not body:
         flash("Write a reply first.", "error")
         return redirect(back)
@@ -409,6 +419,15 @@ def _queue_reply_email(connection, lead, cal, entry, body: str) -> None:
 # --------------------------------------------------------------------------
 # The client's journal: every note with the replies and the practitioner's day notes; printable
 # --------------------------------------------------------------------------
+@app.post("/c/<token>/journal-sharing")
+def journal_sharing(token):
+    cal, lead = _calendar(token)
+    shared = 1 if request.form.get("share") == "yes" else 0
+    with open_db() as connection:
+        connection.execute("UPDATE calendars SET journal_shared = ? WHERE id = ?", (shared, cal["id"]))
+    return redirect(url_for("calendar_public", token=token) + "#journal-sharing")
+
+
 @app.get("/c/<token>/journal")
 def journal_book(token):
     import calendar_engine as engine
@@ -446,7 +465,7 @@ def journal_book(token):
 @app.after_request
 def _journal_headers(response):
     if request.endpoint in ("journal_add", "journal_edit", "journal_delete", "calendar_public",
-                            "journal_client_reply", "journal_book"):
+                            "journal_client_reply", "journal_book", "journal_sharing"):
         response.headers["X-Robots-Tag"] = "noindex, nofollow"
         response.headers["Cache-Control"] = "no-store"
         response.headers["Referrer-Policy"] = "no-referrer"

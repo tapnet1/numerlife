@@ -451,6 +451,7 @@ ADDED_COLUMNS = (
     ("calendars", "access_until", "TEXT"),                    # last day the client can see (free 30 days, plan)
     ("leads", "ref_code", "TEXT"),                            # client's referral code (?r=)
     ("leads", "referred_by", "INTEGER"),                      # lead id of the client who referred them
+    ("calendars", "journal_shared", "INTEGER NOT NULL DEFAULT 1"),  # client shares journal notes with practitioner
     ("calendars", "send_hour", "INTEGER"),                    # daily email hour learned from opens (local)
     ("calendars", "send_hour_set_at", "TEXT"),                # first time it was adjusted (before/after rates)
     ("calendars", "send_hour_checked_at", "TEXT"),
@@ -951,3 +952,4 @@ import calendar_subscriptions  # noqa: E402,F401  (CAD $250 yearly plan via PayP
 import invoicing  # noqa: E402,F401  (monthly 25% invoice from TAPNET's PayPal)
 import calendar_send_time  # noqa: E402,F401  (daily email at the time each client reads it)
 import client_referrals  # noqa: E402,F401  (clients share their link; friends who join are tracked)
+import journal_inbox  # noqa: E402,F401  (practitioner's journal inbox: clients on the left, notes on the right)

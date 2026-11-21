@@ -54,8 +54,19 @@ def access_until(cal) -> dt.date:
     value = cal["access_until"] if "access_until" in cal.keys() else None
     if value:
         return dt.date.fromisoformat(value[:10])
-    started = dt.date.fromisoformat((cal["created_at"] or dt.date.today().isoformat())[:10])
-    return started + dt.timedelta(days=FREE_DAYS)
+    return started_on(cal) + dt.timedelta(days=FREE_DAYS)
+
+
+def started_on(cal) -> dt.date:
+    """The local (Edmonton) day the calendar was started; created_at is stored in UTC."""
+    import calendar_engine as engine
+    from zoneinfo import ZoneInfo
+    if not cal["created_at"]:
+        return engine.local_today()
+    moment = dt.datetime.fromisoformat(cal["created_at"])
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=dt.timezone.utc)
+    return moment.astimezone(ZoneInfo(engine.DEFAULT_TZ)).date()
 
 
 def month_open(cal, year: int, month: int) -> bool:
