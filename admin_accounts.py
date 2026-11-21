@@ -7,7 +7,7 @@ invite or edit the practitioner's profile.
 """
 from __future__ import annotations
 
-import sqlite3
+from dbapi import sqlite as sqlite3  # SQLite, encrypted with SQLCipher when NUMER_DB_KEY is set
 
 from flask import abort, flash, redirect, request, url_for
 from werkzeug.security import generate_password_hash

@@ -1,6 +1,7 @@
 import os
 import re
-import sqlite3
+import dbapi
+from dbapi import sqlite as sqlite3
 import tempfile
 import unittest
 
@@ -244,12 +245,12 @@ class CommandsTest(AppTestCase):
     def test_restore_db_while_a_connection_is_open(self):
         backup_name = os.path.basename(numer.DB) + ".20260101T000000Z.bak"
         backup_path = os.path.join(os.path.dirname(numer.DB), backup_name)
-        live = sqlite3.connect(numer.DB)
-        snapshot = sqlite3.connect(backup_path)
+        live = dbapi.connect(numer.DB)
+        snapshot = dbapi.connect(backup_path)
         live.backup(snapshot)
         snapshot.close()
         numer.create_user("later@example.com", PASSWORD, "practitioner")
-        worker = sqlite3.connect(numer.DB)  # like a running Passenger worker
+        worker = dbapi.connect(numer.DB)  # like a running Passenger worker
         try:
             result = numer.app.test_cli_runner().invoke(args=["restore-db", backup_name])
             self.assertEqual(result.exit_code, 0, result.output)

@@ -2,7 +2,8 @@ import datetime as dt
 import json
 import os
 import re
-import sqlite3
+import dbapi
+from dbapi import sqlite as sqlite3
 import unittest
 
 from test_app import PASSWORD, AppTestCase, numer, token_from
@@ -307,7 +308,7 @@ class MigrationTest(unittest.TestCase):
         path = os.path.join(os.path.dirname(numer.DB), "old.db")
         if os.path.exists(path):
             os.remove(path)
-        connection = sqlite3.connect(path)
+        connection = dbapi.connect(path)
         connection.executescript("""
             CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT NOT NULL UNIQUE COLLATE NOCASE,
               password_hash TEXT NOT NULL, role TEXT NOT NULL, display_name TEXT NOT NULL DEFAULT '',
@@ -318,7 +319,7 @@ class MigrationTest(unittest.TestCase):
         connection.close()
         numer.initialize(path)
         numer.initialize(path)  # twice: must stay idempotent
-        connection = sqlite3.connect(path)
+        connection = dbapi.connect(path)
         try:
             columns = {row[1] for row in connection.execute("PRAGMA table_info(users)")}
             tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}

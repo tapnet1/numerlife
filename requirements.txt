@@ -3,3 +3,4 @@ cryptography>=42
 segno>=1.6
 Pillow>=10
 reportlab>=4.2,<5
+sqlcipher3-wheels>=0.5.5

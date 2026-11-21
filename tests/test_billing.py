@@ -1,5 +1,6 @@
 import datetime as dt
-import sqlite3
+import dbapi
+from dbapi import sqlite as sqlite3
 
 from test_app import PASSWORD, AppTestCase, numer, token_from
 

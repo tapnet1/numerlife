@@ -9,7 +9,7 @@ import datetime as dt
 import io
 import json
 import re
-import sqlite3
+from dbapi import sqlite as sqlite3  # SQLite, encrypted with SQLCipher when NUMER_DB_KEY is set
 from urllib.parse import urlsplit
 
 import segno
