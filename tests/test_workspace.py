@@ -2,7 +2,8 @@ import csv
 import io
 import json
 import os
-import sqlite3
+import dbapi
+from dbapi import sqlite as sqlite3
 import unittest
 
 from test_app import PASSWORD, numer, token_from
@@ -159,7 +160,7 @@ class LeadColumnsMigrationTest(unittest.TestCase):
         if os.path.exists(path):
             os.remove(path)
         numer.initialize(path)
-        connection = sqlite3.connect(path)
+        connection = dbapi.connect(path)
         try:
             columns = {row[1] for row in connection.execute("PRAGMA table_info(leads)")}
         finally:

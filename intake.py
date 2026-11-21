@@ -13,7 +13,7 @@ import datetime as dt
 import json
 import re
 import secrets
-import sqlite3
+from dbapi import sqlite as sqlite3  # SQLite, encrypted with SQLCipher when NUMER_DB_KEY is set
 
 import click
 from flask import abort, redirect, render_template, request, session, url_for

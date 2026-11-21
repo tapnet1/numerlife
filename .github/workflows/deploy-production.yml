@@ -103,7 +103,24 @@ jobs:
           # Install/upgrade dependencies before any application module is imported.
           test -x .venv/bin/python
           .venv/bin/python -m pip install --disable-pip-version-check --quiet -r requirements.txt
-          .venv/bin/python -c "import flask, cryptography, segno, PIL, reportlab; print('Dependencies verified')"
+          .venv/bin/python -c "import flask, cryptography, segno, PIL, reportlab, sqlcipher3; print('Dependencies verified')"
+          # Database encryption at rest: create the key once, on the server only, and convert the
+          # plain database and its .bak backups. The key is written to .env only after the
+          # converted copy passed its checks; workers restart right away so they use it.
+          if ! grep -q '^NUMER_DB_KEY=.' .env; then
+            db_file="$(.venv/bin/python -c 'import passenger_wsgi, app; print(app.DB)')"
+            db_key="$(.venv/bin/python -c 'import secrets; print(secrets.token_hex(32))')"
+            if NUMER_DB_KEY="$db_key" .venv/bin/python encrypt_db.py "$db_file"; then
+              (umask 077; printf '\nNUMER_DB_KEY=%s\n' "$db_key" >> .env)
+              mkdir -p tmp && touch tmp/restart.txt
+              echo "Database encrypted; key saved in .env"
+            else
+              unset db_key
+              echo "::error::Database encryption failed; the plain database was left in place"
+              exit 1
+            fi
+            unset db_key
+          fi
           # Push notifications: create the VAPID key once, on the server only. It never leaves .env;
           # rotating it would mean every device has to turn notifications on again.
           if ! grep -q '^NUMER_VAPID_PRIVATE_KEY=.' .env; then
@@ -116,17 +133,19 @@ jobs:
           # the online backup API, then create missing tables.
           .venv/bin/python - <<'PY'
           import datetime
-          import sqlite3
           from pathlib import Path
           import passenger_wsgi  # noqa: F401  (loads .env, imports the app)
           from app import DB, REQUIRED_TABLES, initialize
+          import dbapi
+          if not dbapi.ENCRYPTED:
+              raise RuntimeError("NUMER_DB_KEY is not set; the database must be encrypted")
 
           db_path = Path(DB)
           if db_path.exists() and db_path.stat().st_size:
               stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
               backup_path = db_path.with_name(f"{db_path.name}.{stamp}.bak")
-              source = sqlite3.connect(str(db_path))
-              backup = sqlite3.connect(str(backup_path))
+              source = dbapi.connect(str(db_path))
+              backup = dbapi.connect(str(backup_path))
               try:
                   source.backup(backup)
               finally:
@@ -135,7 +154,7 @@ jobs:
               backup_path.chmod(0o600)
               print(f"Database backup created: {backup_path.name}")
           initialize()
-          connection = sqlite3.connect(str(db_path))
+          connection = dbapi.connect(str(db_path))
           try:
               existing = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
           finally:

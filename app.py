@@ -13,7 +13,8 @@ import hmac
 import logging
 import os
 import secrets
-import sqlite3
+import dbapi
+from dbapi import sqlite as sqlite3  # SQLite, encrypted with SQLCipher when NUMER_DB_KEY is set
 from contextlib import contextmanager
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -483,7 +484,8 @@ def iso(moment: dt.datetime) -> str:
 
 
 def connect(path: str | None = None) -> sqlite3.Connection:
-    connection = sqlite3.connect(path or DB, timeout=10)
+    import dbapi
+    connection = dbapi.connect(path or DB, timeout=10)
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys = ON")
     return connection
@@ -882,7 +884,7 @@ def restore_database(backup_name: str) -> str:
     stamp = now_utc().strftime("%Y%m%dT%H%M%SZ")
     safety = live.with_name(f"{live.name}.before-restore.{stamp}.bak")
     for source_path, target_path in ((live, safety), (backup, live)):
-        source, target = sqlite3.connect(str(source_path)), sqlite3.connect(str(target_path))
+        source, target = dbapi.connect(str(source_path)), dbapi.connect(str(target_path))
         try:
             source.backup(target)
             if target_path == live:

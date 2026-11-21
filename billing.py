@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import datetime as dt
 import secrets
-import sqlite3
+from dbapi import sqlite as sqlite3  # SQLite, encrypted with SQLCipher when NUMER_DB_KEY is set
 
 import click
 from flask import abort, flash, redirect, request, url_for
