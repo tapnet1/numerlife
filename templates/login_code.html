@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Sign-in code — {{ site_name }}{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1>Enter your code</h1>
+  <p>Open your authenticator app and type the 6-digit code for numer.life.</p>
+  <form method="post" action="{{ url_for('login_code') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="code">Code</label>
+    <input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required autofocus>
+    <button type="submit">Sign in</button>
+  </form>
+  <p class="muted small">Lost your phone? Ask the numer.life admin to turn off two-step sign-in for your account.</p>
+  <p class="small"><a href="{{ url_for('login') }}">Start again</a></p>
+</section>
+{% endblock %}
