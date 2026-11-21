@@ -445,6 +445,7 @@ ADDED_COLUMNS = (
     ("leads", "series_step", "INTEGER NOT NULL DEFAULT 0"),  # follow-up series: next step to send
     ("leads", "series_sent_at", "TEXT"),
     ("leads", "client_at", "TEXT"),                          # first time the lead was marked a client
+    ("leads", "client_seen_at", "TEXT"),                     # client last opened one of their pages (daily)
     ("email_outbox", "campaign", "TEXT"),                    # series step key
     ("email_outbox", "track", "TEXT"),                       # open/click tracking token
     ("feedback_entries", "source", "TEXT NOT NULL DEFAULT 'feedback'"),  # feedback | calendar (day journal)
@@ -948,6 +949,7 @@ import password_reset  # noqa: E402,F401  (forgot password: emailed one-time res
 import feedback  # noqa: E402,F401  (client feedback journal in the days after a reading)
 import calendar_journal  # noqa: E402,F401  (day journal: client notes on any calendar day)
 import client_page  # noqa: E402,F401  (client page /me/<token>: report, calendar, readings)
+import retention  # noqa: E402,F401  (deletes inactive clients after a year; client visit tracking)
 import practitioner_paypal  # noqa: E402,F401  (practitioners connect their own PayPal)
 import calendar_access  # noqa: E402,F401  (free 30 days, then the yearly plan)
 import calendar_subscriptions  # noqa: E402,F401  (CAD $250 yearly plan via PayPal)

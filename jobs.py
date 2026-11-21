@@ -95,10 +95,17 @@ def sync_subscriptions() -> dict:
     return result
 
 
+def purge_data() -> dict:
+    """Delete inactive clients after a year, unfinished reports after 30 days, old backups."""
+    import retention
+
+    return retention.run()
+
+
 JOBS = {"purge-attempts": purge_attempts, "send-push": send_push, "send-email": send_email,
         "send-nudges": send_nudges, "accrue-referrals": accrue_referrals,
         "calendar-emails": calendar_emails, "capture-orders": capture_orders,
-        "sync-subscriptions": sync_subscriptions}
+        "sync-subscriptions": sync_subscriptions, "purge-data": purge_data}
 
 
 def main(argv: list[str]) -> int:
