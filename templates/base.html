@@ -53,6 +53,8 @@
     <nav id="account-nav" aria-label="Account">
       <a href="{{ url_for('dashboard') }}"{% if request.endpoint == 'dashboard' %} aria-current="page"{% endif %}>Dashboard</a>
       <a href="{{ url_for('leads_list') }}"{% if request.endpoint in ('leads_list', 'lead_detail') %} aria-current="page"{% endif %}>Leads</a>
+      {% set jn = journal_unread() %}
+      <a href="{{ url_for('journal_inbox') }}"{% if request.endpoint == 'journal_inbox' %} aria-current="page"{% endif %}>Journal{% if jn %} <span class="badge">{{ jn }}</span>{% endif %}</a>
       <a href="{{ url_for('edit_guidance') }}"{% if request.endpoint == 'edit_guidance' %} aria-current="page"{% endif %}>Guidance</a>
       <a href="{{ url_for('orders_list') }}"{% if request.endpoint in ('orders_list', 'edit_order') %} aria-current="page"{% endif %}>Paid reports</a>
       <a href="{{ url_for('edit_report_texts') }}"{% if request.endpoint == 'edit_report_texts' %} aria-current="page"{% endif %}>Report texts</a>

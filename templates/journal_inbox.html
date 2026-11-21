@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Journal | {{ site_name }}{% endblock %}
+{% block body_class %}app-page journal-inbox-page{% endblock %}
+{% block content %}
+<header class="app-head">
+  <div>
+    <p class="eyebrow">Client journals</p>
+    <h1>Journal</h1>
+  </div>
+</header>
+
+<div class="inbox{% if selected %} inbox-open{% endif %}">
+  <aside class="panel inbox-list" aria-label="Clients">
+    <form method="get" action="{{ url_for('journal_inbox') }}" role="search" class="inbox-search">
+      <label for="jq" class="sr-only">Search clients</label>
+      <input id="jq" name="q" type="search" value="{{ q }}" placeholder="Search name or email">
+      {% if selected %}<input type="hidden" name="client" value="{{ selected.id }}">{% endif %}
+    </form>
+    {% if rows %}
+    <ul class="inbox-clients">
+      {% for r in rows %}
+      <li><a href="{{ url_for('journal_inbox', client=r.id, q=q or None) }}"{% if selected and selected.id == r.id %} aria-current="true"{% endif %}>
+        <span class="inbox-name">{{ r.full_name }}</span>
+        <span class="inbox-meta small muted">{{ r.notes }} note{{ '' if r.notes == 1 else 's' }} · {{ r.latest | friendly_time }}</span>
+        {% if r.unread %}<span class="badge">{{ r.unread }} new</span>{% endif %}
+      </a></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="small muted">{% if q %}No client matches "{{ q }}".{% else %}No journal notes yet. When clients write in their calendar journal, they appear here.{% endif %}</p>
+    {% endif %}
+  </aside>
+
+  <section class="panel inbox-thread" aria-label="Notes">
+    {% if not selected %}
+      <p class="muted">Choose a client to read their journal and reply.</p>
+    {% else %}
+      <p class="inbox-back no-print"><a href="{{ url_for('journal_inbox', q=q or None) }}">← All clients</a></p>
+      <div class="inbox-head">
+        <h2><a href="{{ url_for('lead_detail', lead_id=selected.id) }}">{{ selected.full_name }}</a></h2>
+        <form method="get" action="{{ url_for('journal_inbox') }}" class="inline-form">
+          <input type="hidden" name="client" value="{{ selected.id }}">
+          {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
+          <label for="jdate" class="small">Journal date</label>
+          <select id="jdate" name="date" data-autosubmit>
+            <option value="">All dates ({{ dates | length }})</option>
+            {% for d in dates %}<option value="{{ d }}"{% if d == day %} selected{% endif %}>{{ d }}</option>{% endfor %}
+          </select>
+          <noscript><button type="submit" class="note-btn">Show</button></noscript>
+        </form>
+      </div>
+      {% if cal %}<p class="small"><a href="{{ url_for('journal_book', token=cal.token) }}" target="_blank" rel="noopener">📖 Printable journal</a></p>{% endif %}
+      {% for e in entries %}
+        {% if loop.first or e.entry_date != loop.previtem.entry_date %}<h3 class="inbox-date">{{ e.entry_date }}</h3>{% endif %}
+        <article class="journal-note inbox-note" id="note-{{ e.id }}">
+          <p class="small muted">
+            {% if e.source == 'calendar' %}Calendar journal · {{ journal_time(e) }}{% else %}{{ feedback_day_label(e) or 'Feedback' }}{% endif %}
+            {% if e.feeling %} · {{ feedback_feelings[e.feeling] }}{% endif %}
+            {% if not e.seen_at %} · <span class="badge">New</span>{% endif %}
+          </p>
+          {% if e.body %}<p class="pre-line">{{ e.body }}</p>
+          <p class="small muted">Translate: <a href="https://translate.google.com/?sl=auto&amp;tl=en&amp;op=translate&amp;text={{ e.body | urlencode }}" target="_blank" rel="noopener noreferrer">English</a> · <a href="https://translate.google.com/?sl=auto&amp;tl=es&amp;op=translate&amp;text={{ e.body | urlencode }}" target="_blank" rel="noopener noreferrer">Español</a></p>{% endif %}
+          {% set thread = replies.get(e.id, []) %}
+          {% if thread %}
+          <ul class="journal-thread">
+            {% for r in thread %}
+            <li class="bubble {{ 'bubble-staff' if r.author == 'staff' else 'bubble-client' }}">
+              <p class="small muted"><strong>{{ (r.staff_name or 'Team') if r.author == 'staff' else selected.full_name.split(' ')[0] }}</strong> · {{ journal_time(r) }}</p>
+              <p class="pre-line">{{ r.body }}</p>
+            </li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+          {% if cal %}
+          <form method="post" action="{{ url_for('journal_staff_reply', lead_id=selected.id, entry_id=e.id) }}" class="inbox-reply">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="back" value="{{ url_for('journal_inbox', client=selected.id, date=day or None, q=q or None) }}#note-{{ e.id }}">
+            <label for="r-{{ e.id }}" class="sr-only">Reply</label>
+            <textarea id="r-{{ e.id }}" name="body" rows="2" maxlength="4000" placeholder="Reply to {{ selected.full_name.split(' ')[0] }}…" required></textarea>
+            <button type="submit" class="note-btn">Send reply</button>
+          </form>
+          {% endif %}
+        </article>
+      {% else %}
+        <p class="muted">No notes on this date.</p>
+      {% endfor %}
+    {% endif %}
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/journal_inbox.js') }}" defer></script>{% endblock %}

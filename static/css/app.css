@@ -569,3 +569,35 @@ details > summary.btn-secondary::-webkit-details-marker { display: none; }
 /* Back to the client page */
 .client-home { margin: 0 0 .8rem; font-size: .92rem; }
 .client-home a { text-decoration: none; font-weight: 600; }
+
+/* Journal inbox */
+.inbox { display: grid; grid-template-columns: minmax(15rem, 22rem) 1fr; gap: 1rem; align-items: start; }
+.inbox-list { position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow: auto; }
+.inbox-search input { width: 100%; }
+.inbox-clients { list-style: none; padding: 0; margin: .6rem 0 0; }
+.inbox-clients a { display: grid; grid-template-columns: 1fr auto; gap: .1rem .5rem; padding: .55rem .6rem;
+  border-radius: 8px; text-decoration: none; color: inherit; }
+.inbox-clients a:hover, .inbox-clients a[aria-current] { background: #f6f1ff; }
+.inbox-name { font-weight: 600; }
+.inbox-meta { grid-column: 1; }
+.inbox-clients .badge { grid-row: 1 / span 2; grid-column: 2; align-self: center; }
+.badge { display: inline-block; background: var(--gold); color: #1b1038; border-radius: 999px; padding: .05rem .5rem;
+  font-size: .75rem; font-weight: 700; }
+.inbox-head { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; justify-content: space-between; }
+.inbox-head h2 { margin: 0; }
+.inbox-date { margin: 1.2rem 0 .4rem; font-size: 1rem; color: var(--muted); }
+.inbox-note { padding: .6rem .8rem; margin-bottom: .6rem; background: #faf6ff; border-left: 3px solid var(--gold);
+  border-radius: 6px; }
+.inbox-reply { display: grid; gap: .4rem; margin-top: .5rem; }
+.inbox-reply textarea { width: 100%; }
+.inbox-reply .note-btn { justify-self: start; }
+.inbox-back { display: none; }
+@media (max-width: 760px) {
+  .inbox { grid-template-columns: 1fr; }
+  .inbox-list { position: static; max-height: none; }
+  .inbox-open .inbox-list { display: none; }
+  .inbox-back { display: block; }
+}
+
+.journal-sharing { flex: 1 1 100%; margin-top: .4rem; }
+.journal-sharing p { margin: 0 0 .3rem; }

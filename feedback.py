@@ -151,9 +151,13 @@ def can_invite(lead) -> bool:
     return lead["status"] == "captured" and bool(lead["email"]) and bool(sessions_for_lead(lead["id"]))
 
 
+# Calendar journal notes stay private when the client turns journal sharing off.
+SHARED_SQL = ("NOT (feedback_entries.source = 'calendar' AND EXISTS (SELECT 1 FROM calendars c WHERE c.lead_id = feedback_entries.lead_id AND c.journal_shared = 0))")
+
+
 def entries_for_lead(lead_id: int) -> list:
-    return db().execute("SELECT * FROM feedback_entries WHERE lead_id = ? ORDER BY entry_date DESC, id DESC",
-                        (lead_id,)).fetchall()
+    return db().execute(f"SELECT * FROM feedback_entries WHERE lead_id = ? AND {SHARED_SQL}"
+                        " ORDER BY entry_date DESC, id DESC", (lead_id,)).fetchall()
 
 
 def day_after(entry) -> int | None:
@@ -189,7 +193,7 @@ def unseen_feedback(user, limit: int = 8) -> list:
     return db().execute(
         "SELECT leads.id, leads.full_name, COUNT(*) AS n, MAX(feedback_entries.created_at) AS latest"
         " FROM feedback_entries JOIN leads ON leads.id = feedback_entries.lead_id"
-        f" WHERE feedback_entries.seen_at IS NULL AND {condition}"
+        f" WHERE feedback_entries.seen_at IS NULL AND {condition} AND {SHARED_SQL}"
         " GROUP BY leads.id ORDER BY latest DESC LIMIT ?", [*params, limit]).fetchall()
 
 
