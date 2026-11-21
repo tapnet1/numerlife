@@ -446,6 +446,9 @@ ADDED_COLUMNS = (
     ("leads", "series_sent_at", "TEXT"),
     ("leads", "client_at", "TEXT"),                          # first time the lead was marked a client
     ("leads", "client_seen_at", "TEXT"),                     # client last opened one of their pages (daily)
+    ("users", "totp_secret", "TEXT"),                        # two-step sign-in secret (encrypted)
+    ("users", "totp_enabled_at", "TEXT"),
+    ("users", "totp_last_step", "INTEGER"),                  # last code used (each code works once)
     ("email_outbox", "campaign", "TEXT"),                    # series step key
     ("email_outbox", "track", "TEXT"),                       # open/click tracking token
     ("feedback_entries", "source", "TEXT NOT NULL DEFAULT 'feedback'"),  # feedback | calendar (day journal)
@@ -782,6 +785,9 @@ def login():
         flash("Email or password is incorrect.", "error")
         return render_template("login.html", email=email, next=next_url), 401
 
+    import two_step
+    if two_step.enabled(row["id"]):
+        return two_step.start_pending(row["id"], next_url)
     session.clear()  # new session on login (prevents session fixation)
     session.permanent = True
     session["user_id"] = row["id"]
@@ -950,6 +956,7 @@ import feedback  # noqa: E402,F401  (client feedback journal in the days after a
 import calendar_journal  # noqa: E402,F401  (day journal: client notes on any calendar day)
 import client_page  # noqa: E402,F401  (client page /me/<token>: report, calendar, readings)
 import retention  # noqa: E402,F401  (deletes inactive clients after a year; client visit tracking)
+import two_step  # noqa: E402,F401  (authenticator-app codes at sign-in)
 import practitioner_paypal  # noqa: E402,F401  (practitioners connect their own PayPal)
 import calendar_access  # noqa: E402,F401  (free 30 days, then the yearly plan)
 import calendar_subscriptions  # noqa: E402,F401  (CAD $250 yearly plan via PayPal)

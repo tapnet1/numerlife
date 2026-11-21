@@ -49,6 +49,16 @@
       <label for="pw-pass">New password (12+ characters)</label><input id="pw-pass" name="password" type="password" minlength="12" autocomplete="new-password" required>
       <button type="submit">Set password</button>
     </form>
+    {% set two_step = two_step_users() %}
+    {% if two_step %}
+    <form method="post" action="{{ url_for('admin_two_step_off') }}" class="panel stack">
+      <h3>Lost phone: turn off two-step sign-in</h3>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label for="ts-user">Account</label>
+      <select id="ts-user" name="user_id" required>{% for u in two_step %}<option value="{{ u.id }}">{{ u.display_name or u.email }} ({{ u.email }})</option>{% endfor %}</select>
+      <button type="submit">Turn off two-step</button>
+    </form>
+    {% endif %}
   </div>
 </section>
 
