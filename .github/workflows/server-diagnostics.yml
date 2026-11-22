@@ -97,5 +97,26 @@ jobs:
                                             " users.display_name AS assigned_to FROM leads"
                                             " LEFT JOIN users ON users.id = leads.practitioner_id ORDER BY leads.id DESC LIMIT 15"):
                   print(dict(row))
+              print("== Journal alerts: client notes in the last 14 days (no names or note text)")
+              print("staff alert settings:", [dict(r) for r in connection.execute(
+                  "SELECT u.id, u.role, u.team_of, u.email_alerts, (SELECT count(*) FROM push_subscriptions p"
+                  " WHERE p.user_id = u.id) AS devices, (SELECT max(last_success_at) FROM push_subscriptions p"
+                  " WHERE p.user_id = u.id) AS last_push_ok FROM users u WHERE u.is_active = 1 ORDER BY u.id")])
+              for note in connection.execute(
+                      "SELECT f.id, f.lead_id, f.source, f.created_at, l.practitioner_id,"
+                      " (SELECT min(c.journal_shared) FROM calendars c WHERE c.lead_id = f.lead_id) AS shared"
+                      " FROM feedback_entries f JOIN leads l ON l.id = f.lead_id"
+                      " WHERE julianday(f.created_at) >= julianday('now', '-14 days') ORDER BY f.id DESC LIMIT 20"):
+                  mails = connection.execute(
+                      "SELECT user_id, sent_at IS NOT NULL AS sent, attempts, last_error != '' AS failed"
+                      " FROM email_outbox WHERE kind = 'feedback_alert' AND lead_id = ?"
+                      " AND julianday(created_at) BETWEEN julianday(?) AND julianday(?, '+2 minutes')",
+                      (note["lead_id"], note["created_at"], note["created_at"])).fetchall()
+                  pushes = connection.execute(
+                      "SELECT user_id, sent_at IS NOT NULL AS sent, attempts, last_error != '' AS failed"
+                      " FROM push_outbox WHERE payload LIKE ?"
+                      " AND julianday(created_at) BETWEEN julianday(?) AND julianday(?, '+2 minutes')",
+                      (f'%journal-{note["lead_id"]}"%', note["created_at"], note["created_at"])).fetchall()
+                  print({**dict(note), "emails": [dict(m) for m in mails], "pushes": [dict(x) for x in pushes]})
           PY
           REMOTE
