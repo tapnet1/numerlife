@@ -11,7 +11,7 @@ import datetime as dt
 import io
 import json
 
-from flask import Response, abort, flash, redirect, render_template, request, url_for
+from flask import Response, abort, flash, redirect, render_template, request, session, url_for
 
 import intake
 import numerology
@@ -120,8 +120,28 @@ def dashboard():
     return render_template(
         "dashboard.html", stats=stats, total=total, unlock_rate=unlock_rate, recent=recent,
         share_url=f"{BASE_URL}/{slug}" if slug else None, stages=STAGES, profile_missing=profile_missing,
-        referred_count=referred_count, team_owner=team_owner,
+        referred_count=referred_count, team_owner=team_owner, show_app_nudge=show_app_nudge(user),
     )
+
+
+APP_NUDGE_SNOOZE_DAYS = 3
+
+
+def show_app_nudge(user) -> bool:
+    """Practitioners and team members with no device getting alerts see the install-the-app banner."""
+    import notify
+
+    if user["role"] == "admin" or notify.device_count(user["id"]):
+        return False
+    later = session.get("app_nudge_later")
+    return not later or later <= now_utc().date().isoformat()
+
+
+@app.post("/settings/app-nudge/later")
+@login_required
+def app_nudge_later():
+    session["app_nudge_later"] = (now_utc() + dt.timedelta(days=APP_NUDGE_SNOOZE_DAYS)).date().isoformat()
+    return redirect(url_for("dashboard"))
 
 
 # --------------------------------------------------------------------------

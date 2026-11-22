@@ -26,6 +26,38 @@
   </a>
 </section>
 
+{% if show_app_nudge %}
+<section class="notice app-nudge" aria-labelledby="app-nudge-h">
+  <h2 id="app-nudge-h">Get client alerts on your phone</h2>
+  <p>Install numer.life on your phone or tablet so you get a notification the moment a client writes in their journal, unlocks a report or buys a reading.</p>
+  <details open>
+    <summary><strong>iPhone or iPad</strong></summary>
+    <ol>
+      <li>Open numer.life in <strong>Safari</strong> and sign in.</li>
+      <li>Tap <strong>Share</strong> (the square with the arrow), then <strong>Add to Home Screen</strong>, then <strong>Add</strong>.</li>
+      <li>Open numer.life from the new icon on your Home Screen and sign in.</li>
+      <li>Tap <strong>Turn on notifications</strong>, then <strong>Allow</strong>.</li>
+    </ol>
+  </details>
+  <details>
+    <summary><strong>Android phone or computer</strong></summary>
+    <ol>
+      <li>Open numer.life in <strong>Chrome</strong> and sign in.</li>
+      <li>Tap <strong>Install the app</strong> below (or the browser menu → <strong>Install app</strong>).</li>
+      <li>Tap <strong>Turn on notifications</strong>, then <strong>Allow</strong>.</li>
+    </ol>
+  </details>
+  <p class="muted small">Done when you tap <strong>Send a test</strong> and the notification appears on your device.</p>
+  <div class="actions">
+    <a class="btn" href="#alerts">Turn on notifications</a>
+    <form method="post" action="{{ url_for('app_nudge_later') }}" class="inline-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn-link">Remind me later</button>
+    </form>
+  </div>
+</section>
+{% endif %}
+
 {% if stats.unread %}
   <p class="notice"><strong>{{ stats.unread }} new {{ 'lead' if stats.unread == 1 else 'leads' }}</strong> waiting for you. <a href="{{ url_for('leads_list', unlocked='yes') }}">Open them →</a></p>
 {% endif %}
@@ -106,9 +138,9 @@
       <p class="muted">You don't have a personal link yet. {% if user.role == 'admin' %}Admins see every lead; practitioners get their own link.{% endif %}</p>
     {% endif %}
   </div>
-  <div class="panel notify-panel" data-vapid="{{ vapid_public_key or '' }}" data-csrf="{{ csrf_token() }}">
-    <h2>Lead alerts</h2>
-    <p class="notify-status muted small" role="status" aria-live="polite">Get an alert on this device the moment a new lead unlocks their report.</p>
+  <div class="panel notify-panel" id="alerts" data-vapid="{{ vapid_public_key or '' }}" data-csrf="{{ csrf_token() }}">
+    <h2>Alerts on this device</h2>
+    <p class="notify-status muted small" role="status" aria-live="polite">Get an alert on this device the moment a client writes in their journal or a new lead unlocks their report.</p>
     <div class="actions">
       <button type="button" class="btn notify-on">Turn on notifications</button>
       <button type="button" class="btn-secondary notify-test" hidden>Send a test</button>

@@ -601,3 +601,8 @@ details > summary.btn-secondary::-webkit-details-marker { display: none; }
 
 .journal-sharing { flex: 1 1 100%; margin-top: .4rem; }
 .journal-sharing p { margin: 0 0 .3rem; }
+.app-nudge h2 { margin: 0 0 .4rem; font-size: 1.1rem; }
+.app-nudge details { margin: .4rem 0; }
+.app-nudge ol { margin: .4rem 0 .4rem 1.2rem; padding: 0; }
+.app-nudge .actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+.app-nudge .inline-form { display: inline; margin: 0; }
