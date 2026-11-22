@@ -44,7 +44,7 @@
       show(Boolean(sub) && Notification.permission === "granted");
       say(sub && Notification.permission === "granted" ? "Notifications are on for this device." :
           Notification.permission === "denied" ? "Notifications are blocked for this site. Allow them in your browser settings, then reload." :
-          "Get an alert the moment a new lead unlocks their report.");
+          "Get an alert the moment a client writes in their journal or a new lead unlocks their report.");
       onBtn.hidden = Boolean(sub) && Notification.permission === "granted";
       onBtn.addEventListener("click", function () {
         say("Asking for permission…");
