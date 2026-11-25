@@ -4,3 +4,5 @@ segno>=1.6
 Pillow>=10
 reportlab>=4.2,<5
 sqlcipher3-wheels>=0.5.5
+icalendar>=6,<8
+recurring-ical-events>=3.3,<4

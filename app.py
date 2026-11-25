@@ -228,6 +228,24 @@ CREATE TABLE IF NOT EXISTS readings (
 CREATE INDEX IF NOT EXISTS idx_readings_lead ON readings (lead_id, scheduled_at);
 CREATE INDEX IF NOT EXISTS idx_readings_when ON readings (status, scheduled_at);
 
+CREATE TABLE IF NOT EXISTS busy_feeds (
+    user_id     INTEGER PRIMARY KEY REFERENCES users(id),
+    url         TEXT NOT NULL,                       -- practitioner's private calendar link (encrypted)
+    added_at    TEXT NOT NULL,
+    fetched_at  TEXT,
+    ok_at       TEXT,                                -- last successful read
+    error       TEXT,
+    events      INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS busy_times (                -- busy blocks only: no titles, places or guests
+    id          INTEGER PRIMARY KEY,
+    user_id     INTEGER NOT NULL REFERENCES users(id),
+    starts_at   TEXT NOT NULL,                       -- UTC
+    ends_at     TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_busy_times_user ON busy_times (user_id, starts_at);
+
 CREATE TABLE IF NOT EXISTS bookings (
     id                INTEGER PRIMARY KEY,
     lead_id           INTEGER NOT NULL REFERENCES leads(id),
@@ -996,3 +1014,5 @@ import calendar_send_time  # noqa: E402,F401  (daily email at the time each clie
 import client_referrals  # noqa: E402,F401  (clients share their link; friends who join are tracked)
 import journal_inbox  # noqa: E402,F401  (practitioner's journal inbox: clients on the left, notes on the right)
 import bookings  # noqa: E402,F401  (clients book and pay for sessions; reminders, add to calendar)
+import calendar_sync  # noqa: E402,F401  (practitioner's calendar link blocks busy booking times)
+import appointments  # noqa: E402,F401  (practitioner's upcoming appointments, add to my calendar)

@@ -63,7 +63,7 @@
       {% else %}
       <a href="{{ url_for('invite_practitioner') }}"{% if request.endpoint == 'invite_practitioner' %} aria-current="page"{% endif %}>Invite</a>
       <a href="{{ url_for('edit_profile') }}"{% if request.endpoint in ('edit_profile', 'change_password') %} aria-current="page"{% endif %}>Profile</a>
-      {% if user.role == 'practitioner' and not user.team_of %}<a href="{{ url_for('booking_settings_page') }}"{% if request.endpoint == 'booking_settings_page' %} aria-current="page"{% endif %}>Bookings</a>{% endif %}
+      <a href="{{ url_for('appointments_list') }}"{% if request.endpoint in ('appointments_list', 'appointment_detail', 'booking_settings_page') %} aria-current="page"{% endif %}>Appointments</a>
       {% if user.role == 'practitioner' %}<a href="{{ url_for('paypal_settings') }}"{% if request.endpoint == 'paypal_settings' %} aria-current="page"{% endif %}>PayPal</a>{% endif %}
       {% endif %}
       {% if user.role == 'admin' %}<a href="{{ url_for('admin') }}">Admin</a>{% endif %}

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Appointments | {{ site_name }}{% endblock %}
+{% block body_class %}app-page{% endblock %}
+{% block content %}
+<header class="app-head">
+  <div>
+    <p class="eyebrow">Times in {{ s.tz.split('/')[-1].replace('_', ' ') }} time</p>
+    <h1>Appointments</h1>
+  </div>
+  {% if can_edit %}<div class="actions"><a class="btn-secondary" href="{{ url_for('booking_settings_page') }}">Availability &amp; booking settings</a></div>{% endif %}
+</header>
+
+{% if owner and owner.role == 'practitioner' %}
+  {% if not s.enabled %}
+  <p class="flash flash-info">Online booking is off. {% if can_edit %}<a href="{{ url_for('booking_settings_page') }}">Set your hours and turn it on</a>.{% else %}The practitioner can turn it on.{% endif %}</p>
+  {% endif %}
+  {% if feed and (feed.error or feed.stale) %}
+  <p class="flash flash-error">Your calendar link isn't working{% if feed.error %}: {{ feed.error }}{% endif %} Times from your last good read are still blocked. {% if can_edit %}<a href="{{ url_for('booking_settings_page') }}#calendar-link">Check the link</a>.{% endif %}</p>
+  {% elif feed %}
+  <p class="small muted">✓ Your calendar is connected: busy times there can't be booked (read {{ feed.ok_at | friendly_time }}).</p>
+  {% elif can_edit and s.enabled %}
+  <p class="small muted">Tip: <a href="{{ url_for('booking_settings_page') }}#calendar-link">connect your calendar</a> so busy times there can't be booked.</p>
+  {% endif %}
+{% endif %}
+
+{% if days %}
+  {% for day, items in days.items() %}
+  <section class="panel">
+    <h2>{{ day }}</h2>
+    <ul class="reading-list">
+      {% for item in items %}
+      <li><a href="{{ url_for('appointment_detail', reading_id=item.reading.id) }}">
+        <strong>{{ item.time }}–{{ item.end_time }}</strong> <span>{{ item.reading.full_name }}</span>
+        <span class="muted small">{{ reading_kinds[item.reading.kind] }} · {{ reading_modes[item.reading.mode] }}{% if item.paid %} · <span class="badge badge-paid">Paid online</span>{% endif %}</span>
+      </a></li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endfor %}
+{% else %}
+  <section class="panel"><p class="muted">No upcoming appointments.</p></section>
+{% endif %}
+<p class="hint">Readings you schedule on a client's page show here too. Tap one to add it to your calendar.</p>
+{% endblock %}
