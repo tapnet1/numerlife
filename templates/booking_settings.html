@@ -1,21 +1,40 @@
 {% extends "base.html" %}
-{% block title %}Bookings | {{ site_name }}{% endblock %}
+{% block title %}Availability &amp; bookings | {{ site_name }}{% endblock %}
 {% block body_class %}app-page{% endblock %}
 {% block content %}
+<p class="crumb"><a href="{{ url_for('appointments_list') }}">← Appointments</a></p>
 <header class="app-head">
   <div>
     <p class="eyebrow">Online booking</p>
-    <h1>Bookings</h1>
+    <h1>Availability &amp; bookings</h1>
   </div>
 </header>
 
 <section class="panel">
-  <p>Your clients book and pay for a session from their client page. When they've paid, the session is added to their record as a scheduled reading. They get a confirmation email with "Add to calendar" and reminders the day before and an hour before, and you and your team get an email and a push alert.</p>
+  <p>Clients book and pay for a session from their client page, only at times you're available. A booked time is taken for everyone else straight away. Times you're busy in your own calendar (link below) and readings you schedule on a client's page are blocked too.</p>
   {% if not can_sell %}<p class="flash flash-error">Clients can't pay yet. Connect your PayPal under <a href="{{ url_for('paypal_settings') }}">PayPal</a> first.</p>{% endif %}
   {% if errors %}<div class="flash flash-error" role="alert">{% for e in errors %}<p>{{ e }}</p>{% endfor %}</div>{% endif %}
-  <form method="post" class="stack booking-settings">
+  <form method="post" action="{{ url_for('booking_settings_page') }}" class="stack booking-settings">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label class="check"><input type="checkbox" name="enabled" value="yes"{% if s.enabled %} checked{% endif %}><span>Clients can book online</span></label>
+
+    <h2 class="mt">Your availability</h2>
+    <label for="bk-tz">Your time zone</label>
+    <select id="bk-tz" name="tz">{% for tz in timezones %}<option value="{{ tz }}"{% if s.tz == tz %} selected{% endif %}>{{ tz.replace('_', ' ') }}</option>{% endfor %}{% if s.tz not in timezones %}<option value="{{ s.tz }}" selected>{{ s.tz }}</option>{% endif %}</select>
+    <p class="hint">The hours you're available each day, like <code>10:00-13:00, 15:00-18:00</code>. Leave a day empty when you don't take sessions (for example Saturday and Sunday).</p>
+    <div class="hours-grid">
+      {% for day in weekdays %}
+      <label for="bk-h{{ loop.index0 }}">{{ day }}</label>
+      <input id="bk-h{{ loop.index0 }}" type="text" name="hours_{{ loop.index0 }}" value="{{ s.hours[loop.index0 | string] }}" placeholder="not available" autocomplete="off">
+      {% endfor %}
+    </div>
+    <label for="bk-off">Days off</label>
+    <input id="bk-off" type="text" name="days_off" value="{{ s.days_off }}" placeholder="2026-12-24, 2026-12-25">
+    <div class="form-grid">
+      <div><label for="bk-buffer">Break between sessions (minutes)</label><input id="bk-buffer" name="buffer_min" type="number" min="0" max="120" value="{{ s.buffer_min }}" required></div>
+      <div><label for="bk-notice">Minimum notice (hours)</label><input id="bk-notice" name="notice_hours" type="number" min="0" max="336" value="{{ s.notice_hours }}" required></div>
+      <div><label for="bk-window">Book up to (days ahead)</label><input id="bk-window" name="window_days" type="number" min="1" max="180" value="{{ s.window_days }}" required></div>
+    </div>
 
     <h2 class="mt">Session</h2>
     <div class="form-grid">
@@ -27,25 +46,6 @@
     <label for="bk-details">How to join (clients see this only after paying)</label>
     <textarea id="bk-details" name="details" rows="3" maxlength="1000" placeholder="e.g. your Zoom or Google Meet link, your phone number, or your address">{{ s.details }}</textarea>
     <p class="hint">The first line also goes in the calendar event's location.</p>
-
-    <h2 class="mt">Your hours</h2>
-    <label for="bk-tz">Time zone</label>
-    <select id="bk-tz" name="tz">{% for tz in timezones %}<option value="{{ tz }}"{% if s.tz == tz %} selected{% endif %}>{{ tz.replace('_', ' ') }}</option>{% endfor %}{% if s.tz not in timezones %}<option value="{{ s.tz }}" selected>{{ s.tz }}</option>{% endif %}</select>
-    <p class="hint">One or more time ranges per day, like <code>10:00-13:00, 15:00-18:00</code>. Leave a day empty when you don't take sessions.</p>
-    <div class="hours-grid">
-      {% for day in weekdays %}
-      <label for="bk-h{{ loop.index0 }}">{{ day }}</label>
-      <input id="bk-h{{ loop.index0 }}" type="text" name="hours_{{ loop.index0 }}" value="{{ s.hours[loop.index0 | string] }}" placeholder="closed" autocomplete="off">
-      {% endfor %}
-    </div>
-    <label for="bk-off">Days off</label>
-    <input id="bk-off" type="text" name="days_off" value="{{ s.days_off }}" placeholder="2026-12-24, 2026-12-25">
-    <p class="hint">Readings you schedule yourself on a client's page also block those times.</p>
-    <div class="form-grid">
-      <div><label for="bk-buffer">Break between sessions (minutes)</label><input id="bk-buffer" name="buffer_min" type="number" min="0" max="120" value="{{ s.buffer_min }}" required></div>
-      <div><label for="bk-notice">Minimum notice (hours)</label><input id="bk-notice" name="notice_hours" type="number" min="0" max="336" value="{{ s.notice_hours }}" required></div>
-      <div><label for="bk-window">Book up to (days ahead)</label><input id="bk-window" name="window_days" type="number" min="1" max="180" value="{{ s.window_days }}" required></div>
-    </div>
     <button type="submit">Save</button>
   </form>
 </section>
@@ -59,4 +59,33 @@
   </ul>
 </section>
 {% endif %}
+
+<section class="panel" id="calendar-link">
+  <h2>Your calendar (optional)</h2>
+  <p class="small">Paste your calendar's private link and anything you're busy with there (appointments, family, holidays) can't be booked. numer.life checks it every few minutes and only keeps when you're busy, never what the event is. It can't change your calendar: add bookings with "Add to my calendar" on <a href="{{ url_for('appointments_list') }}">Appointments</a>.</p>
+  {% if feed %}
+    {% if feed.error or feed.stale %}
+    <p class="flash flash-error">Not working{% if feed.error %}: {{ feed.error }}{% endif %} Busy times from the last good read are still blocked.</p>
+    {% else %}
+    <p class="flash flash-info">✓ Connected. Last read {{ feed.ok_at | friendly_time }}: {{ feed.events }} busy time{{ '' if feed.events == 1 else 's' }} in the coming weeks.</p>
+    {% endif %}
+  {% endif %}
+  <details class="small"{% if not feed %} open{% endif %}>
+    <summary>Where to find the link</summary>
+    <ol>
+      <li><strong>Google Calendar</strong> (on a computer): Settings ⚙ → click your calendar under "Settings for my calendars" → <em>Integrate calendar</em> → copy <strong>Secret address in iCal format</strong>. <em>Done when</em> the link ends in <code>basic.ics</code>.</li>
+      <li><strong>Apple iCloud</strong>: in Calendar, share the calendar → turn on <em>Public Calendar</em> → copy the link (starts with <code>webcal://</code>).</li>
+      <li><strong>Outlook</strong>: Settings → Calendar → Shared calendars → <em>Publish a calendar</em> → "Can view when I'm busy" → copy the <strong>ICS</strong> link.</li>
+    </ol>
+  </details>
+  <form method="post" action="{{ url_for('calendar_link_save') }}" class="stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="cal-url">{{ 'Replace the link' if feed else 'Calendar link' }}</label>
+    <input id="cal-url" type="text" name="url" autocomplete="off" spellcheck="false" maxlength="1000" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics"{% if not feed %} required{% endif %}>
+    <div class="actions">
+      <button type="submit" name="action" value="connect">Check and save</button>
+      {% if feed %}<button type="submit" name="action" value="disconnect" class="btn-secondary" formnovalidate>Remove link</button>{% endif %}
+    </div>
+  </form>
+</section>
 {% endblock %}

@@ -6,4 +6,5 @@ Hi {{ recipient_name or 'there' }},
 
 It's on their page as a scheduled reading. They'll get reminders the day before and an hour before.{% endif %}
 
-Open their page: {{ lead_url }}
+{% if appointment_url %}Add it to your calendar: {{ appointment_url }}
+{% endif %}Open their page: {{ lead_url }}

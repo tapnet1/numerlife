@@ -231,8 +231,8 @@ def bookable(lead) -> bool:
 # --------------------------------------------------------------------------
 def _busy(connection, practitioner_id: int, s: dict, start: dt.datetime, end: dt.datetime,
           exclude_booking: int | None = None) -> list[tuple[dt.datetime, dt.datetime]]:
-    """Intervals (UTC) the practitioner is taken: scheduled readings (her local time) and times held
-    by other clients who are paying right now."""
+    """Intervals (UTC) the practitioner is taken: scheduled readings (her local time), busy times from
+    her own calendar link, and times held by other clients who are paying right now."""
     tz = zone(s)
     busy = []
     rows = connection.execute(
@@ -243,6 +243,8 @@ def _busy(connection, practitioner_id: int, s: dict, start: dt.datetime, end: dt
     for row in rows:
         begin = dt.datetime.fromisoformat(row["scheduled_at"]).replace(tzinfo=tz).astimezone(dt.timezone.utc)
         busy.append((begin, begin + dt.timedelta(minutes=row["duration_min"])))
+    import calendar_sync
+    busy += calendar_sync.stored_busy(connection, practitioner_id, start, end)   # her own calendar (link)
     holds = connection.execute(
         "SELECT starts_at, duration_min FROM bookings WHERE practitioner_id = ? AND status = 'pending'"
         " AND held_until > ? AND id != ?", (practitioner_id, iso(now_utc()), exclude_booking or 0)).fetchall()
@@ -709,7 +711,8 @@ def mark_paid(booking_id: int, capture_id: str, payer_email: str) -> bool:
     notify.queue([r["id"] for r in recipients], {
         "title": ("Paid booking: time taken, contact client" if conflict else "New paid booking"),
         "body": f"{lead['full_name']} · {when}",
-        "url": f"/leads/{booking['lead_id']}#readings", "tag": f"booking-{booking_id}"})
+        "url": (f"/leads/{booking['lead_id']}#readings" if conflict
+                else f"/settings/appointments/{booking['reading_id']}"), "tag": f"booking-{booking_id}"})
     return True
 
 
@@ -777,7 +780,9 @@ def _queue_staff_alert(connection, booking, conflict: bool) -> list:
         context = {"recipient_name": (recipient["display_name"] or "").split(" ")[0], "full_name": lead["full_name"],
                    "when": when_text(state["start"], booking["tz"], "en"), "minutes": state["minutes"],
                    "session_kind": mid_sentence(STAFF_KINDS.get(state["kind"], "Session")), "price": price_text(booking["amount_cents"]),
-                   "conflict": conflict, "lead_url": f"{BASE_URL}/leads/{lead['id']}#readings"}
+                   "conflict": conflict, "lead_url": f"{BASE_URL}/leads/{lead['id']}#readings",
+                   "appointment_url": (f"{BASE_URL}/settings/appointments/{booking['reading_id']}"
+                                       if booking["reading_id"] else None)}
         text, html = emails._render_pair("booking_alert", **context)
         subject = (f"Paid booking needs a new time: {lead['full_name']}" if conflict
                    else f"New booking: {lead['full_name']}, {when_text(state['start'], booking['tz'], 'en')}")
@@ -835,7 +840,7 @@ def send_reminders(now: dt.datetime | None = None) -> dict:
                 pushes.append(([r["id"] for r in staff], {
                     "title": "Session in about an hour",
                     "body": f"{lead['full_name']} · {when_text(state['start'], booking['tz'], 'en')}",
-                    "url": f"/leads/{booking['lead_id']}/readings/{booking['reading_id']}",
+                    "url": f"/settings/appointments/{booking['reading_id']}",
                     "tag": f"booking-{booking['id']}-soon"}))
                 result["hour"] += 1
             elif HOUR_REMINDER < left <= DAY_REMINDER and booking["reminded_day_for"] != key:
@@ -876,8 +881,10 @@ def capture_open() -> dict:
 
 
 def run_job() -> dict:
+    import calendar_sync
     with app.app_context():
-        result = capture_open()
+        result = calendar_sync.refresh_due()
+        result.update(capture_open())
         result.update(send_reminders())
     return result
 
@@ -1018,7 +1025,8 @@ def booking_settings_page():
     if s["enabled"] and not errors:
         preview = group_by_day(free_slots(db(), user), zone(s), "en")[:5]
     lead_stub = {"practitioner_id": user["id"]}
-    return render_template("booking_settings.html", s=s, errors=errors, weekdays=WEEKDAYS, timezones=TIMEZONES,
+    import calendar_sync
+    return render_template("booking_settings.html", feed=calendar_sync.status(user["id"]), s=s, errors=errors, weekdays=WEEKDAYS, timezones=TIMEZONES,
                            kinds=readings.KINDS, modes=readings.MODES, preview=preview,
                            price=f"{s['price_cents'] / 100:.2f}", zone=zone_name(s["tz"]),
                            can_sell=orders.seller_account(lead_stub) is not None)

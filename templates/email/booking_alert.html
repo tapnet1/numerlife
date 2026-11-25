@@ -10,5 +10,6 @@
 <p style="margin:0 0 14px;padding:12px 16px;border-left:3px solid #d4af5a;background:#f7f4fb;"><strong>{{ when }}</strong> · {{ minutes }} min</p>
 <p style="margin:0 0 22px;">It's on their page as a scheduled reading. They'll get reminders the day before and an hour before.</p>
 {% endif %}
+{% if appointment_url %}<p style="margin:0 0 12px;text-align:center;"><a href="{{ appointment_url }}" style="display:inline-block;background:#2b1a57;color:#ffffff;font-weight:600;text-decoration:none;padding:13px 26px;border-radius:999px;">Add to my calendar</a></p>{% endif %}
 <p style="margin:0;text-align:center;"><a href="{{ lead_url }}" style="display:inline-block;background:#d4af5a;color:#1b1038;font-weight:600;text-decoration:none;padding:13px 26px;border-radius:999px;">Open their page</a></p>
 {% endblock %}
