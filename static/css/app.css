@@ -606,3 +606,32 @@ details > summary.btn-secondary::-webkit-details-marker { display: none; }
 .app-nudge ol { margin: .4rem 0 .4rem 1.2rem; padding: 0; }
 .app-nudge .actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
 .app-nudge .inline-form { display: inline; margin: 0; }
+
+/* Bookings */
+.form-grid { display: grid; gap: .5rem 1rem; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); }
+.form-grid > div > label { display: block; }
+.hours-grid { display: grid; grid-template-columns: 7rem 1fr; gap: .45rem .8rem; align-items: center; }
+.hours-grid label { margin: 0; }
+.slot-day { border: 0; padding: 0; margin: 0 0 1.1rem; }
+.slot-day legend { font-weight: 600; margin-bottom: .5rem; padding: 0; }
+.slots { display: flex; flex-wrap: wrap; gap: .45rem; }
+.slot { display: inline-flex; margin: 0; font-weight: 400; cursor: pointer; }
+.slot input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.slot span { padding: .5rem .95rem; border: 1px solid var(--line); border-radius: 999px; background: #fff; font-variant-numeric: tabular-nums; }
+.slot input:checked + span { background: var(--plum); border-color: var(--plum); color: #fff; }
+.slot input:focus-visible + span { outline: 2px solid var(--gold); outline-offset: 2px; }
+.booking-pay { position: sticky; bottom: 0; padding: .8rem 0; background: linear-gradient(to top, #fff 70%, rgba(255,255,255,0)); }
+.booking-pay button { width: 100%; }
+.booking-status { font-weight: 600; margin: 0 0 .8rem; }
+.booking-status-confirmed { color: var(--ok); }
+.booking-status-cancelled, .booking-status-refunded { color: var(--error); }
+.booking-facts { display: grid; grid-template-columns: max-content 1fr; gap: .4rem 1rem; margin: 0 0 1rem; }
+.booking-facts dt { font-weight: 600; color: var(--muted); }
+.booking-facts dd { margin: 0; overflow-wrap: anywhere; }
+.booking-details { overflow-wrap: anywhere; }
+.struck { text-decoration: line-through; }
+@media (max-width: 480px) { .hours-grid { grid-template-columns: 1fr; } .booking-facts { grid-template-columns: 1fr; } }
+.booking-pay p { margin: 0 0 .4rem; }
+.booking-settings input[type=number] { width: 100%; padding: .75rem .85rem; border: 1px solid #d9d1e6; border-radius: 10px; font: inherit; color: var(--ink); background: #fdfcff; }
+.booking-settings input[type=number]:focus { outline: none; border-color: var(--plum); box-shadow: 0 0 0 4px rgba(90,63,158,.15); }
+.hours-grid input { margin: 0; }

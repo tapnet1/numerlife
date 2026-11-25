@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Bookings | {{ site_name }}{% endblock %}
+{% block body_class %}app-page{% endblock %}
+{% block content %}
+<header class="app-head">
+  <div>
+    <p class="eyebrow">Online booking</p>
+    <h1>Bookings</h1>
+  </div>
+</header>
+
+<section class="panel">
+  <p>Your clients book and pay for a session from their client page. When they've paid, the session is added to their record as a scheduled reading. They get a confirmation email with "Add to calendar" and reminders the day before and an hour before, and you and your team get an email and a push alert.</p>
+  {% if not can_sell %}<p class="flash flash-error">Clients can't pay yet. Connect your PayPal under <a href="{{ url_for('paypal_settings') }}">PayPal</a> first.</p>{% endif %}
+  {% if errors %}<div class="flash flash-error" role="alert">{% for e in errors %}<p>{{ e }}</p>{% endfor %}</div>{% endif %}
+  <form method="post" class="stack booking-settings">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="check"><input type="checkbox" name="enabled" value="yes"{% if s.enabled %} checked{% endif %}><span>Clients can book online</span></label>
+
+    <h2 class="mt">Session</h2>
+    <div class="form-grid">
+      <div><label for="bk-price">Price (CAD)</label><input id="bk-price" type="text" name="price" inputmode="decimal" value="{{ price }}" required></div>
+      <div><label for="bk-length">Length (minutes)</label><input id="bk-length" name="duration_min" type="number" min="15" max="480" value="{{ s.duration_min }}" required></div>
+      <div><label for="bk-kind">Type</label><select id="bk-kind" name="kind">{% for k, label in kinds.items() %}<option value="{{ k }}"{% if s.kind == k %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+      <div><label for="bk-mode">How</label><select id="bk-mode" name="mode">{% for k, label in modes.items() %}<option value="{{ k }}"{% if s.mode == k %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    </div>
+    <label for="bk-details">How to join (clients see this only after paying)</label>
+    <textarea id="bk-details" name="details" rows="3" maxlength="1000" placeholder="e.g. your Zoom or Google Meet link, your phone number, or your address">{{ s.details }}</textarea>
+    <p class="hint">The first line also goes in the calendar event's location.</p>
+
+    <h2 class="mt">Your hours</h2>
+    <label for="bk-tz">Time zone</label>
+    <select id="bk-tz" name="tz">{% for tz in timezones %}<option value="{{ tz }}"{% if s.tz == tz %} selected{% endif %}>{{ tz.replace('_', ' ') }}</option>{% endfor %}{% if s.tz not in timezones %}<option value="{{ s.tz }}" selected>{{ s.tz }}</option>{% endif %}</select>
+    <p class="hint">One or more time ranges per day, like <code>10:00-13:00, 15:00-18:00</code>. Leave a day empty when you don't take sessions.</p>
+    <div class="hours-grid">
+      {% for day in weekdays %}
+      <label for="bk-h{{ loop.index0 }}">{{ day }}</label>
+      <input id="bk-h{{ loop.index0 }}" type="text" name="hours_{{ loop.index0 }}" value="{{ s.hours[loop.index0 | string] }}" placeholder="closed" autocomplete="off">
+      {% endfor %}
+    </div>
+    <label for="bk-off">Days off</label>
+    <input id="bk-off" type="text" name="days_off" value="{{ s.days_off }}" placeholder="2026-12-24, 2026-12-25">
+    <p class="hint">Readings you schedule yourself on a client's page also block those times.</p>
+    <div class="form-grid">
+      <div><label for="bk-buffer">Break between sessions (minutes)</label><input id="bk-buffer" name="buffer_min" type="number" min="0" max="120" value="{{ s.buffer_min }}" required></div>
+      <div><label for="bk-notice">Minimum notice (hours)</label><input id="bk-notice" name="notice_hours" type="number" min="0" max="336" value="{{ s.notice_hours }}" required></div>
+      <div><label for="bk-window">Book up to (days ahead)</label><input id="bk-window" name="window_days" type="number" min="1" max="180" value="{{ s.window_days }}" required></div>
+    </div>
+    <button type="submit">Save</button>
+  </form>
+</section>
+
+{% if preview %}
+<section class="panel">
+  <h2>What clients see next</h2>
+  <p class="small muted">Times in {{ zone }} time.</p>
+  <ul class="small">
+    {% for day in preview %}<li><strong>{{ day.label }}</strong>: {{ day.slots | map(attribute='label') | join(', ') }}</li>{% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endblock %}

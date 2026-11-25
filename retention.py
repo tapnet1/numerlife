@@ -47,6 +47,9 @@ _RECENT = """
                AND julianday(r.created_at) >= julianday(:cutoff))
     OR EXISTS (SELECT 1 FROM orders o WHERE o.lead_id = leads.id
                AND julianday(COALESCE(o.updated_at, o.created_at)) >= julianday(:cutoff))
+    OR EXISTS (SELECT 1 FROM bookings k WHERE k.lead_id = leads.id
+               AND (julianday(COALESCE(k.updated_at, k.created_at)) >= julianday(:cutoff)
+                    OR julianday(k.starts_at) >= julianday(:cutoff)))
     OR EXISTS (SELECT 1 FROM readings g WHERE g.lead_id = leads.id
                AND (julianday(COALESCE(g.updated_at, g.created_at)) >= julianday(:cutoff)
                     OR julianday(g.scheduled_at) >= julianday(:cutoff)))
@@ -91,6 +94,7 @@ def delete_lead(connection, lead_id: int) -> None:
     connection.execute(f"DELETE FROM calendar_months WHERE calendar_id IN ({cal_ids})", one)
     connection.execute(f"DELETE FROM calendar_notes WHERE calendar_id IN ({cal_ids})", one)
     connection.execute("DELETE FROM calendars WHERE lead_id = ?", one)
+    connection.execute("DELETE FROM bookings WHERE lead_id = ?", one)
     connection.execute("DELETE FROM readings WHERE lead_id = ?", one)
     connection.execute("DELETE FROM orders WHERE lead_id = ?", one)
     connection.execute("DELETE FROM client_pages WHERE lead_id = ?", one)

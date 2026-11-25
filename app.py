@@ -228,6 +228,36 @@ CREATE TABLE IF NOT EXISTS readings (
 CREATE INDEX IF NOT EXISTS idx_readings_lead ON readings (lead_id, scheduled_at);
 CREATE INDEX IF NOT EXISTS idx_readings_when ON readings (status, scheduled_at);
 
+CREATE TABLE IF NOT EXISTS bookings (
+    id                INTEGER PRIMARY KEY,
+    lead_id           INTEGER NOT NULL REFERENCES leads(id),
+    practitioner_id   INTEGER NOT NULL REFERENCES users(id),
+    reading_id        INTEGER REFERENCES readings(id),     -- the scheduled reading, once paid
+    token             TEXT NOT NULL UNIQUE,                -- client's appointment page /b/<token>
+    starts_at         TEXT NOT NULL,                       -- UTC, as booked (the reading has the current time)
+    tz                TEXT NOT NULL,                       -- practitioner's time zone when booked
+    duration_min      INTEGER NOT NULL,
+    kind              TEXT NOT NULL,
+    mode              TEXT NOT NULL,
+    amount_cents      INTEGER NOT NULL,
+    currency          TEXT NOT NULL DEFAULT 'CAD',
+    status            TEXT NOT NULL DEFAULT 'pending',     -- pending | paid | cancelled | abandoned | refunded
+    conflict          INTEGER NOT NULL DEFAULT 0,          -- paid after the time was taken: practitioner reschedules
+    paypal_account    TEXT NOT NULL DEFAULT 'tapnet',
+    paypal_order_id   TEXT UNIQUE,
+    paypal_capture_id TEXT,
+    payer_email       TEXT,
+    held_until        TEXT,                                -- the time is held while the client pays
+    sequence          INTEGER NOT NULL DEFAULT 0,          -- calendar file version (moves, cancellation)
+    reminded_day_for  TEXT,                                -- reminders are tied to the time they were for
+    reminded_hour_for TEXT,
+    paid_at           TEXT,
+    created_at        TEXT NOT NULL,
+    updated_at        TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_bookings_lead ON bookings (lead_id);
+CREATE INDEX IF NOT EXISTS idx_bookings_practitioner ON bookings (practitioner_id, status, starts_at);
+
 CREATE TABLE IF NOT EXISTS calendars (
     id              INTEGER PRIMARY KEY,
     lead_id         INTEGER NOT NULL UNIQUE REFERENCES leads(id),
@@ -470,6 +500,7 @@ ADDED_COLUMNS = (
     ("users", "y_rule", "TEXT NOT NULL DEFAULT 'standard'"),        # standard | always | never
     ("leads", "report", "TEXT"),
     ("users", "report_lang", "TEXT NOT NULL DEFAULT 'en'"),  # language of report texts: en | es
+    ("users", "booking", "TEXT"),                             # online booking settings (JSON, bookings.py)
     ("leads", "client_contact", "TEXT"),  # names, home address and consent for the Healy contact card (JSON)  # the report's method and numbers (JSON), fixed when the report is made
 )
 
@@ -821,7 +852,7 @@ def robots():
         body = "User-agent: *\nDisallow: /\n"
     else:
         body = ("User-agent: *\nDisallow: /admin\nDisallow: /dashboard\nDisallow: /login\n"
-                "Disallow: /r/\nDisallow: /p/\nDisallow: /f/\n" f"Sitemap: {BASE_URL}/sitemap.xml\n")
+                "Disallow: /r/\nDisallow: /p/\nDisallow: /f/\nDisallow: /b/\nDisallow: /me/\n" f"Sitemap: {BASE_URL}/sitemap.xml\n")
     return body, 200, {"Content-Type": "text/plain; charset=utf-8"}
 
 
@@ -964,3 +995,4 @@ import invoicing  # noqa: E402,F401  (monthly 25% invoice from TAPNET's PayPal)
 import calendar_send_time  # noqa: E402,F401  (daily email at the time each client reads it)
 import client_referrals  # noqa: E402,F401  (clients share their link; friends who join are tracked)
 import journal_inbox  # noqa: E402,F401  (practitioner's journal inbox: clients on the left, notes on the right)
+import bookings  # noqa: E402,F401  (clients book and pay for sessions; reminders, add to calendar)

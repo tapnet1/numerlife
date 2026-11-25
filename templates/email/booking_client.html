@@ -1,0 +1,31 @@
+{% extends "email/_layout.html" %}
+{% block preheader %}{{ when }}{% endblock %}
+{% block body %}
+<p style="margin:0 0 16px;">{{ lead_line }}</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;border:1px solid #ece6f5;border-radius:12px;">
+<tr><td style="padding:14px 16px;font-size:15px;color:#2a2240;">
+  <p style="margin:0 0 6px;{% if mode == 'cancelled' %}text-decoration:line-through;{% endif %}"><strong>{{ t.when }}:</strong> {{ when }}</p>
+  <p style="margin:0 0 6px;"><strong>{{ t.length }}:</strong> {{ minutes }}</p>
+  <p style="margin:0;"><strong>{{ t.how }}:</strong> {{ how }}</p>
+  {% if details %}<p style="margin:12px 0 0;font-size:14px;"><strong>{{ t.details }}:</strong><br><span style="white-space:pre-line;">{{ details | urlize }}</span></p>{% endif %}
+</td></tr></table>
+{% if links %}
+<p style="margin:0 0 8px;font-size:14px;color:#4a4360;">{{ t.calendar_note }}</p>
+<p style="margin:0 0 20px;">
+  <a href="{{ links.google }}" style="display:inline-block;margin:0 6px 8px 0;background:#2b1a57;color:#ffffff;font-weight:600;font-size:14px;text-decoration:none;padding:10px 16px;border-radius:999px;">{{ t.google }}</a>
+  <a href="{{ links.outlook }}" style="display:inline-block;margin:0 6px 8px 0;border:1px solid #2b1a57;color:#2b1a57;font-weight:600;font-size:14px;text-decoration:none;padding:9px 16px;border-radius:999px;">{{ t.outlook }}</a>
+  <a href="{{ links.ics }}" style="display:inline-block;margin:0 6px 8px 0;border:1px solid #2b1a57;color:#2b1a57;font-weight:600;font-size:14px;text-decoration:none;padding:9px 16px;border-radius:999px;">{{ t.apple }}</a>
+</p>
+{% endif %}
+{% if receipt %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;border:1px solid #ece6f5;border-radius:12px;">
+<tr><td style="padding:14px 16px;font-size:14px;color:#4a4360;">
+  <p style="margin:0 0 6px;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#7a7290;">{{ t.receipt }}</p>
+  <p style="margin:0;">{{ t.amount }}: <strong>{{ receipt.price }}</strong> · {{ t.booking }} #{{ receipt.id }}</p>
+  <p style="margin:6px 0 0;font-size:12px;color:#7a7290;">{{ receipt.via }}</p>
+</td></tr></table>
+{% endif %}
+<p style="margin:0 0 14px;text-align:center;"><a href="{{ page_url }}" style="display:inline-block;background:#d4af5a;color:#1b1038;font-weight:600;text-decoration:none;padding:13px 26px;border-radius:999px;">{{ t.open_page }}</a></p>
+<p style="margin:0;font-size:13px;color:#4a4360;">{{ t.change.format(who=who) }}</p>
+{% include "email/_card.html" %}
+{% endblock %}

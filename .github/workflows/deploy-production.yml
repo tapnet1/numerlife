@@ -182,10 +182,11 @@ jobs:
           calendar_job='17 * * * * cd /home/numerlife1/numerlife && .venv/bin/python jobs.py calendar-emails >> logs/jobs.log 2>&1'
           orders_job='*/5 * * * * cd /home/numerlife1/numerlife && .venv/bin/python jobs.py capture-orders >> logs/jobs.log 2>&1'
           subs_job='37 * * * * cd /home/numerlife1/numerlife && .venv/bin/python jobs.py sync-subscriptions >> logs/jobs.log 2>&1'
+          bookings_job='*/5 * * * * cd /home/numerlife1/numerlife && .venv/bin/python jobs.py bookings >> logs/jobs.log 2>&1'
           retention_job='53 9 * * * cd /home/numerlife1/numerlife && .venv/bin/python jobs.py purge-data >> logs/jobs.log 2>&1'
           if command -v crontab >/dev/null; then
             { crontab -l 2>/dev/null | sed '/# numerlife-jobs begin/,/# numerlife-jobs end/d'
-              printf '%s\n' '# numerlife-jobs begin' "$purge_job" "$push_job" "$email_job" "$nudge_job" "$referral_job" "$calendar_job" "$orders_job" "$subs_job" "$retention_job" '# numerlife-jobs end'
+              printf '%s\n' '# numerlife-jobs begin' "$purge_job" "$push_job" "$email_job" "$nudge_job" "$referral_job" "$calendar_job" "$orders_job" "$subs_job" "$retention_job" "$bookings_job" '# numerlife-jobs end'
             } | crontab - && echo "Scheduled jobs installed" \
               || echo "::warning::Could not install cron jobs; add them in cPanel > Cron Jobs"
           else

@@ -1,0 +1,14 @@
+{% extends "email/_layout.html" %}
+{% block preheader %}{{ full_name }} · {{ when }}{% endblock %}
+{% block body %}
+<p style="margin:0 0 14px;">Hi {{ recipient_name or 'there' }},</p>
+{% if conflict %}
+<p style="margin:0 0 14px;"><strong>{{ full_name }}</strong> paid {{ price }} for a {{ session_kind }}, but the time they chose (<strong>{{ when }}</strong>) was taken while they were paying.</p>
+<p style="margin:0 0 22px;">Please contact them to agree a new time and schedule it on their page (or refund them in PayPal).</p>
+{% else %}
+<p style="margin:0 0 14px;"><strong>{{ full_name }}</strong> booked and paid {{ price }} for a {{ session_kind }}:</p>
+<p style="margin:0 0 14px;padding:12px 16px;border-left:3px solid #d4af5a;background:#f7f4fb;"><strong>{{ when }}</strong> · {{ minutes }} min</p>
+<p style="margin:0 0 22px;">It's on their page as a scheduled reading. They'll get reminders the day before and an hour before.</p>
+{% endif %}
+<p style="margin:0;text-align:center;"><a href="{{ lead_url }}" style="display:inline-block;background:#d4af5a;color:#1b1038;font-weight:600;text-decoration:none;padding:13px 26px;border-radius:999px;">Open their page</a></p>
+{% endblock %}
