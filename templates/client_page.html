@@ -24,6 +24,26 @@
   </section>
   {% endfor %}
 
+  {% if booking_bookable(lead) %}
+  {% set bt = booking_t[lang] %}
+  {% set bs = booking_settings(booking_practitioner(lead)) %}
+  <section class="panel client-tile">
+    <h2>{{ bt.tile_title }}</h2>
+    <p class="small">{{ bt.tile_desc.format(session=bt.kinds.get(bs.kind, bt.kinds.other), who=who, minutes=bs.duration_min, price=booking_price(bs.price_cents)) }}</p>
+    {% for b in bookings_for_lead(lead.id, True) %}
+    <p class="small"><a href="{{ url_for('booking_page', token=b.row.token) }}">✓ {{ booking_when(b, lang) }}</a></p>
+    {% endfor %}
+    <div class="tile-actions"><a class="btn" href="{{ url_for('booking_choose', token=page.token) }}">{{ bt.tile_button }}</a></div>
+  </section>
+  {% else %}
+  {% for b in bookings_for_lead(lead.id, True) %}
+  <section class="panel client-tile">
+    <h2>{{ booking_t[lang].upcoming }}</h2>
+    <p class="small"><a href="{{ url_for('booking_page', token=b.row.token) }}">✓ {{ booking_when(b, lang) }}</a></p>
+  </section>
+  {% endfor %}
+  {% endif %}
+
   <section class="panel client-tile">
     <h2>{{ t.calendar }}</h2>
     <p class="small">{{ t.calendar_desc.format(who=who) }}</p>

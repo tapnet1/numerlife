@@ -1,0 +1,9 @@
+Hi {{ recipient_name or 'there' }},
+
+{% if conflict %}{{ full_name }} paid {{ price }} for a {{ session_kind }}, but the time they chose ({{ when }}) was taken while they were paying. Please contact them to agree a new time and schedule it on their page (or refund them in PayPal).{% else %}{{ full_name }} booked and paid {{ price }} for a {{ session_kind }}:
+
+{{ when }} · {{ minutes }} min
+
+It's on their page as a scheduled reading. They'll get reminders the day before and an hour before.{% endif %}
+
+Open their page: {{ lead_url }}

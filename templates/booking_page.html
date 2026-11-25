@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}{{ t.page_title.format(who=who) }} | {{ site_name }}{% endblock %}
+{% block body_class %}app-page booking-page{% endblock %}
+{% block content %}
+{% include "_client_home.html" %}
+<header class="app-head" lang="{{ lang }}">
+  <div>
+    <p class="eyebrow">{{ session }}</p>
+    <h1>{{ t.page_title.format(who=who) }}</h1>
+  </div>
+</header>
+
+<section class="panel" lang="{{ lang }}">
+  <p class="booking-status booking-status-{{ state.status }}">{{ t['status_' ~ state.status].format(who=who) }}</p>
+  <dl class="booking-facts">
+    <dt>{{ t.when }}</dt><dd{% if state.status in ('cancelled', 'refunded') %} class="struck"{% endif %}>{{ when }}<br><span class="small muted" data-local-time data-local="{{ local_start }}" data-label="{{ t.your_time }}" data-lang="{{ lang }}" hidden></span></dd>
+    <dt>{{ t.length }}</dt><dd>{{ minutes }}</dd>
+    <dt>{{ t.how }}</dt><dd>{{ how }}</dd>
+    <dt>{{ t.paid }}</dt><dd>{{ price }} · {{ t.booking }} #{{ booking.id }}</dd>
+  </dl>
+  {% if details %}
+  <h2>{{ t.details }}</h2>
+  <p class="pre-line booking-details">{{ details | urlize(60, true, '_blank') }}</p>
+  {% endif %}
+</section>
+
+{% if links %}
+<section class="panel" lang="{{ lang }}">
+  <h2>{{ t.add }}</h2>
+  <div class="tile-actions">
+    <a class="btn" href="{{ links.google }}" target="_blank" rel="noopener noreferrer">{{ t.google }}</a>
+    <a class="btn-secondary" href="{{ links.outlook }}" target="_blank" rel="noopener noreferrer">{{ t.outlook }}</a>
+    <a class="btn-secondary" href="{{ url_for('booking_ics', token=booking.token) }}">{{ t.apple }}</a>
+  </div>
+</section>
+{% endif %}
+
+<p class="hint">{{ t.change.format(who=who) }}</p>
+{% if card %}{% include "_contact_card.html" %}{% endif %}
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/booking.js') }}" defer></script>{% endblock %}

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}{{ t.book_title.format(who=who) }} | {{ site_name }}{% endblock %}
+{% block body_class %}app-page booking-page{% endblock %}
+{% block content %}
+{% include "_client_home.html" %}
+<header class="app-head" lang="{{ lang }}">
+  <div>
+    <p class="eyebrow">{{ session }} · {{ s.duration_min }} min · {{ price }}</p>
+    <h1>{{ t.book_title.format(who=who) }}</h1>
+  </div>
+</header>
+
+{% if upcoming %}
+<section class="panel" lang="{{ lang }}">
+  <h2>{{ t.upcoming }}</h2>
+  <ul class="reading-list">
+    {% for b in upcoming %}
+    <li><a href="{{ url_for('booking_page', token=b.row.token) }}"><strong>{{ booking_when(b, lang) }}</strong>
+      <span class="muted small">{{ t['status_' ~ b.status].format(who=who) }}</span></a></li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<section class="panel" lang="{{ lang }}">
+  <p>{{ t.intro }}</p>
+  <p class="small muted">{{ mode }} · {{ t.times_in.format(zone=zone) }}</p>
+  {% if days %}
+  <form method="post" action="{{ url_for('booking_checkout', token=page.token) }}" class="booking-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% for day in days %}
+    <fieldset class="slot-day">
+      <legend>{{ day.label }}</legend>
+      <div class="slots">
+        {% for slot in day.slots %}
+        <label class="slot"><input type="radio" name="slot" value="{{ slot.value }}" data-local="{{ slot.local }}" required><span>{{ slot.label }}</span></label>
+        {% endfor %}
+      </div>
+    </fieldset>
+    {% endfor %}
+    <div class="booking-pay">
+      <p class="small muted" data-local-time data-label="{{ t.your_time }}" data-lang="{{ lang }}" hidden></p>
+      <button type="submit">{{ t.pay.format(price=price) }}</button>
+    </div>
+  </form>
+  {% else %}
+  <p class="flash flash-info">{{ t.no_times.format(who=who) }}</p>
+  {% endif %}
+</section>
+<p class="hint">{{ t.change.format(who=who) }}</p>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/booking.js') }}" defer></script>{% endblock %}

@@ -1,0 +1,23 @@
+{{ lead_line }}
+
+{{ t.when }}: {{ when }}
+{{ t.length }}: {{ minutes }}
+{{ t.how }}: {{ how }}
+{% if details %}
+{{ t.details }}:
+{{ details }}
+{% endif %}{% if links %}
+{{ t.add }}:
+{{ t.google }}: {{ links.google }}
+{{ t.outlook }}: {{ links.outlook }}
+{{ t.apple }}: {{ links.ics }}
+{% endif %}{% if receipt %}
+{{ t.receipt | upper }}
+{{ t.amount }}: {{ receipt.price }} · {{ t.booking }} #{{ receipt.id }}
+{{ receipt.via }}
+{% endif %}
+{{ t.open_page }}: {{ page_url }}
+
+{{ t.change.format(who=who) }}
+--
+{{ site_name }} · TAPNET

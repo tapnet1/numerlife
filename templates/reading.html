@@ -11,6 +11,21 @@
   <span class="badge badge-r-{{ reading.status }} badge-lg">{{ reading_statuses[reading.status] }}</span>
 </header>
 
+{% set booking = booking_for_reading(reading.id) %}
+{% if booking %}
+<section class="panel">
+  <p class="small"><strong>Booked and paid online</strong> · {{ booking_price(booking.amount_cents) }} · booking #{{ booking.id }}{% if booking.status == 'refunded' %} · <strong>refunded</strong>{% endif %}</p>
+  <p class="small muted">If you change the time or cancel below, {{ lead.full_name.split(' ')[0] }} is emailed and their calendar file updates. Reminders follow the new time.{% if booking.status == 'paid' %} A refund is made in PayPal{% if user.role == 'admin' %}, then marked here{% else %}; an admin then marks it here{% endif %}.{% endif %}</p>
+  <p class="small"><a href="{{ booking_page_url(booking) }}" target="_blank" rel="noopener noreferrer">Client's appointment page</a></p>
+  {% if user.role == 'admin' and booking.status == 'paid' %}
+  <form method="post" action="{{ url_for('admin_booking_refunded', booking_id=booking.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn-secondary">Refunded in PayPal: mark refunded</button>
+  </form>
+  {% endif %}
+</section>
+{% endif %}
+
 <form method="post" action="{{ url_for('save_reading', lead_id=lead.id, reading_id=reading.id) }}" class="app-grid">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div>

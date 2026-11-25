@@ -6,6 +6,7 @@
     .venv/bin/python jobs.py send-nudges
     .venv/bin/python jobs.py accrue-referrals
     .venv/bin/python jobs.py calendar-emails
+    .venv/bin/python jobs.py bookings
 
 Jobs load .env through passenger_wsgi.py, like the deploy, and never print secrets.
 """
@@ -95,6 +96,18 @@ def sync_subscriptions() -> dict:
     return result
 
 
+def bookings_job() -> dict:
+    """Capture paid bookings whose buyer didn't come back; appointment reminders (email + push)."""
+    import bookings
+
+    result = bookings.run_job()
+    import emails
+    import notify
+    emails.send_pending()
+    notify.send_pending()
+    return result
+
+
 def purge_data() -> dict:
     """Delete inactive clients after a year, unfinished reports after 30 days, old backups."""
     import retention
@@ -105,7 +118,7 @@ def purge_data() -> dict:
 JOBS = {"purge-attempts": purge_attempts, "send-push": send_push, "send-email": send_email,
         "send-nudges": send_nudges, "accrue-referrals": accrue_referrals,
         "calendar-emails": calendar_emails, "capture-orders": capture_orders,
-        "sync-subscriptions": sync_subscriptions, "purge-data": purge_data}
+        "sync-subscriptions": sync_subscriptions, "purge-data": purge_data, "bookings": bookings_job}
 
 
 def main(argv: list[str]) -> int:
